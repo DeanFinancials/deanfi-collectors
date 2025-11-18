@@ -40,28 +40,31 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       
+      - name: Create cache directory
+        run: mkdir -p data-cache/cache
+      
       - name: Fetch daily breadth
         run: |
           cd advancedecline
-          python fetch_daily_breadth.py
+          python fetch_daily_breadth.py --cache-dir ../data-cache/cache
           echo "✅ Daily breadth fetched"
       
       - name: Fetch A/D line historical
         run: |
           cd advancedecline
-          python fetch_ad_line_historical.py
+          python fetch_ad_line_historical.py --cache-dir ../data-cache/cache
           echo "✅ A/D line historical fetched"
       
       - name: Fetch MA percentage historical
         run: |
           cd advancedecline
-          python fetch_ma_percentage_historical.py
+          python fetch_ma_percentage_historical.py --cache-dir ../data-cache/cache
           echo "✅ MA percentage historical fetched"
       
       - name: Fetch highs/lows historical
         run: |
           cd advancedecline
-          python fetch_highs_lows_historical.py
+          python fetch_highs_lows_historical.py --cache-dir ../data-cache/cache
           echo "✅ Highs/lows historical fetched"
       
       - name: Copy to data repo
@@ -78,7 +81,7 @@ jobs:
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add advance-decline/
+          git add advance-decline/ cache/
           
           if git diff --staged --quiet; then
             echo "No changes to commit"

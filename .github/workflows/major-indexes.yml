@@ -40,15 +40,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       
+      - name: Create cache directory
+        run: mkdir -p data-cache/cache
+      
       - name: Fetch all index data
         run: |
           cd majorindexes
-          python fetch_us_major.py
-          python fetch_sectors.py
-          python fetch_growth_value.py
-          python fetch_international.py
-          python fetch_bonds.py
-          python fetch_commodities.py
+          python fetch_us_major.py --cache-dir ../data-cache/cache
+          python fetch_sectors.py --cache-dir ../data-cache/cache
+          python fetch_growth_value.py --cache-dir ../data-cache/cache
+          python fetch_international.py --cache-dir ../data-cache/cache
+          python fetch_bonds.py --cache-dir ../data-cache/cache
+          python fetch_commodities.py --cache-dir ../data-cache/cache
           echo "✅ All index data fetched"
       
       - name: Copy to data repo
@@ -62,7 +65,7 @@ jobs:
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add major-indexes/
+          git add major-indexes/ cache/
           
           if git diff --staged --quiet; then
             echo "No changes to commit"
