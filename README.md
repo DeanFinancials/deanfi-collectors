@@ -16,8 +16,8 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 | **Analyst Trends** | Recommendation changes (buy/hold/sell) | Weekly (Sunday 12pm ET) | Finnhub |
 | **Earnings Calendar** | Upcoming earnings releases + estimates | Weekly (Sunday 12pm ET) | Finnhub |
 | **Earnings Surprises** | Historical EPS vs estimates | Weekly (Sunday 12pm ET) | Finnhub |
-| **Advance/Decline** | Market breadth indicators | Every 15 min (market hours) | Yahoo Finance |
-| **Major Indexes** | S&P 500, Dow, Nasdaq tracking | Every 15 min (market hours) | Yahoo Finance |
+| **Advance/Decline** | Market breadth indicators (with caching) | Every 15 min (market hours) | Yahoo Finance |
+| **Major Indexes** | S&P 500, Dow, Nasdaq tracking (with caching) | Every 15 min (market hours) | Yahoo Finance |
 | **Implied Volatility** | VIX and options volatility | Every 15 min (market hours) | Yahoo Finance |
 
 ## 🚀 Quick Start
@@ -63,6 +63,14 @@ python fetch_recommendation_trends.py
 # Fetch earnings calendar
 cd ../earningscalendar
 python fetch_earnings_calendar.py
+
+# Fetch market breadth with caching
+cd ../advancedecline
+python fetch_daily_breadth.py --cache-dir ./cache
+
+# Fetch major indexes with caching
+cd ../majorindexes
+python fetch_us_major.py --cache-dir ./cache
 ```
 
 ## 📁 Project Structure
@@ -158,6 +166,8 @@ news:
   - <24h old: 5-day incremental update
   - 24-168h old: 10-day incremental update
   - >168h old: Full weekly rebuild
+- **Active collectors:** Market breadth (advancedecline) and Major indexes (majorindexes)
+- **Storage:** Cache persists in deanfi-data repo across workflow runs
 - **Saves ~85% of API calls and GitHub Actions time**
 
 ### Rate Limiting
@@ -198,20 +208,22 @@ for article in news:
 ### Using Cached Data
 
 ```python
-from shared.cache_manager import CacheManager
-import yfinance as yf
+from shared.cache_manager import CachedDataFetcher
 
-# Initialize cache
-cache = CacheManager(cache_file='price_cache.json')
+# Initialize cached fetcher
+fetcher = CachedDataFetcher(cache_dir='./cache')
 
 # Download with intelligent caching
-data = cache.download_with_cache(
+data = fetcher.fetch_prices(
     tickers=['AAPL', 'MSFT', 'GOOGL'],
-    period='5d',
-    download_func=lambda tickers, **kwargs: yf.download(
-        tickers, group_by='ticker', **kwargs
-    )
+    period='2y',
+    cache_name='my_data'
 )
+
+# Cache automatically handles:
+# - Incremental updates based on age
+# - Parquet storage (10x faster than CSV)
+# - Self-healing if corrupted
 ```
 
 ## 🤝 Contributing
