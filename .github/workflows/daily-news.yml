@@ -80,6 +80,7 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: update daily news - $(date -u +"%Y-%m-%d %H:%M UTC")"
+            git pull --rebase origin main
             git push
             echo "✅ Data pushed to deanfi-data repository"
           fi

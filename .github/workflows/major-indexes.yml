@@ -63,6 +63,7 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: update major indexes - $(date -u +"%Y-%m-%d %H:%M UTC")"
+            git pull --rebase origin main
             git push
             echo "✅ Data pushed to repository"
           fi

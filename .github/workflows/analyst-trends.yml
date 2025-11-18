@@ -66,6 +66,7 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: update analyst trends - $(date -u +"%Y-%m-%d")"
+            git pull --rebase origin main
             git push
             echo "✅ Data pushed to repository"
           fi
