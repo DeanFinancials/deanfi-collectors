@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
 
 env:
-  FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
-  DATA_REPO: GibsonNeo/deanfi-data
-  DATA_REPO_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+  FINNHUB_API_KEY: "${{ secrets.FINNHUB_API_KEY }}"
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
 
 jobs:
   fetch-and-publish:

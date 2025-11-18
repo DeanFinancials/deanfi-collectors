@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  DATA_REPO: GibsonNeo/deanfi-data
-  DATA_REPO_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
 
 jobs:
   fetch-and-publish:
