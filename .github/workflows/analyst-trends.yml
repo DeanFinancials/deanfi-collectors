@@ -16,6 +16,11 @@ jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
     
+    # Prevent concurrent runs to avoid git push conflicts
+    concurrency:
+      group: deanfi-data-write
+      cancel-in-progress: false
+    
     steps:
       - name: Checkout collectors repo
         uses: actions/checkout@v4
