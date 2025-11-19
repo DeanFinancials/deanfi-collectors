@@ -19,6 +19,10 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 | **Advance/Decline** | Market breadth indicators (with caching) | Every 15 min (market hours) | Yahoo Finance |
 | **Major Indexes** | S&P 500, Dow, Nasdaq tracking (with caching) | Every 15 min (market hours) | Yahoo Finance |
 | **Implied Volatility** | VIX and options volatility | Every 15 min (market hours) | Yahoo Finance |
+| **Growth & Output** | GDP, industrial production, capacity utilization | Daily (12pm ET Mon-Fri) | FRED |
+| **Inflation & Prices** | CPI, PCE, PPI, breakeven inflation | Daily (12pm ET Mon-Fri) | FRED |
+| **Labor & Employment** | Unemployment, payrolls, wages, job openings | Daily (12pm ET Mon-Fri) | FRED |
+| **Money & Markets** | Fed funds, Treasuries, yield spread, M2 | Daily (12pm ET Mon-Fri) | FRED |
 
 ## 🚀 Quick Start
 
@@ -26,6 +30,7 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 
 - Python 3.8 or higher
 - Free Finnhub API key: [Register here](https://finnhub.io/register)
+- Free FRED API key: [Register here](https://fred.stlouisfed.org/docs/api/api_key.html)
 - (Optional) GitHub Personal Access Token for workflow testing
 
 ### Installation
@@ -40,7 +45,7 @@ pip install -r requirements.txt
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env and add your FINNHUB_API_KEY
+# Edit .env and add your FINNHUB_API_KEY and FRED_API_KEY
 ```
 
 ### Running Collectors Locally
@@ -71,6 +76,19 @@ python fetch_daily_breadth.py --cache-dir ./cache
 # Fetch major indexes with caching
 cd ../majorindexes
 python fetch_us_major.py --cache-dir ./cache
+
+# Fetch economy breadth indicators
+cd ../growthoutput
+python fetch_growth_output.py
+
+cd ../inflationprices
+python fetch_inflation_prices.py
+
+cd ../laboremployment
+python fetch_labor_employment.py
+
+cd ../moneymarkets
+python fetch_money_markets.py
 ```
 
 ## 📁 Project Structure
@@ -80,7 +98,11 @@ deanfi-collectors/
 ├── .github/workflows/       # GitHub Actions automation
 ├── shared/                  # Shared utilities
 │   ├── spx_universe.py     # S&P 500 ticker fetcher
-│   └── cache_manager.py    # Intelligent caching with incremental updates
+│   ├── cache_manager.py    # Intelligent caching with incremental updates
+│   ├── fred_client.py      # FRED API client for economic data
+│   ├── economy_indicators.py  # Economic indicator definitions
+│   ├── economy_compute.py  # Economic calculations & grading
+│   └── economy_io.py       # Config loading & JSON saving
 ├── dailynews/              # Market & sector news
 │   ├── fetch_top_news.py
 │   ├── fetch_sector_news.py
@@ -103,6 +125,18 @@ deanfi-collectors/
 │   └── config.yml
 ├── majorindexes/           # Index tracking
 ├── impliedvol/             # Volatility data
+├── growthoutput/           # GDP & economic growth indicators
+│   ├── fetch_growth_output.py
+│   └── config.yml
+├── inflationprices/        # CPI, PCE, PPI inflation metrics
+│   ├── fetch_inflation_prices.py
+│   └── config.yml
+├── laboremployment/        # Jobs, unemployment, wages
+│   ├── fetch_labor_employment.py
+│   └── config.yml
+├── moneymarkets/           # Interest rates, yield curve, M2
+│   ├── fetch_money_markets.py
+│   └── config.yml
 ├── requirements.txt        # Python dependencies
 ├── .env.example           # Environment template
 └── README.md              # This file
@@ -129,12 +163,17 @@ This repository uses GitHub Actions to automatically collect data and publish to
 - Earnings calendar & surprises
 - **Runtime:** ~5 min/run, ~0.5 hours/month
 
-**Total:** ~72 hours/month (well under GitHub's 2,000 hour free tier)
+**Daily (Weekdays 12:00pm ET):**
+- Economic indicators (Growth & Output, Inflation & Prices, Labor & Employment, Money & Markets)
+- **Runtime:** ~3 min/run, ~15 hours/month
+
+**Total:** ~89 hours/month (well under GitHub's 2,000 hour free tier)
 
 ### Setup GitHub Actions
 
 1. **Create secrets** in repository settings:
    - `FINNHUB_API_KEY` - Your Finnhub API key
+   - `FRED_API_KEY` - Your FRED API key
    - `DATA_REPO_TOKEN` - Personal access token with `repo` scope
 
 2. **Enable Actions** in Settings → Actions → General

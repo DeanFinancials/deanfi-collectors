@@ -12,7 +12,11 @@ This directory contains automated workflows for collecting market data and publi
 | `market-breadth.yml` | Every 15min (market hours) | A/D, MA%, Highs/Lows | ~3 min | ~30h |
 | `major-indexes.yml` | Every 15min (market hours) | US, Sectors, International, Bonds | ~2 min | ~20h |
 | `implied-volatility.yml` | Every 15min (market hours) | VIX, Options IV | ~2 min | ~20h |
-| **TOTAL** | - | **7 categories** | - | **~72 hours** |
+| `growth-output.yml` | Daily (Mon-Fri 12pm ET) | GDP, Industrial Production, Capacity | ~3 min | ~3h |
+| `inflation-prices.yml` | Daily (Mon-Fri 12pm ET) | CPI, PCE, PPI, Breakeven Inflation | ~3 min | ~3h |
+| `labor-employment.yml` | Daily (Mon-Fri 12pm ET) | Unemployment, Payrolls, Wages | ~3 min | ~3h |
+| `money-markets.yml` | Daily (Mon-Fri 12pm ET) | Fed Funds, Treasuries, Yield Spread | ~3 min | ~3h |
+| **TOTAL** | - | **11 categories** | - | **~89 hours** |
 
 ## 🔒 Required Secrets
 
@@ -22,6 +26,11 @@ Set these up in: **Settings → Secrets and variables → Actions**
 - **Get it:** [https://finnhub.io/register](https://finnhub.io/register)
 - **Used by:** `daily-news.yml`, `analyst-trends.yml`, `earnings.yml`
 - **Rate limits:** 60 calls/minute on free tier
+
+### FRED_API_KEY
+- **Get it:** [https://fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html)
+- **Used by:** `growth-output.yml`, `inflation-prices.yml`, `labor-employment.yml`, `money-markets.yml`
+- **Rate limits:** 120 calls/minute on free tier
 
 ### DATA_REPO_TOKEN
 - **Get it:** [https://github.com/settings/tokens](https://github.com/settings/tokens)
@@ -86,6 +95,17 @@ cron: '0 17 * * 0'
 - **Workflows:** `analyst-trends.yml`, `earnings.yml`
 - **Runs per week:** 1
 - **Total runs:** ~4/month per workflow (~8 total)
+
+### Daily Weekdays (Noon ET)
+```yaml
+# Runs: Mon-Fri 12:00pm ET (17:00 UTC during EST, 16:00 UTC during EDT)
+# Note: Adjust for daylight saving time
+cron: '0 17 * * 1-5'  # EST
+# cron: '0 16 * * 1-5'  # EDT (comment/uncomment as needed)
+```
+- **Workflows:** `growth-output.yml`, `inflation-prices.yml`, `labor-employment.yml`, `money-markets.yml`
+- **Runs per week:** 5 (Mon-Fri)
+- **Total runs:** ~20/month per workflow (~80 total)
 
 ## 📊 Data Flow
 

@@ -1,0 +1,12 @@
+# Configuration for Inflation & Prices economic indicators
+
+# FRED API settings
+fred:
+  base_url: "https://api.stlouisfed.org/fred"
+  rate_limit_seconds: 0.1  # Minimum delay between requests
+  timeout_seconds: 30
+
+# Output settings
+output:
+  indent: 2
+  ensure_ascii: false
