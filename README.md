@@ -23,6 +23,7 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 | **Inflation & Prices** | CPI, PCE, PPI, breakeven inflation | Daily (12pm ET Mon-Fri) | FRED |
 | **Labor & Employment** | Unemployment, payrolls, wages, job openings | Daily (12pm ET Mon-Fri) | FRED |
 | **Money & Markets** | Fed funds, Treasuries, yield spread, M2 | Daily (12pm ET Mon-Fri) | FRED |
+| **Mean Reversion** | Price vs MA metrics + MA spreads with z-scores | Every 15 min (market hours) | Yahoo Finance |
 
 ## 🚀 Quick Start
 
@@ -77,6 +78,11 @@ python fetch_daily_breadth.py --cache-dir ./cache
 cd ../majorindexes
 python fetch_us_major.py --cache-dir ./cache
 
+# Fetch mean reversion indicators with caching
+cd ../meanreversion
+python fetch_price_vs_ma.py --cache-dir ./cache
+python fetch_ma_spreads.py --cache-dir ./cache
+
 # Fetch economy breadth indicators
 cd ../growthoutput
 python fetch_growth_output.py
@@ -125,6 +131,11 @@ deanfi-collectors/
 │   └── config.yml
 ├── majorindexes/           # Index tracking
 ├── impliedvol/             # Volatility data
+├── meanreversion/          # Price vs MA + MA spread metrics
+│   ├── fetch_price_vs_ma.py
+│   ├── fetch_ma_spreads.py
+│   ├── utils.py
+│   └── config.yml
 ├── growthoutput/           # GDP & economic growth indicators
 │   ├── fetch_growth_output.py
 │   └── config.yml

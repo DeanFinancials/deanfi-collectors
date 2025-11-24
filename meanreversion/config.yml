@@ -1,0 +1,178 @@
+# Mean Reversion Indicators Configuration
+# Calculates price distance from moving averages and MA spread metrics
+# for identifying overextended market conditions and potential mean reversion opportunities
+
+# ==============================================================================
+# SETTINGS
+# ==============================================================================
+settings:
+  # Historical data requirements
+  historical_days: 504  # 2 years of trading days (needed for 200-day MA calculation)
+  
+  # Moving average periods
+  ma_periods:
+    short: 20    # Short-term trend (1 month)
+    medium: 50   # Intermediate trend (2.5 months)
+    long: 200    # Long-term trend (1 year)
+  
+  # Z-score lookback period (how many days to use for mean/std calculation)
+  zscore_lookback: 252  # 1 year of trading days
+  
+  # Output file locations (relative to this directory)
+  output_dir: "."
+
+# ==============================================================================
+# INDICES TO TRACK
+# ==============================================================================
+# Three major US indices representing different market segments
+indices:
+  - symbol: "^GSPC"
+    name: "S&P 500"
+    description: "Large-cap benchmark (500 companies)"
+    market_segment: "Large-Cap"
+    
+  - symbol: "^IXIC"
+    name: "Nasdaq Composite"
+    description: "Tech-heavy broad market"
+    market_segment: "Tech/Growth"
+    
+  - symbol: "^RUT"
+    name: "Russell 2000"
+    description: "Small-cap benchmark"
+    market_segment: "Small-Cap"
+
+# ==============================================================================
+# OUTPUT FILES
+# ==============================================================================
+# Separate files for different mean reversion strategies
+output_files:
+  # Price vs Single Moving Average
+  price_vs_ma:
+    snapshot: "price_vs_ma_snapshot.json"
+    historical: "price_vs_ma_historical.json"
+    description: "Price distance from 20/50/200-day moving averages"
+    
+  # Moving Average Spreads
+  ma_spreads:
+    snapshot: "ma_spreads_snapshot.json"
+    historical: "ma_spreads_historical.json"
+    description: "Distance between moving average pairs (20-50, 20-200, 50-200)"
+
+# ==============================================================================
+# METRIC DESCRIPTIONS
+# ==============================================================================
+# Detailed explanations of what each metric means and how to interpret it
+metric_descriptions:
+  
+  # Price vs MA metrics
+  price_distance:
+    description: "Simple point distance between current price and moving average"
+    formula: "current_price - ma_value"
+    interpretation:
+      positive: "Price is above the MA (bullish)"
+      negative: "Price is below the MA (bearish)"
+      large_magnitude: "Price is extended from the MA (potential mean reversion)"
+  
+  price_distance_percent:
+    description: "Percentage distance from moving average"
+    formula: "(current_price - ma_value) / ma_value * 100"
+    interpretation:
+      ">5%": "Significantly overbought relative to MA"
+      "2% to 5%": "Moderately overbought"
+      "-2% to 2%": "Normal range around MA"
+      "-5% to -2%": "Moderately oversold"
+      "<-5%": "Significantly oversold relative to MA"
+    usage: "Professionals look for extreme deviations as mean reversion signals"
+  
+  price_zscore:
+    description: "Statistical z-score of price distance from MA"
+    formula: "(current_price - ma) / std_dev(price - ma)"
+    interpretation:
+      ">2": "Statistically overbought (>95th percentile)"
+      "1 to 2": "Moderately overbought"
+      "-1 to 1": "Normal statistical range"
+      "-2 to -1": "Moderately oversold"
+      "<-2": "Statistically oversold (<5th percentile)"
+    usage: "Institutional standard for normalized mean reversion signals"
+  
+  # MA Spread metrics
+  ma_spread:
+    description: "Point difference between two moving averages"
+    formula: "ma_short - ma_long"
+    interpretation:
+      positive: "Short MA above long MA (bullish alignment)"
+      negative: "Short MA below long MA (bearish alignment)"
+      large_magnitude: "Wide spread suggests potential snapback"
+  
+  ma_spread_percent:
+    description: "Percentage spread between two moving averages"
+    formula: "(ma_short - ma_long) / ma_long * 100"
+    interpretation: "Normalizes spread for comparison across different price levels"
+    usage: "Compare signals across different instruments"
+  
+  ma_spread_zscore:
+    description: "Statistical z-score of MA spread"
+    formula: "(current_spread - mean_spread) / std_dev(spread)"
+    interpretation:
+      ">2": "Extremely wide spread (mean reversion likely)"
+      "1 to 2": "Moderately wide spread"
+      "-1 to 1": "Normal spread range"
+      "-2 to -1": "Moderately narrow spread"
+      "<-2": "Extremely narrow spread (potential breakout)"
+    usage: "Most common institutional method for MA spread mean reversion"
+
+# ==============================================================================
+# TRADING APPLICATIONS
+# ==============================================================================
+trading_applications:
+  
+  mean_reversion_strategy:
+    description: "Use extreme z-scores as contrarian signals"
+    entry_signals:
+      - "Z-score < -2: Look for long entries (oversold)"
+      - "Z-score > 2: Look for short entries (overbought)"
+    exit_signals:
+      - "Z-score returns to 0 (mean reversion complete)"
+      - "Price crosses back through the MA"
+    
+  trend_following_filter:
+    description: "Use MA relationships to filter trend direction"
+    rules:
+      - "Only take longs when price > 200-day MA"
+      - "Only take shorts when price < 200-day MA"
+      - "Strongest signals when all MAs aligned (20 > 50 > 200)"
+  
+  overbought_oversold:
+    description: "Identify stretched conditions for potential reversals"
+    thresholds:
+      extreme_overbought: "Price > 5% above MA or Z-score > 2"
+      extreme_oversold: "Price > 5% below MA or Z-score < -2"
+    
+  ma_crossover_confirmation:
+    description: "Monitor MA spread for trend change confirmation"
+    signals:
+      bullish: "20-day crosses above 50-day (spread goes positive)"
+      bearish: "20-day crosses below 50-day (spread goes negative)"
+      golden_cross: "50-day crosses above 200-day"
+      death_cross: "50-day crosses below 200-day"
+
+# ==============================================================================
+# DATA QUALITY NOTES
+# ==============================================================================
+data_quality:
+  minimum_data_points:
+    ma_20: 20
+    ma_50: 50
+    ma_200: 200
+    zscore: 252
+  
+  calculation_notes:
+    - "Z-scores calculated using 252-day rolling window (1 trading year)"
+    - "Moving averages are simple averages (SMA), not exponential"
+    - "All calculations use adjusted closing prices"
+    - "Insufficient data periods will show null values"
+  
+  update_frequency:
+    production: "Every 15 minutes during market hours"
+    after_hours: "Once at market close (4:00 PM ET)"
+    weekends: "No updates (markets closed)"

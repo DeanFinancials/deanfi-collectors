@@ -1,0 +1,83 @@
+name: Mean Reversion Indicators Collection
+
+on:
+  schedule:
+    # Every 15 minutes during market hours (9:30am-4:15pm ET = 14:30-21:15 UTC)
+    # Note: Adjust for daylight saving time if needed (EDT vs EST)
+    - cron: '*/15 14-21 * * 1-5'
+  workflow_dispatch:
+
+env:
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+
+jobs:
+  fetch-and-publish:
+    runs-on: ubuntu-latest
+    
+    # Prevent concurrent runs to avoid git push conflicts
+    concurrency:
+      group: deanfi-data-write
+      cancel-in-progress: false
+    
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v4
+      
+      - name: Checkout data repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Create cache directory
+        run: mkdir -p data-cache/cache
+      
+      - name: Fetch Price vs MA data
+        run: |
+          cd meanreversion
+          python fetch_price_vs_ma.py --cache-dir ../data-cache/cache
+      
+      - name: Fetch MA Spreads data
+        run: |
+          cd meanreversion
+          python fetch_ma_spreads.py --cache-dir ../data-cache/cache
+      
+      - name: Copy files to data repo
+        run: |
+          # Create meanreversion directory in data repo if it doesn't exist
+          mkdir -p data-cache/meanreversion
+          
+          # Copy all JSON files from meanreversion collector
+          cp meanreversion/*.json data-cache/meanreversion/
+          
+          echo "Files copied to data repo:"
+          ls -lh data-cache/meanreversion/
+      
+      - name: Commit and push to data repo
+        working-directory: data-cache
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          
+          # Add all JSON files in meanreversion directory
+          git add meanreversion/*.json
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update mean reversion data - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            git push
+            echo "Changes pushed successfully"
+          fi

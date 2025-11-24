@@ -12,11 +12,12 @@ This directory contains automated workflows for collecting market data and publi
 | `market-breadth.yml` | Every 15min (market hours) | A/D, MA%, Highs/Lows | ~3 min | ~30h |
 | `major-indexes.yml` | Every 15min (market hours) | US, Sectors, International, Bonds | ~2 min | ~20h |
 | `implied-volatility.yml` | Every 15min (market hours) | VIX, Options IV | ~2 min | ~20h |
+| `mean-reversion.yml` | Every 15min (market hours) | Price vs MA, MA Spreads | ~2 min | ~20h |
 | `growth-output.yml` | Daily (Mon-Fri 12pm ET) | GDP, Industrial Production, Capacity | ~3 min | ~3h |
 | `inflation-prices.yml` | Daily (Mon-Fri 12pm ET) | CPI, PCE, PPI, Breakeven Inflation | ~3 min | ~3h |
 | `labor-employment.yml` | Daily (Mon-Fri 12pm ET) | Unemployment, Payrolls, Wages | ~3 min | ~3h |
 | `money-markets.yml` | Daily (Mon-Fri 12pm ET) | Fed Funds, Treasuries, Yield Spread | ~3 min | ~3h |
-| **TOTAL** | - | **11 categories** | - | **~89 hours** |
+| **TOTAL** | - | **12 categories** | - | **~109 hours** |
 
 ## 🔒 Required Secrets
 
