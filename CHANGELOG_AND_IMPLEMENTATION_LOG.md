@@ -5,19 +5,95 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 ---
 
+## 2024-11-24: Switched from Market Indices to ETFs
+
+### Summary
+Updated mean reversion collector to use ETFs (SPY, QQQ, IWM) instead of market indices (^GSPC, ^IXIC, ^RUT) for better data reliability, fewer gaps, and actual tradeability for backtesting purposes. Also resolved null z-score issues by implementing proper warmup period.
+
+### Changes Made
+
+#### Configuration Updates
+- **config.yml**: 
+  - Replaced ^GSPC with SPY (SPDR S&P 500 ETF Trust) tracking S&P 500
+  - Replaced ^IXIC with QQQ (Invesco QQQ Trust) tracking Nasdaq-100
+  - Replaced ^RUT with IWM (iShares Russell 2000 ETF) tracking Russell 2000
+  - Added `tracks_index` field to show which index each ETF tracks
+  - Added `warmup_days: 452` to ensure clean z-score data
+  - Updated `fetch_days: 956` to include warmup period
+  - Changed output_dir to "output" for local testing
+  - Changed fetch period from "2y" to "5y" to ensure sufficient data
+
+#### Code Updates
+- **fetch_price_vs_ma.py**:
+  - Added `tracks_index` parameter to `calculate_price_vs_ma_for_index()`
+  - Updated function to include ETF tracking information in output
+  - Updated docstrings from "index" to "ETF" terminology
+  - Implemented WARMUP_DAYS-based trimming to skip first 452 days
+  - Ensures 504 days of output with zero null z-scores
+  
+- **fetch_ma_spreads.py**:
+  - Added `tracks_index` parameter to `calculate_ma_spreads_for_index()`
+  - Updated function to include ETF tracking information in output
+  - Updated docstrings from "index" to "ETF" terminology
+  - Implemented WARMUP_DAYS-based trimming to skip first 452 days
+  - Ensures 504 days of output with zero null z-scores
+
+#### Output Changes
+- JSON files now include `tracks_index` field for each ETF showing what they track:
+  - SPY tracks "S&P 500"
+  - QQQ tracks "Nasdaq-100"
+  - IWM tracks "Russell 2000"
+- Output directory changed to `meanreversion/output/` for local testing
+- Added `meanreversion/output/` to .gitignore to prevent test data commits
+- **Data Quality**: All 504 historical records now have complete z-score data with zero nulls
+
+#### Documentation Updates
+- Updated README.md in deanfi-data to reflect ETF usage
+- Updated DEVELOPER_REQUIREMENTS.md with warmup period details
+- Updated all comments and docstrings to use ETF terminology
+
+### Technical Details
+
+**Warmup Period Calculation**:
+```
+- 200 days: Required for 200-day MA to stabilize
+- 252 days: Required for z-score lookback calculation
+- Total warmup: 452 days
+- Output period: 504 days (2 years)
+- Total fetch: 956 days (~3.8 years from 5y period)
+```
+
+**Data Quality Achievement**:
+- Fetches 956 days of price data (5y period provides ~1256 days)
+- Skips first 452 days (warmup period)
+- Outputs days 453-956 (504 days total)
+- Result: **Zero null values** in all z-score calculations
+
+### Rationale
+While yfinance does provide historical data for market indices, ETFs offer several advantages:
+1. More reliable data with fewer gaps
+2. Actually tradeable instruments (useful for backtesting)
+3. Better data consistency across providers
+4. Standard trading hours and no special handling needed
+5. Institutional traders use ETFs for these exact calculations
+
+---
+
 ## 2024-11-24: Mean Reversion Indicators Collector
 
 ### Summary
-Added comprehensive mean reversion analysis collector tracking price deviations from moving averages and MA spread patterns for major US indices. This provides institutional-grade statistical signals for identifying overbought/oversold conditions.
+Added comprehensive mean reversion analysis collector tracking price deviations from moving averages and MA spread patterns for major US market ETFs. This provides institutional-grade statistical signals for identifying overbought/oversold conditions.
 
 ### New Files Created
 
 #### `/meanreversion/` Directory
 - **config.yml**: Configuration for mean reversion calculations
-  - Defines 3 indices to track: ^GSPC, ^IXIC, ^RUT
+  - Defines 3 ETFs to track: SPY (S&P 500), QQQ (Nasdaq-100), IWM (Russell 2000)
   - MA periods: 20, 50, 200 days
-  - Historical lookback: 504 days (2 years)
+  - Historical lookback: 504 days (2 years output)
+  - Fetch period: 956 days (includes 452-day warmup)
   - Z-score lookback: 252 days (1 year)
+  - Warmup days: 452 (200 for MA + 252 for z-score)
   - Comprehensive metric descriptions and trading applications
   
 - **utils.py**: Mean reversion calculation utilities
@@ -36,15 +112,19 @@ Added comprehensive mean reversion analysis collector tracking price deviations 
   - Validation: `validate_sufficient_data()`, `get_data_quality_status()`
 
 - **fetch_price_vs_ma.py**: Price vs moving average collector
-  - Fetches 504 days of price data for 3 indices
+  - Fetches 956 days of price data for 3 ETFs (5y period)
   - Calculates distance, percent, and z-score for 20/50/200-day MAs
+  - Implements 452-day warmup period for clean z-score data
+  - Outputs 504 days with zero null values
   - Generates comprehensive snapshot and historical JSONs
   - Uses CachedDataFetcher for performance optimization
   - Includes detailed _README section with formulas and interpretations
   
 - **fetch_ma_spreads.py**: Moving average spread collector
-  - Fetches 504 days of price data for 3 indices
+  - Fetches 956 days of price data for 3 ETFs (5y period)
   - Calculates spreads for 3 MA pairs: 20-50, 20-200, 50-200
+  - Implements 452-day warmup period for clean z-score data
+  - Outputs 504 days with zero null values
   - Computes spread, percent spread, and z-score for each pair
   - Identifies golden cross / death cross signals
   - Generates comprehensive snapshot and historical JSONs
