@@ -7,7 +7,14 @@
 # ==============================================================================
 settings:
   # Historical data requirements
-  historical_days: 504  # 2 years of trading days (needed for 200-day MA calculation)
+  # To output 504 days (2 years) with valid z-scores, we need:
+  # - 200 days for 200-day MA calculation to stabilize
+  # - 252 days for z-score lookback calculation  
+  # - 504 days of output data
+  # Total: 956 trading days (~3.8 years) - using 5y fetch gets ~1256 days
+  historical_days: 504  # 2 years of trading days to OUTPUT
+  fetch_days: 956       # Warmup days needed (200 for MA + 252 for z-score + 504 output)
+  warmup_days: 452      # Days needed before valid z-scores (200 MA + 252 zscore)
   
   # Moving average periods
   ma_periods:
@@ -19,27 +26,30 @@ settings:
   zscore_lookback: 252  # 1 year of trading days
   
   # Output file locations (relative to this directory)
-  output_dir: "."
+  output_dir: "."  # Local output directory for testing
 
 # ==============================================================================
-# INDICES TO TRACK
+# ETFS TO TRACK
 # ==============================================================================
-# Three major US indices representing different market segments
+# Three major US market ETFs for better data reliability and tradeability
 indices:
-  - symbol: "^GSPC"
-    name: "S&P 500"
-    description: "Large-cap benchmark (500 companies)"
+  - symbol: "SPY"
+    name: "SPDR S&P 500 ETF Trust"
+    description: "Tracks S&P 500 Index - Large-cap benchmark (500 companies)"
     market_segment: "Large-Cap"
+    tracks_index: "S&P 500"
     
-  - symbol: "^IXIC"
-    name: "Nasdaq Composite"
-    description: "Tech-heavy broad market"
+  - symbol: "QQQ"
+    name: "Invesco QQQ Trust"
+    description: "Tracks Nasdaq-100 Index - Tech-heavy growth stocks"
     market_segment: "Tech/Growth"
+    tracks_index: "Nasdaq-100"
     
-  - symbol: "^RUT"
-    name: "Russell 2000"
-    description: "Small-cap benchmark"
+  - symbol: "IWM"
+    name: "iShares Russell 2000 ETF"
+    description: "Tracks Russell 2000 Index - Small-cap benchmark (2000 companies)"
     market_segment: "Small-Cap"
+    tracks_index: "Russell 2000"
 
 # ==============================================================================
 # OUTPUT FILES

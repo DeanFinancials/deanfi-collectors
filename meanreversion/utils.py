@@ -366,7 +366,7 @@ def create_snapshot_record(
     
     Args:
         date: Date string (YYYY-MM-DD)
-        symbol: Index symbol
+        symbol: ETF symbol
         price: Current price
         ma_values: Dict of MA values
         metrics: Dict of calculated metrics
@@ -442,7 +442,7 @@ def create_metadata(
     return {
         'generated_at': format_timestamp(),
         'data_source': data_source,
-        'indices_count': indices_count,
+        'etfs_count': etfs_count,
         'description': description,
         'calculation_note': 'All metrics use adjusted closing prices'
     }

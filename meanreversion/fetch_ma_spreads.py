@@ -59,6 +59,8 @@ MA_PERIODS = [
     config['settings']['ma_periods']['long']
 ]
 HISTORICAL_DAYS = config['settings']['historical_days']
+FETCH_DAYS = config['settings']['fetch_days']
+WARMUP_DAYS = config['settings']['warmup_days']
 ZSCORE_LOOKBACK = config['settings']['zscore_lookback']
 
 # Define MA pairs to analyze
@@ -69,13 +71,13 @@ MA_PAIRS = [
 ]
 
 
-def fetch_index_data(symbol: str, period: str = "2y", cache_dir: str = None) -> pd.DataFrame:
+def fetch_index_data(symbol: str, period: str = "5y", cache_dir: str = None) -> pd.DataFrame:
     """
-    Fetch historical data for an index with optional caching.
+    Fetch historical data for an ETF with optional caching.
     
     Args:
-        symbol: Index symbol (e.g., ^GSPC)
-        period: Data period (default: 2y for 504 trading days)
+        symbol: ETF symbol (e.g., SPY, QQQ, IWM)
+        period: Data period (default: 5y to ensure enough data for z-scores)
         cache_dir: Optional cache directory for parquet files
     
     Returns:
@@ -96,21 +98,21 @@ def fetch_index_data(symbol: str, period: str = "2y", cache_dir: str = None) -> 
         if symbol in df.columns:
             result = df[symbol].to_frame()
             result.columns = pd.MultiIndex.from_product([[symbol], ['Close']])
-            # For indices, yfinance returns simple dataframe, flatten it
+            # For ETFs, yfinance returns simple dataframe, flatten it
             if len(result.columns.levels) > 1:
                 result = result.droplevel(0, axis=1)
-            return result.tail(HISTORICAL_DAYS)
+            return result.tail(FETCH_DAYS)
     
     # Fallback to direct yfinance
     ticker = yf.Ticker(symbol)
     df = ticker.history(period=period)
     
-    # Ensure we have at least 504 days
-    if len(df) < HISTORICAL_DAYS:
-        print(f"Warning: Only {len(df)} days available for {symbol}, need {HISTORICAL_DAYS}", file=sys.stderr)
+    # Ensure we have enough days for z-score calculation
+    if len(df) < FETCH_DAYS:
+        print(f"Warning: Only {len(df)} days available for {symbol}, need {FETCH_DAYS}", file=sys.stderr)
     
-    # Keep only the most recent 504 days (or whatever we have)
-    df = df.tail(HISTORICAL_DAYS)
+    # Keep the most recent FETCH_DAYS (includes extra for z-score calculation)
+    df = df.tail(FETCH_DAYS)
     
     return df
 
@@ -120,16 +122,18 @@ def calculate_ma_spreads_for_index(
     name: str,
     description: str,
     market_segment: str,
+    tracks_index: str,
     df: pd.DataFrame
 ) -> dict:
     """
-    Calculate all MA spread metrics for a single index.
+    Calculate all MA spread metrics for a single ETF.
     
     Args:
-        symbol: Index symbol
-        name: Index name
-        description: Index description
+        symbol: ETF symbol
+        name: ETF name
+        description: ETF description
         market_segment: Market segment
+        tracks_index: Index that this ETF tracks
         df: DataFrame with price data
     
     Returns:
@@ -168,6 +172,7 @@ def calculate_ma_spreads_for_index(
         'name': name,
         'description': description,
         'market_segment': market_segment,
+        'tracks_index': tracks_index,
         'date': format_date(latest_date),
         'current_price': safe_float(latest_price),
         'moving_averages': {},
@@ -212,7 +217,7 @@ def calculate_ma_spreads_for_index(
         
         snapshot['ma_pairs'][pair_name] = latest_metrics
     
-    # Build historical data
+    # Build historical data (calculate on all data, then trim to HISTORICAL_DAYS)
     historical = []
     for i in range(len(prices)):
         date = prices.index[i]
@@ -244,6 +249,13 @@ def calculate_ma_spreads_for_index(
         
         historical.append(record)
     
+    # Trim historical data to only output HISTORICAL_DAYS with valid z-scores
+    # Skip the warmup period (200 days for MA + 252 days for z-score calculation)
+    # Then take HISTORICAL_DAYS from there
+    start_idx = WARMUP_DAYS
+    end_idx = start_idx + HISTORICAL_DAYS
+    historical = historical[start_idx:end_idx]
+    
     # Data quality info
     data_quality = get_data_quality_status(df, HISTORICAL_DAYS)
     
@@ -263,7 +275,7 @@ def main():
     print("=" * 80, file=sys.stderr)
     print("MOVING AVERAGE SPREAD MEAN REVERSION COLLECTOR", file=sys.stderr)
     print("=" * 80, file=sys.stderr)
-    print(f"Tracking {len(INDICES)} indices", file=sys.stderr)
+    print(f"Tracking {len(INDICES)} ETFs", file=sys.stderr)
     print(f"MA periods: {MA_PERIODS}", file=sys.stderr)
     print(f"MA pairs: {len(MA_PAIRS)}", file=sys.stderr)
     for short, long, name in MA_PAIRS:
@@ -278,7 +290,7 @@ def main():
     snapshot_data = {
         '_README': {
             'title': 'Moving Average Spreads - Mean Reversion Snapshot',
-            'description': 'Current spread between moving average pairs for major US indices',
+            'description': 'Current spread between moving average pairs for major US ETFs',
             'purpose': 'Identify extreme MA spreads that may signal mean reversion opportunities',
             'update_frequency': 'Every 15 minutes during market hours',
             'indices_tracked': [idx['symbol'] for idx in INDICES],
@@ -347,7 +359,7 @@ def main():
             }
         },
         'metadata': create_metadata(
-            indices_count=len(INDICES),
+            etfs_count=len(INDICES),
             description='Moving average spread metrics for mean reversion analysis'
         ),
         'indices': {}
@@ -367,7 +379,7 @@ def main():
             }
         },
         'metadata': create_metadata(
-            indices_count=len(INDICES),
+            etfs_count=len(INDICES),
             description=f'{HISTORICAL_DAYS}-day history of MA spread metrics'
         ),
         'settings': {
@@ -379,23 +391,24 @@ def main():
         'indices': {}
     }
     
-    # Process each index
+    # Process each ETF
     for idx_config in INDICES:
         symbol = idx_config['symbol']
         name = idx_config['name']
         description = idx_config['description']
         market_segment = idx_config['market_segment']
+        tracks_index = idx_config.get('tracks_index', '')
         
         print(f"\nProcessing {symbol} ({name})...", file=sys.stderr)
         
         try:
-            # Fetch data
-            df = fetch_index_data(symbol, period="2y", cache_dir=args.cache_dir)
+            # Fetch data (fetch extra for z-score calculation)
+            df = fetch_index_data(symbol, period="5y", cache_dir=args.cache_dir)
             print(f"  Retrieved {len(df)} days of data", file=sys.stderr)
             
             # Calculate metrics
             results = calculate_ma_spreads_for_index(
-                symbol, name, description, market_segment, df
+                symbol, name, description, market_segment, tracks_index, df
             )
             
             # Add to output structures
@@ -405,6 +418,7 @@ def main():
                 'symbol': symbol,
                 'description': description,
                 'market_segment': market_segment,
+                'tracks_index': tracks_index,
                 'data': results['historical'],
                 'data_quality': results['data_quality']
             }
