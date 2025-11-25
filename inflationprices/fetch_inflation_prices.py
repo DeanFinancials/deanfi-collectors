@@ -20,7 +20,7 @@ from fred_client import FREDClient
 from economy_indicators import get_indicators_by_category
 from economy_compute import (
     calculate_percentile_rank, calculate_grade, calculate_overall_grade,
-    calculate_trend, calculate_change_metrics, adaptive_resample, sanitize_for_json
+    calculate_trend, is_trend_favorable, calculate_change_metrics, adaptive_resample, sanitize_for_json
 )
 from economy_io import load_config, save_json
 
@@ -92,6 +92,7 @@ def export_inflation_prices_json(output_path: str, config_path: str = None, over
         grade = calculate_grade(percentile, indicator.interpretation)
         grades.append(grade)
         trend = calculate_trend(current_value, previous_value)
+        is_favorable = is_trend_favorable(trend, indicator.interpretation)
         changes = calculate_change_metrics(df_clean, frequency=indicator.frequency)
         
         if json_data["current"]["date"] is None:
@@ -100,7 +101,7 @@ def export_inflation_prices_json(output_path: str, config_path: str = None, over
         json_data["current"]["indicators"][series_id] = {
             "name": indicator.name, "value": round(current_value, 2) if current_value else None,
             "unit": indicator.unit, "frequency": indicator.frequency, "percentile": percentile,
-            "grade": grade, "trend": trend, "changes": changes, "interpretation": indicator.interpretation
+            "grade": grade, "trend": trend, "is_favorable": is_favorable, "changes": changes, "interpretation": indicator.interpretation
         }
         
         print(f"  Resampling {series_id} ({indicator.frequency} → storage format)...")

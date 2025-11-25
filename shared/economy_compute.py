@@ -248,7 +248,12 @@ def calculate_trend(
     threshold: float = 0.01
 ) -> str:
     """
-    Determine trend direction.
+    Determine trend direction based on actual data movement.
+    
+    Returns objective direction of change without interpretation:
+    - "increasing": current value is higher than previous
+    - "decreasing": current value is lower than previous  
+    - "stable": change is below threshold
     
     Args:
         current: Current value
@@ -256,7 +261,7 @@ def calculate_trend(
         threshold: Minimum percent change to count as trend (default 1%)
         
     Returns:
-        "improving", "declining", or "stable"
+        "increasing", "decreasing", or "stable"
     """
     if pd.isna(current) or pd.isna(previous) or previous == 0:
         return "stable"
@@ -266,9 +271,37 @@ def calculate_trend(
     if abs(pct_change) < threshold:
         return "stable"
     elif pct_change > 0:
-        return "improving"
+        return "increasing"
     else:
-        return "declining"
+        return "decreasing"
+
+
+def is_trend_favorable(
+    trend: str,
+    interpretation: str
+) -> bool:
+    """
+    Determine if a trend direction is favorable based on interpretation.
+    
+    Args:
+        trend: Trend direction ("increasing", "decreasing", "stable")
+        interpretation: One of "higher_is_better", "lower_is_better", "neutral"
+        
+    Returns:
+        True if trend is favorable, False if unfavorable, None for stable/neutral
+    """
+    if trend == "stable":
+        return None  # Neutral - no significant change
+    
+    if interpretation == "higher_is_better":
+        # For indicators like GDP, employment: increasing is good
+        return trend == "increasing"
+    elif interpretation == "lower_is_better":
+        # For indicators like unemployment, inflation: decreasing is good
+        return trend == "decreasing"
+    else:
+        # For neutral indicators, no inherent good/bad direction
+        return None
 
 
 def calculate_change_metrics(

@@ -100,6 +100,7 @@ def export_labor_employment_json(output_path: str, config_path: str = None, over
         grade = calculate_grade(percentile, indicator.interpretation)
         grades.append(grade)
         trend = calculate_trend(current_value, previous_value)
+        is_favorable = is_trend_favorable(trend, indicator.interpretation)
         changes = calculate_change_metrics(df_clean, frequency=indicator.frequency)
         
         if json_data["current"]["date"] is None:
@@ -113,6 +114,7 @@ def export_labor_employment_json(output_path: str, config_path: str = None, over
             "percentile": percentile,
             "grade": grade,
             "trend": trend,
+            "is_favorable": is_favorable,
             "changes": changes,
             "interpretation": indicator.interpretation
         }

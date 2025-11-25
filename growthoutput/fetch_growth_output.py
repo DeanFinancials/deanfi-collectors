@@ -24,6 +24,7 @@ from economy_compute import (
     calculate_grade,
     calculate_overall_grade,
     calculate_trend,
+    is_trend_favorable,
     calculate_change_metrics,
     calculate_derived_gdp_growth,
     adaptive_resample,
@@ -155,6 +156,7 @@ def export_growth_output_json(
         
         # Calculate trend
         trend = calculate_trend(current_value, previous_value)
+        is_favorable = is_trend_favorable(trend, indicator.interpretation)
         
         # V2: Calculate year-based change metrics aligned with chart tabs
         changes = calculate_change_metrics(df_clean, frequency=indicator.frequency)
@@ -172,6 +174,7 @@ def export_growth_output_json(
             "percentile": percentile,
             "grade": grade,
             "trend": trend,
+            "is_favorable": is_favorable,
             "changes": changes,
             "interpretation": indicator.interpretation
         }
