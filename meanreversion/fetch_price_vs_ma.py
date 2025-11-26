@@ -257,7 +257,7 @@ def main():
             'title': 'Price vs Moving Average - Mean Reversion Snapshot',
             'description': 'Current price distance from key moving averages for major US ETFs',
             'purpose': 'Identify overbought/oversold conditions and potential mean reversion opportunities',
-            'update_frequency': 'Every 15 minutes during market hours',
+            'update_frequency': 'Every 10 minutes during market hours',
             'indices_tracked': [idx['symbol'] for idx in INDICES],
             'moving_averages': {
                 'ma_20': '20-day SMA (short-term trend, ~1 month)',

@@ -3,6 +3,24 @@
 ## Overview
 This document tracks all implementations, changes, and updates to the DeanFi Collectors project. It serves as a comprehensive history of the codebase evolution.
 
+# DeanFi Collectors - Changelog and Implementation Log
+
+## 2025-11-28: Market Data 10-Minute Cadence + Doc Refresh
+
+### Summary
+Modernized the high-frequency workflow and documentation to reflect the new 10-minute market data cadence, consolidating breadth, index, implied volatility, and mean reversion collectors under the renamed `market-data-10min.yml`. All developer-facing docs, checklists, and dataset metadata now describe the updated schedule and runtime expectations. Cron expressions follow [GitHub's official schedule syntax guidance](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule) to ensure the 5-minute step interval stays compliant.
+
+### Changes Made
+- **.github/workflows/market-data-10min.yml** – Documented the 10-minute cron windows (13-21 UTC EST / 12-20 UTC EDT) and clarified the 5-minute offset rationale.
+- **README.md** – Updated badges, data collector table, runtime estimates, and schedule section to describe the new cadence and consolidated workflow.
+- **.github/workflows/README.md** – Replaced the outdated workflow inventory with the current five workflows, refreshed schedule breakdowns, and simplified secret usage notes.
+- **INITIAL_COMMIT_CHECKLIST.md** – Adjusted the setup tasks to reference `market-data-10min.yml`, the nightly workflows, and the modern repo description ("Runs every 10min").
+- **meanreversion/config.yml**, **meanreversion/fetch_price_vs_ma.py**, **meanreversion/fetch_ma_spreads.py** – Updated `_README` metadata strings so downstream consumers see the correct "Every 10 minutes during market hours" frequency.
+
+### Notes
+- GitHub Actions cron scheduling cannot run more frequently than every 5 minutes; the `5-55/10` syntax keeps executions evenly spaced while staggering starts away from the top of the hour per GitHub's scheduling best practices.
+- Documentation should reference the `market-data-10min` workflow whenever discussing market breadth, major index, implied volatility, or mean reversion collectors to avoid confusion with the retired per-collector workflows.
+
 ---
 
 ## 2025-11-27: Nightly Earnings & Analyst Trend Schedules

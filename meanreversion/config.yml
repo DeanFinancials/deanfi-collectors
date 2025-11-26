@@ -183,6 +183,6 @@ data_quality:
     - "Insufficient data periods will show null values"
   
   update_frequency:
-    production: "Every 15 minutes during market hours"
+    production: "Every 10 minutes during market hours"
     after_hours: "Once at market close (4:00 PM ET)"
     weekends: "No updates (markets closed)"

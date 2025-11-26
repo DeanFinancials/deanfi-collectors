@@ -28,18 +28,18 @@
 ### 1. Create Workflows
 Create the following workflow files in `.github/workflows/`:
 
-#### High-Frequency Workflows (Every 15 min)
+#### High-Frequency Workflow (Every 10 min)
+- [ ] `market-data-10min.yml` - Adv/Dec breadth, major indexes, implied volatility, mean reversion
+
+#### Medium-Frequency Workflow (Twice Daily)
 - [ ] `daily-news.yml` - Fetch top news and sector news
-- [ ] `major-indexes.yml` - Track S&P 500, Dow, Nasdaq
 
-#### Medium-Frequency Workflows (Hourly)
-- [ ] `advance-decline.yml` - Market breadth indicators
-- [ ] `implied-volatility.yml` - VIX and options data
-
-#### Daily Workflows (5pm ET)
+#### Nightly Workflows (11:00pm ET)
 - [ ] `analyst-trends.yml` - Recommendation changes
-- [ ] `earnings-calendar.yml` - Upcoming earnings
-- [ ] `earnings-surprises.yml` - Historical EPS data
+- [ ] `earnings.yml` - Calendar + surprises bundle
+
+#### Daily Economy Workflows (8:00am & 12:00pm ET)
+- [ ] `economy-indicators.yml` - Growth, inflation, labor, and money market collectors
 
 ### 2. Test Locally
 - [ ] Export FINNHUB_API_KEY environment variable
@@ -99,7 +99,7 @@ Once pushed, configure secrets in GitHub:
 - [ ] Settings → Danger Zone → Change visibility → Public
 - [ ] Add repository topics: `python`, `finance`, `market-data`, `stocks`, `api`
 - [ ] Add website URL: https://deanfinancials.com
-- [ ] Add description: "Python collectors for real-time market data: earnings, news, analyst trends, and breadth indicators. Runs every 15min via GitHub Actions."
+- [ ] Add description: "Python collectors for real-time market data: earnings, news, analyst trends, and breadth indicators. Runs every 10min via GitHub Actions."
 - [ ] Enable Discussions (Settings → Features)
 - [ ] Enable Issues with templates
 

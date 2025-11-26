@@ -6,18 +6,12 @@ This directory contains automated workflows for collecting market data and publi
 
 | Workflow | Schedule | Datasets | Runtime | Monthly Hours |
 |----------|----------|----------|---------|---------------|
+| `market-data-10min.yml` | Every 10 min (8:05am–4:55pm ET) | Breadth, major indexes, implied vol, mean reversion | ~4 min | ~90h |
 | `daily-news.yml` | Twice daily (9:30am & 4pm ET) | Daily news, Sector news | ~2 min | ~1.5h |
-| `analyst-trends.yml` | Weekly (Sun 12pm ET) | Recommendations, Sector trends | ~5 min | ~0.3h |
-| `earnings.yml` | Weekly (Sun 12pm ET) | Calendar, Surprises | ~5 min | ~0.3h |
-| `market-breadth.yml` | Every 15min (market hours) | A/D, MA%, Highs/Lows | ~3 min | ~30h |
-| `major-indexes.yml` | Every 15min (market hours) | US, Sectors, International, Bonds | ~2 min | ~20h |
-| `implied-volatility.yml` | Every 15min (market hours) | VIX, Options IV | ~2 min | ~20h |
-| `mean-reversion.yml` | Every 15min (market hours) | Price vs MA, MA Spreads | ~2 min | ~20h |
-| `growth-output.yml` | Daily (Mon-Fri 12pm ET) | GDP, Industrial Production, Capacity | ~3 min | ~3h |
-| `inflation-prices.yml` | Daily (Mon-Fri 12pm ET) | CPI, PCE, PPI, Breakeven Inflation | ~3 min | ~3h |
-| `labor-employment.yml` | Daily (Mon-Fri 12pm ET) | Unemployment, Payrolls, Wages | ~3 min | ~3h |
-| `money-markets.yml` | Daily (Mon-Fri 12pm ET) | Fed Funds, Treasuries, Yield Spread | ~3 min | ~3h |
-| **TOTAL** | - | **12 categories** | - | **~109 hours** |
+| `analyst-trends.yml` | Weeknights 11:00pm ET (Tue–Sat UTC) | Recommendations, sector trends | ~5 min | ~2h |
+| `earnings.yml` | Weeknights 11:00pm ET (Tue–Sat UTC) | Calendar, surprises | ~5 min | ~2h |
+| `economy-indicators.yml` | Weekdays 8:00am & 12:00pm ET | Growth, inflation, labor, money markets | ~6 min | ~11h |
+| **TOTAL** | - | **5 workflows** | - | **~106 hours** |
 
 ## 🔒 Required Secrets
 
@@ -30,7 +24,7 @@ Set these up in: **Settings → Secrets and variables → Actions**
 
 ### FRED_API_KEY
 - **Get it:** [https://fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html)
-- **Used by:** `growth-output.yml`, `inflation-prices.yml`, `labor-employment.yml`, `money-markets.yml`
+- **Used by:** `economy-indicators.yml`
 - **Rate limits:** 120 calls/minute on free tier
 
 ### DATA_REPO_TOKEN
@@ -66,15 +60,16 @@ This is useful for:
 
 ## ⏰ Schedule Details
 
-### High-Frequency (Every 15 minutes)
+### High-Frequency (Every 10 minutes)
 ```yaml
-# Runs: 9:30am - 4:15pm ET (market hours)
-cron: '*/15 14-21 * * 1-5'
+# Runs: 8:05am - 4:55pm ET with a 5-minute offset to avoid top-of-hour congestion
+cron: '5-55/10 13-21 * * 1-5'   # EST (roughly Nov–Mar)
+# cron: '5-55/10 12-20 * * 1-5' # EDT (roughly Mar–Nov)
 ```
-- **Workflows:** `market-breadth.yml`, `major-indexes.yml`, `implied-volatility.yml`
-- **Runs per day:** 28 (19 intervals from 9:30am-4:15pm)
+- **Workflow:** `market-data-10min.yml`
+- **Runs per day:** 54 (10-minute cadence across 9 trading hours)
 - **Days per month:** ~22 trading days
-- **Total runs:** ~616/month per workflow (~1,848 total)
+- **Total runs:** ~1,188/month
 
 ### Twice Daily (Market open & close)
 ```yaml
@@ -83,30 +78,34 @@ cron: '30 14 * * 1-5'
 # Market close: 4:00pm ET
 cron: '0 21 * * 1-5'
 ```
-- **Workflows:** `daily-news.yml`
+- **Workflow:** `daily-news.yml`
 - **Runs per day:** 2
 - **Days per month:** ~22 trading days
 - **Total runs:** ~44/month
 
-### Weekly (Sunday noon ET)
+### Weeknights (11:00pm ET / 04:00 UTC Tue–Sat)
 ```yaml
-# Runs: Sunday 12:00pm ET
-cron: '0 17 * * 0'
+# Runs: 11:00pm Eastern (04:00 UTC Tue–Sat). Optional 03:00 UTC line for EDT swaps.
+cron: '0 4 * * 2-6'
+# cron: '0 3 * * 2-6'
 ```
 - **Workflows:** `analyst-trends.yml`, `earnings.yml`
-- **Runs per week:** 1
-- **Total runs:** ~4/month per workflow (~8 total)
+- **Runs per week:** 5 (Sunday–Thursday evenings, executed Tue–Sat UTC)
+- **Total runs:** ~20/month per workflow (~40 total)
 
-### Daily Weekdays (Noon ET)
+### Weekday Economy Windows (8:00am & 12:00pm ET)
 ```yaml
-# Runs: Mon-Fri 12:00pm ET (17:00 UTC during EST, 16:00 UTC during EDT)
-# Note: Adjust for daylight saving time
-cron: '0 17 * * 1-5'  # EST
-# cron: '0 16 * * 1-5'  # EDT (comment/uncomment as needed)
+# Morning window: 8:00am ET (13:00 UTC EST / 12:00 UTC EDT)
+cron: '0 13 * * 1-5'
+# cron: '0 12 * * 1-5'
+
+# Midday window: 12:00pm ET (17:00 UTC EST / 16:00 UTC EDT)
+cron: '0 17 * * 1-5'
+# cron: '0 16 * * 1-5'
 ```
-- **Workflows:** `growth-output.yml`, `inflation-prices.yml`, `labor-employment.yml`, `money-markets.yml`
-- **Runs per week:** 5 (Mon-Fri)
-- **Total runs:** ~20/month per workflow (~80 total)
+- **Workflow:** `economy-indicators.yml`
+- **Runs per week:** 10 (two per trading day)
+- **Total runs:** ~40/month
 
 ## 📊 Data Flow
 
@@ -132,7 +131,7 @@ cron: '0 17 * * 1-5'  # EST
              ▼
 ┌─────────────────────────────────────────────────────────┐
 │  4. Run collector scripts                               │
-│     - Check cache age (market-breadth, major-indexes)   │
+│     - Check cache age (market-data collectors)          │
 │     - Fetch from APIs (Finnhub, Yahoo Finance)          │
 │       * Full download OR incremental update             │
 │     - Process and validate data                         │

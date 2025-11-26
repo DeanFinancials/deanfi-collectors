@@ -85,10 +85,10 @@ deanfi-collectors/
 
 ### Data Collection Patterns
 
-#### 1. Real-time Market Data (15-minute intervals)
+#### 1. Real-time Market Data (10-minute intervals)
 **Collectors**: advancedecline, majorindexes, impliedvol, meanreversion
 
-**Pattern**:
+**Pattern**: 
 ```python
 # Use caching to minimize downloads
 fetcher = CachedDataFetcher(cache_dir="cache")
@@ -106,6 +106,7 @@ save_json(output_data, "output_file.json")
 - Include comprehensive metadata and interpretations
 - Handle market hours vs after-hours appropriately
 - Validate data quality before saving
+#### Market Data Collectors (10-minute intervals)
 
 #### 2. Scheduled News/Analyst Data
 **Collectors**: dailynews, analysttrends, earningscalendar, earningssurprises
@@ -121,7 +122,7 @@ data = client.fetch_endpoint(params)
 # Process and enrich
 enriched_data = process_and_aggregate(data)
 
-# Save with metadata
+**Pattern**: 
 save_json(enriched_data, "output_file.json")
 ```
 

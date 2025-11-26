@@ -292,7 +292,7 @@ def main():
             'title': 'Moving Average Spreads - Mean Reversion Snapshot',
             'description': 'Current spread between moving average pairs for major US ETFs',
             'purpose': 'Identify extreme MA spreads that may signal mean reversion opportunities',
-            'update_frequency': 'Every 15 minutes during market hours',
+            'update_frequency': 'Every 10 minutes during market hours',
             'indices_tracked': [idx['symbol'] for idx in INDICES],
             'ma_pairs_analyzed': {
                 'short_term_vs_intermediate': '20-day vs 50-day MA (swing trading timeframe)',

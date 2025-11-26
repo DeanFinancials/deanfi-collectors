@@ -4,9 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Data Updates](https://img.shields.io/badge/updates-every%2015min-brightgreen)](https://github.com/GibsonNeo/deanfi-data)
+[![Data Updates](https://img.shields.io/badge/updates-every%2010min-brightgreen)](https://github.com/GibsonNeo/deanfi-data)
 
-Python-based data collectors that fetch earnings, news, analyst trends, and market breadth indicators every 15 minutes during market hours. Powers the [deanfi-data](https://github.com/GibsonNeo/deanfi-data) public API and [DeanFinancials.com](https://deanfinancials.com).
+Python-based data collectors that fetch earnings, news, analyst trends, and market breadth indicators every 10 minutes during market hours. Powers the [deanfi-data](https://github.com/GibsonNeo/deanfi-data) public API and [DeanFinancials.com](https://deanfinancials.com).
 
 ## 📊 Data Collectors
 
@@ -16,14 +16,14 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 | **Analyst Trends** | Recommendation changes (buy/hold/sell) | Weekly (Sunday 12pm ET) | Finnhub |
 | **Earnings Calendar** | Upcoming earnings releases + estimates | Weekly (Sunday 12pm ET) | Finnhub |
 | **Earnings Surprises** | Historical EPS vs estimates | Weekly (Sunday 12pm ET) | Finnhub |
-| **Advance/Decline** | Market breadth indicators (with caching) | Every 15 min (market hours) | Yahoo Finance |
-| **Major Indexes** | S&P 500, Dow, Nasdaq tracking (with caching) | Every 15 min (market hours) | Yahoo Finance |
-| **Implied Volatility** | VIX and options volatility | Every 15 min (market hours) | Yahoo Finance |
+| **Advance/Decline** | Market breadth indicators (with caching) | Every 10 min (market hours) | Yahoo Finance |
+| **Major Indexes** | S&P 500, Dow, Nasdaq tracking (with caching) | Every 10 min (market hours) | Yahoo Finance |
+| **Implied Volatility** | VIX and options volatility | Every 10 min (market hours) | Yahoo Finance |
 | **Growth & Output** | GDP, industrial production, capacity utilization | Daily (12pm ET Mon-Fri) | FRED |
 | **Inflation & Prices** | CPI, PCE, PPI, breakeven inflation | Daily (12pm ET Mon-Fri) | FRED |
 | **Labor & Employment** | Unemployment, payrolls, wages, job openings | Daily (12pm ET Mon-Fri) | FRED |
 | **Money & Markets** | Fed funds, Treasuries, yield spread, M2 | Daily (12pm ET Mon-Fri) | FRED |
-| **Mean Reversion** | Price vs MA metrics + MA spreads with z-scores | Every 15 min (market hours) | Yahoo Finance |
+| **Mean Reversion** | Price vs MA metrics + MA spreads with z-scores | Every 10 min (market hours) | Yahoo Finance |
 
 ## 🚀 Quick Start
 
@@ -159,11 +159,11 @@ This repository uses GitHub Actions to automatically collect data and publish to
 
 ### Schedule
 
-**High-Frequency (Every 15 min during market hours):**
-- Market breadth (advance/decline indicators)
-- Major indexes (S&P 500, Dow, Nasdaq, sectors)
-- Implied volatility (VIX, options data)
-- **Runtime:** ~2-3 min/run, ~70 hours/month
+**High-Frequency (Every 10 min during market hours):**
+- Consolidated `market-data-10min.yml` workflow (breadth, indexes, implied vol, mean reversion)
+- Runs 8:05am–4:55pm Eastern with a 5-minute buffer for reliability
+- EST cron: `5-55/10 13-21 * * 1-5` (EDT variant: `5-55/10 12-20 * * 1-5`)
+- **Runtime:** ~3-4 min/run, ~90 hours/month
 
 **Twice Daily (Market open & close):**
 - Daily news (9:30am ET and 4:00pm ET)
@@ -178,7 +178,7 @@ This repository uses GitHub Actions to automatically collect data and publish to
 - Economic indicators (Growth & Output, Inflation & Prices, Labor & Employment, Money & Markets)
 - **Runtime:** ~3 min/run, ~15 hours/month
 
-**Total:** ~89 hours/month (well under GitHub's 2,000 hour free tier)
+**Total:** ~106 hours/month (well under GitHub's 2,000 hour free tier)
 
 ### Setup GitHub Actions
 
