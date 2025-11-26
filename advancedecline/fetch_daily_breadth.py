@@ -70,6 +70,42 @@ def download_market_data(tickers, period="1y", cache_dir=None):
     return data
 
 
+def load_latest_ad_line():
+    """
+    Load the latest cumulative A/D line value from the historical file.
+    Looks in both local directory and data repository.
+    
+    Returns:
+        Tuple of (ad_line_value, change_5d, change_20d) or (None, None, None) if file not found
+    """
+    # Try multiple potential locations
+    potential_paths = [
+        Path(__file__).parent / 'ad_line_historical.json',  # Local directory
+        Path(__file__).parent.parent.parent / 'deanfi-data' / 'advance-decline' / 'ad_line_historical.json',  # Data repo
+    ]
+    
+    for ad_line_file in potential_paths:
+        try:
+            if ad_line_file.exists():
+                with open(ad_line_file, 'r') as f:
+                    ad_data = json.load(f)
+                    stats = ad_data.get('statistics', {})
+                    ad_value = stats.get('current_value')
+                    if ad_value is not None:
+                        print(f"✓ Loaded A/D line from {ad_line_file}", file=sys.stderr)
+                        return (
+                            ad_value,
+                            stats.get('change_5_days'),
+                            stats.get('change_20_days')
+                        )
+        except Exception as e:
+            print(f"Warning: Could not load from {ad_line_file}: {e}", file=sys.stderr)
+            continue
+    
+    print("Warning: A/D line historical file not found in any location", file=sys.stderr)
+    return None, None, None
+
+
 def calculate_daily_breadth(data, config):
     """
     Calculate all daily breadth metrics.
@@ -156,17 +192,32 @@ def calculate_daily_breadth(data, config):
     # Get the latest trading date
     latest_date = close_prices.index[-1].strftime('%Y-%m-%d')
     
+    # Load cumulative A/D line value from historical data
+    ad_line_value, ad_line_change_5d, ad_line_change_20d = load_latest_ad_line()
+    
+    # Build advances_declines object
+    advances_declines = {
+        'advances': advances,
+        'declines': declines,
+        'unchanged': unchanged,
+        'total_stocks': total_stocks,
+        'advance_decline_ratio': round(advances / declines, 3) if declines > 0 else None,
+        'advance_percentage': round(advances / total_stocks * 100, 2) if total_stocks > 0 else 0,
+        'interpretation': 'Advances > Declines suggests broad market strength'
+    }
+    
+    # Add cumulative A/D line if available
+    if ad_line_value is not None:
+        advances_declines['cumulative_ad_line'] = {
+            'value': round(ad_line_value, 1),
+            'change_5_days': round(ad_line_change_5d, 1) if ad_line_change_5d is not None else None,
+            'change_20_days': round(ad_line_change_20d, 1) if ad_line_change_20d is not None else None,
+            'interpretation': 'Running total showing cumulative market participation over time'
+        }
+    
     return {
         'date': latest_date,
-        'advances_declines': {
-            'advances': advances,
-            'declines': declines,
-            'unchanged': unchanged,
-            'total_stocks': total_stocks,
-            'advance_decline_ratio': round(advances / declines, 3) if declines > 0 else None,
-            'advance_percentage': round(advances / total_stocks * 100, 2) if total_stocks > 0 else 0,
-            'interpretation': 'Advances > Declines suggests broad market strength'
-        },
+        'advances_declines': advances_declines,
         'volume_metrics': {
             'advancing_volume': advancing_volume,
             'declining_volume': declining_volume,
@@ -243,6 +294,7 @@ def main():
             'declines': 'Number of stocks that closed lower than previous close',
             'unchanged': 'Number of stocks with no price change',
             'advance_decline_ratio': 'Ratio of advancing to declining stocks (advances/declines)',
+            'cumulative_ad_line': 'Cumulative advance-decline line (running total of net advances over time)',
             'advancing_volume': 'Total volume of stocks that advanced',
             'declining_volume': 'Total volume of stocks that declined',
             'volume_ratio': 'Ratio of advancing volume to declining volume',
