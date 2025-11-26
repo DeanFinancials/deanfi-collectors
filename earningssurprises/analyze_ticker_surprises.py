@@ -16,13 +16,15 @@ Output: Top 25 best performers and bottom 25 worst performers
 """
 
 import json
+import sys
 import yaml
 from pathlib import Path
 from datetime import datetime
 from statistics import mean, stdev
-from shared.sector_mapping import TICKER_TO_SECTOR
-import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from shared.sector_mapping import TICKER_TO_SECTOR
 
 
 class TickerSurprisesAnalyzer:

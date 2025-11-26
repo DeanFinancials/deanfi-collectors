@@ -8,14 +8,15 @@ Input: recommendation_trends.json
 Output: ticker_trends_analysis.json
 """
 import json
+import sys
 from pathlib import Path
 from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, List, Tuple
 
-from shared.sector_mapping import get_sector, get_etf_ticker
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from shared.sector_mapping import get_sector, get_etf_ticker
 
 
 def calculate_ticker_trends(ticker_data: Dict) -> List[Dict]:

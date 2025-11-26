@@ -16,13 +16,15 @@ Output: sector_earnings_surprises.json
 """
 
 import json
+import sys
 import yaml
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
-from shared.sector_mapping import TICKER_TO_SECTOR, SECTOR_TO_ETF
-import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from shared.sector_mapping import TICKER_TO_SECTOR, SECTOR_TO_ETF
 
 
 class SectorEarningsAggregator:

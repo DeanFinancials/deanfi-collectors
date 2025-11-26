@@ -8,14 +8,15 @@ Input: recommendation_trends.json
 Output: sector_recommendation_trends.json
 """
 import json
+import sys
 from pathlib import Path
 from collections import defaultdict, OrderedDict
 from datetime import datetime
 from typing import Dict, List
 
-from shared.sector_mapping import (
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from shared.sector_mapping import (
     get_sector, 
     get_etf_ticker, 
     SECTOR_TO_ETF,
