@@ -2,9 +2,11 @@ name: Analyst Trends Collection
 
 on:
   schedule:
-    # Weekly on Sunday at 12:00pm ET (17:00 UTC)
-    # Note: Adjust for daylight saving time if needed (EDT vs EST)
-    - cron: '0 17 * * 0'
+    # Weeknights at 11:00pm Eastern (04:00 UTC Tue-Sat) so trends refresh before the next session
+    # GitHub Actions cron runs in UTC; 04:00 UTC corresponds to 11:00pm EST (roughly Nov–Mar)
+    # and 12:00am EDT (roughly Mar–Nov), so the job always fires near local midnight
+    - cron: '0 4 * * 2-6'
+    # - cron: '0 3 * * 2-6'  # Optional: run at 11:00pm EDT instead if midnight EDT is too late
   workflow_dispatch:
 
 env:

@@ -5,6 +5,21 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 ---
 
+## 2025-11-27: Nightly Earnings & Analyst Trend Schedules
+
+### Summary
+Updated the GitHub Actions schedules for the earnings calendar/surprises and analyst recommendation collectors to run every weekday night at 11:00pm Eastern (04:00 UTC). Running nightly keeps the datasets fresh ahead of each trading day without colliding with other collectors writing to `deanfi-data`.
+
+### Changes Made
+- **.github/workflows/earnings.yml** – Replaced the weekly Sunday cron with `0 4 * * 2-6` (Tue–Sat at 04:00 UTC) and clarified the inline comment that this maps to 11:00pm EST / midnight EDT.
+- **.github/workflows/analyst-trends.yml** – Applied the same cron expression and explanatory comment so recommendation trends refresh on the same cadence.
+
+### Notes
+- GitHub Actions uses UTC for cron expressions. Scheduling at 04:00 UTC ensures a consistent 11:00pm Eastern run, shifting to midnight during daylight saving time while still capturing end-of-day data.
+- No code or dependency changes were required; only workflow configuration updates were made.
+
+---
+
 ## 2024-11-24: Switched from Market Indices to ETFs
 
 ### Summary
