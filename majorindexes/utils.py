@@ -699,6 +699,59 @@ def get_current_snapshot(df: pd.DataFrame) -> Dict:
     return snapshot
 
 
+def get_current_snapshot_from_info(ticker_info: Dict, df: pd.DataFrame = None) -> Dict:
+    """
+    Extract current day snapshot from yfinance ticker.info.
+    
+    This is more reliable than historical data for futures/commodities because
+    ticker.info provides the actual previous close and daily change from Yahoo,
+    avoiding issues with gaps in historical data around holidays.
+    
+    Args:
+        ticker_info: Dict from yfinance Ticker.info
+        df: Optional DataFrame for fallback OHLCV data (high, low, open, volume)
+    
+    Returns:
+        Dict with current day metrics
+    """
+    current_price = safe_round(ticker_info.get('regularMarketPrice'), 2)
+    previous_close = safe_round(ticker_info.get('regularMarketPreviousClose'), 2)
+    
+    # Use Yahoo's calculated daily change (more reliable for futures with gaps)
+    daily_change = safe_round(ticker_info.get('regularMarketChange'), 2)
+    daily_change_percent = safe_round(ticker_info.get('regularMarketChangePercent'), 2)
+    
+    # Get intraday data from ticker.info
+    day_high = safe_round(ticker_info.get('regularMarketDayHigh') or ticker_info.get('dayHigh'), 2)
+    day_low = safe_round(ticker_info.get('regularMarketDayLow') or ticker_info.get('dayLow'), 2)
+    day_open = safe_round(ticker_info.get('regularMarketOpen') or ticker_info.get('open'), 2)
+    volume = ticker_info.get('regularMarketVolume') or ticker_info.get('volume')
+    
+    # If info doesn't have OHLV, fall back to DataFrame
+    if df is not None and len(df) > 0:
+        latest = df.iloc[-1]
+        if day_high is None:
+            day_high = safe_round(latest.get('High'), 2)
+        if day_low is None:
+            day_low = safe_round(latest.get('Low'), 2)
+        if day_open is None:
+            day_open = safe_round(latest.get('Open'), 2)
+        if volume is None and 'Volume' in latest:
+            volume = int(latest['Volume']) if not pd.isna(latest['Volume']) else None
+    
+    snapshot = {
+        'current_price': current_price,
+        'daily_change': daily_change,
+        'daily_change_percent': daily_change_percent,
+        'volume': int(volume) if volume and not pd.isna(volume) else None,
+        'day_high': day_high,
+        'day_low': day_low,
+        'day_open': day_open
+    }
+    
+    return snapshot
+
+
 # ==============================================================================
 # HELPER FUNCTIONS
 # ==============================================================================

@@ -5,6 +5,47 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-11-28: Fixed Commodity Futures Daily Change Calculation
+
+### Summary
+Fixed a bug where commodity futures (Gold, Silver, Oil, Natural Gas) were showing incorrect daily change percentages - often nearly double the actual change. The issue occurred because yfinance historical data for futures has gaps around holidays (like Thanksgiving), causing the "previous day" to actually be several days ago.
+
+### Root Cause
+- Yahoo Finance's historical data for commodity futures (`GC=F`, `SI=F`, etc.) has gaps around market holidays
+- For example, around Thanksgiving 2025, Gold data jumped from Nov 24 directly to Nov 28, missing Nov 25-27
+- The original code calculated daily change as `(current - df.iloc[-2]) / df.iloc[-2]`
+- This meant we were calculating 4-day returns instead of 1-day returns
+
+### Solution
+Created a new `get_current_snapshot_from_info()` function in `utils.py` that uses `ticker.info` from yfinance instead of historical data. Yahoo's `ticker.info` provides:
+- `regularMarketPrice` - Current price
+- `regularMarketPreviousClose` - Actual previous close (correct value)
+- `regularMarketChange` - Daily change in dollars
+- `regularMarketChangePercent` - Daily change percentage
+
+These values are correctly calculated by Yahoo Finance regardless of gaps in historical data.
+
+### Changes Made
+- **majorindexes/utils.py**: Added `get_current_snapshot_from_info()` function that extracts snapshot data from `ticker.info` with fallback to DataFrame for OHLV data
+- **majorindexes/fetch_commodities.py**: Updated `create_snapshot_json()` to:
+  - Fetch `ticker.info` for each commodity
+  - Use `get_current_snapshot_from_info()` instead of `get_current_snapshot()` for daily change calculations
+  - Continue using historical DataFrame for 52-week metrics, returns, and pivot points
+
+### Before/After Comparison (Nov 28, 2025)
+| Commodity | Before (Wrong) | After (Correct) |
+|-----------|----------------|-----------------|
+| Gold (GC=F) | 3.42% | 1.02% |
+| Silver (SI=F) | 11.18% | 6.10% |
+| Oil (CL=F) | 0.44% | 1.43% |
+
+### Notes
+- This fix specifically addresses commodity futures which trade on different schedules than stock markets
+- The original `get_current_snapshot()` function is preserved for backwards compatibility with equity indices that don't have holiday gaps
+- The new function also provides more accurate intraday data (high, low, open, volume) from the real-time quote
+
+---
+
 ## 2025-11-28: Market Data 10-Minute Cadence + Doc Refresh
 
 ### Summary

@@ -63,6 +63,11 @@ def create_snapshot_json():
         symbol = idx['symbol']
         print(f"  {symbol}...")
         try:
+            # Fetch ticker info for accurate daily change (avoids holiday gap issues)
+            ticker = yf.Ticker(symbol)
+            ticker_info = ticker.info
+            
+            # Also fetch historical data for 52-week metrics, returns, and pivot points
             df = fetch_index_data(symbol, cache_dir=args.cache_dir)
             if len(df) < 2:
                 continue
@@ -78,13 +83,14 @@ def create_snapshot_json():
             else:
                 pivot_points = {}
             
+            # Use ticker.info for daily snapshot (more reliable for futures with gaps)
             snapshot_data['indices'][symbol] = {
                 "name": idx['name'],
                 "symbol": symbol,
                 "commodity_type": idx['commodity_type'],
                 "unit": idx.get('unit'),
                 "is_etf": idx.get('is_etf', False),
-                **get_current_snapshot(df),
+                **get_current_snapshot_from_info(ticker_info, df),
                 **calculate_52_week_metrics(df['Close']),
                 **calculate_returns(df['Close']),
                 "pivot_points": pivot_points
