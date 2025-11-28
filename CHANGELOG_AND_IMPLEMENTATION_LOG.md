@@ -5,6 +5,54 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-11-28: Extended Holiday Gap Fix to All Major Index Collectors
+
+### Summary
+Extended the `get_current_snapshot_from_info()` fix to all major index collectors. The same holiday gap issue that affected commodity futures also affects US indices, treasury yields, international indices, and any other instrument that may have gaps in historical data around market holidays.
+
+### Root Cause (Same as Commodity Fix)
+- Yahoo Finance historical data can have gaps around holidays (Thanksgiving, Christmas, etc.)
+- US indices (^GSPC, ^DJI, etc.) were missing Nov 27 data, jumping from Nov 26 to Nov 28
+- Treasury yields, international indices, and currency indices have similar gap patterns
+- Using `df.iloc[-2]` as "previous close" resulted in multi-day returns instead of 1-day returns
+
+### Solution
+Updated all major index collectors to use `get_current_snapshot_from_info()` which fetches `ticker.info` from yfinance for accurate daily change data. This uses Yahoo's correctly calculated `regularMarketChangePercent` value.
+
+### Collectors Updated
+| Collector | Symbols | Risk Level |
+|-----------|---------|------------|
+| fetch_bonds.py | ^TNX, ^TYX, ^FVX, ^IRX | HIGH - US market holidays |
+| fetch_currency.py | DX-Y.NYB | HIGH - Market holidays |
+| fetch_us_major.py | ^GSPC, ^DJI, ^IXIC, ^NDX, ^RUT, ^VIX | HIGH - Confirmed gap |
+| fetch_dow_family.py | ^DJI, ^DJT, ^DJU, ^DJA | HIGH - US holidays |
+| fetch_growth_value.py | ^RLG, ^RLV, ^RUO, ^RUJ, ^RUA | HIGH - Russell indices |
+| fetch_international.py | ^FTSE, ^N225, ^HSI, etc. | MEDIUM - Different holidays |
+| fetch_emerging.py | ^BVSP, ^MXX, ^BSESN, etc. | MEDIUM - Different holidays |
+| fetch_equal_weight.py | ^SPXEW, ^NDXE, RSP, QQEW | MEDIUM - Indices + ETFs |
+| fetch_sectors.py | XLK, XLV, XLF, etc. | LOW - ETFs, but benchmark fixed |
+| fetch_commodities.py | GC=F, SI=F, CL=F, NG=F | HIGH - Already fixed |
+
+### Code Pattern Applied
+Each collector was updated with this pattern:
+```python
+# Old approach (vulnerable to holiday gaps)
+snapshot = get_current_snapshot(df)
+
+# New approach (uses Yahoo's calculated daily change)
+ticker = yf.Ticker(symbol)
+ticker_info = ticker.info
+snapshot = get_current_snapshot_from_info(ticker_info, df)
+```
+
+### Import Changes
+Updated imports from `from utils import *` to explicit imports including `get_current_snapshot_from_info` for better code clarity.
+
+### Testing
+All 10 collectors run successfully and generate valid JSON with correct daily change percentages matching Yahoo Finance's reported values.
+
+---
+
 ## 2025-11-28: Fixed Commodity Futures Daily Change Calculation
 
 ### Summary

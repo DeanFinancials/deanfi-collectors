@@ -29,7 +29,7 @@ from utils import (
     calculate_52_week_metrics,
     calculate_statistics,
     dataframe_to_daily_records,
-    get_current_snapshot,
+    get_current_snapshot_from_info,
     create_index_metadata,
     save_json,
     rank_by_performance,
@@ -193,9 +193,11 @@ def create_snapshot_json():
     # Fetch benchmark (S&P 500) for relative performance
     benchmark_return = None
     try:
+        sp500_ticker = yf.Ticker(BENCHMARK)
+        sp500_info = sp500_ticker.info
         sp500_df = fetch_index_data(BENCHMARK, period="5d")
         if len(sp500_df) >= 2:
-            sp500_snapshot = get_current_snapshot(sp500_df)
+            sp500_snapshot = get_current_snapshot_from_info(sp500_info, sp500_df)
             benchmark_return = sp500_snapshot.get('daily_change_percent')
     except Exception as e:
         print(f"  ⚠️  Could not fetch benchmark {BENCHMARK}: {e}")
@@ -206,12 +208,16 @@ def create_snapshot_json():
         print(f"  Fetching {symbol} ({sector['sector_name']})...")
         
         try:
+            # Fetch ticker info for accurate daily change (avoids holiday gap issues)
+            ticker = yf.Ticker(symbol)
+            ticker_info = ticker.info
+            
             df = fetch_index_data(symbol, period="1y")
             if len(df) < 2:
                 print(f"    ⚠️  Insufficient data for {symbol}")
                 continue
             
-            snapshot = get_current_snapshot(df)
+            snapshot = get_current_snapshot_from_info(ticker_info, df)
             returns = calculate_returns(df['Close'])
             week_52_metrics = calculate_52_week_metrics(df['Close'])
             

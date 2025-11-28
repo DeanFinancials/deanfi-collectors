@@ -4,7 +4,19 @@ import pandas as pd
 from datetime import datetime, timedelta
 import yaml
 import os
-from utils import *
+from utils import (
+    calculate_all_technical_indicators,
+    calculate_returns,
+    calculate_52_week_metrics,
+    calculate_statistics,
+    calculate_pivot_points,
+    dataframe_to_daily_records,
+    get_current_snapshot_from_info,
+    create_index_metadata,
+    save_json,
+    format_timestamp,
+    safe_round
+)
 import sys
 import argparse
 from pathlib import Path
@@ -96,6 +108,10 @@ def create_snapshot_json():
         symbol = idx['symbol']
         print(f"  {symbol}...")
         try:
+            # Fetch ticker info for accurate daily change (avoids holiday gap issues)
+            ticker = yf.Ticker(symbol)
+            ticker_info = ticker.info
+            
             df = fetch_index_data(symbol, cache_dir=args.cache_dir)
             if len(df) < 2:
                 continue
@@ -117,7 +133,7 @@ def create_snapshot_json():
                 "maturity_years": idx.get('maturity_years'),
                 "duration": idx['duration'],
                 "interpretation": idx['interpretation'],
-                **get_current_snapshot(df),
+                **get_current_snapshot_from_info(ticker_info, df),
                 **calculate_52_week_metrics(df['Close']),
                 **calculate_returns(df['Close']),
                 "pivot_points": pivot_points

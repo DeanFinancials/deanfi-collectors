@@ -34,7 +34,7 @@ from utils import (
     calculate_statistics,
     calculate_pivot_points,
     dataframe_to_daily_records,
-    get_current_snapshot,
+    get_current_snapshot_from_info,
     create_index_metadata,
     save_json,
     determine_market_sentiment,
@@ -165,6 +165,10 @@ def create_snapshot_json():
         print(f"  Fetching {symbol}...")
         
         try:
+            # Fetch ticker info for accurate daily change (avoids holiday gap issues)
+            ticker = yf.Ticker(symbol)
+            ticker_info = ticker.info
+            
             # Fetch data
             df = fetch_index_data(symbol, period="1y")
             
@@ -172,8 +176,8 @@ def create_snapshot_json():
                 print(f"    ⚠️  Insufficient data for {symbol}")
                 continue
             
-            # Current snapshot
-            snapshot = get_current_snapshot(df)
+            # Current snapshot using ticker.info for accurate daily change
+            snapshot = get_current_snapshot_from_info(ticker_info, df)
             
             # Returns
             returns = calculate_returns(df['Close'])
