@@ -7,6 +7,4 @@ numpy>=1.24.0
 pyarrow>=14.0.0
 lxml>=4.9.0
 python-dotenv>=1.0.0
-
-# SEC EDGAR API for SP100 growth data
-sec-edgar-api>=0.1.0
+secedgar>=0.4.0 # SEC EDGAR scraper library: https://pypi.org/project/secedgar/
