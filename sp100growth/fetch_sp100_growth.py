@@ -16,10 +16,12 @@ Data Sources (in priority order):
 - SEC EDGAR: Primary source for all annual and quarterly data
 - yfinance (Yahoo Finance): First fallback for annual data
 - Alpha Vantage API: Second fallback for annual data
-- Finnhub API: Final fallback for annual data, also used for quarterly fallback
+- Finnhub "Financials As Reported": Third fallback (raw SEC XBRL data, great for banks/REITs)
+- Finnhub API: Fallback for quarterly data when SEC is incomplete
 
 The fallback hierarchy ensures maximum data coverage, especially for:
 - Financial sector companies (banks use different revenue concepts)
+- REITs (use rental/lease income instead of standard revenue)
 - Companies with non-standard SEC filings
 - Recent quarters before SEC filings are available
 
@@ -152,6 +154,7 @@ class Config:
     indent: int
     finnhub_enabled: bool
     finnhub_api_key: str
+    finnhub_as_reported_enabled: bool  # Finnhub "Financials As Reported" (SEC filings)
     yfinance_enabled: bool
     alphavantage_enabled: bool
     alphavantage_api_key: str
@@ -166,6 +169,7 @@ class Config:
         sec = raw.get("sec", {})
         output = raw.get("output", {})
         finnhub = raw.get("finnhub", {})
+        finnhub_as_reported = raw.get("finnhub_as_reported", {})
         yfinance = raw.get("yfinance", {})
         alphavantage = raw.get("alphavantage", {})
         fmp = raw.get("fmp", {})
@@ -185,6 +189,7 @@ class Config:
             indent=output.get("indent", 2),
             finnhub_enabled=finnhub.get("enabled", False),
             finnhub_api_key=finnhub_api_key,
+            finnhub_as_reported_enabled=finnhub_as_reported.get("enabled", True),  # Enabled by default (free, no rate limit)
             yfinance_enabled=yfinance.get("enabled", True),
             alphavantage_enabled=alphavantage.get("enabled", False),
             alphavantage_api_key=alphavantage_api_key,
@@ -414,9 +419,10 @@ def gather_all_fallback_data(
     Priority order:
     1. yfinance: Free, no API key required (primary fallback)
     2. Alpha Vantage: Requires ALPHA_VANTAGE_API_KEY (secondary fallback)
+    3. Finnhub As Reported: Free SEC filings data (tertiary fallback, excellent for banks/REITs)
     
     FMP is disabled by default due to API limits (250 calls/day).
-    Finnhub is reserved for quarterly fallback only.
+    Standard Finnhub is reserved for quarterly fallback only.
     
     Returns dict mapping source name to DataFrame with columns: end, revenue, eps_diluted
     """
@@ -433,6 +439,13 @@ def gather_all_fallback_data(
         av_df = alphavantage_annual_financials(ticker, config.alphavantage_api_key, years_to_fetch)
         if not av_df.empty:
             all_sources["alphavantage"] = av_df
+    
+    # Finnhub As Reported (tertiary fallback - free, uses SEC XBRL data)
+    # Excellent for banks, REITs, and financial companies with non-standard revenue concepts
+    if config.finnhub_as_reported_enabled and config.finnhub_api_key:
+        far_df = finnhub_as_reported_annual_financials(ticker, config.finnhub_api_key, years_to_fetch)
+        if not far_df.empty:
+            all_sources["finnhub_as_reported"] = far_df
     
     # FMP is optional - disabled by default due to 250 calls/day limit
     # Only enable if you have a premium FMP account
@@ -452,7 +465,7 @@ def get_fallback_value(
     """
     Get a value from fallback sources using priority order.
     
-    Priority: yfinance > alphavantage > fmp
+    Priority: yfinance > alphavantage > finnhub_as_reported > fmp
     
     If only one source has data, use it (status = "single_source").
     If multiple sources have data and agree (within 5%), use yfinance (status = "validated").
@@ -486,7 +499,11 @@ def get_fallback_value(
         return ValidationResult(status="none")
     
     # Priority order for selecting the value
-    priority_order = ["yfinance", "alphavantage", "fmp"]
+    # yfinance first (most reliable for standard companies)
+    # alphavantage second (good coverage)
+    # finnhub_as_reported third (excellent for banks/REITs, uses raw SEC data)
+    # fmp last (rate limited)
+    priority_order = ["yfinance", "alphavantage", "finnhub_as_reported", "fmp"]
     selected_source = None
     selected_value = None
     
@@ -816,6 +833,180 @@ def finnhub_annual_financials(symbol: str, api_key: str, years_to_fetch: int = 6
     df = pd.DataFrame(list(rows.values()))
     df = df.sort_values("end", ascending=False).drop_duplicates("end", keep="first")
     return df
+
+
+# ============================================================================
+# Finnhub "Financials As Reported" - SEC Filings Data (FREE endpoint)
+# ============================================================================
+
+def finnhub_as_reported_annual_financials(symbol: str, api_key: str, years_to_fetch: int = 6, timeout: int = 15) -> pd.DataFrame:
+    """
+    Fetch annual revenue and EPS from Finnhub's "Financials As Reported" endpoint.
+    
+    This endpoint provides raw SEC filing data (10-K/10-Q) parsed directly from 
+    EDGAR XBRL filings. It's FREE and has no rate limits beyond standard Finnhub limits.
+    
+    This is particularly valuable for:
+    - Financial sector companies (banks, insurance) that use different revenue concepts
+    - REITs that use rental income instead of standard revenue
+    - Companies where standardized APIs fail to map fields correctly
+    
+    The function handles multiple revenue/EPS concept names used by different industries:
+    - Standard companies: us-gaap_Revenue, us-gaap_RevenueFromContractWithCustomer
+    - Banks: us-gaap_InterestAndDividendIncomeOperating + us-gaap_NoninterestIncome
+    - REITs: Revenues, OperatingLeaseLeaseIncome
+    
+    Returns DataFrame with columns: end, revenue, eps_diluted, source
+    """
+    if not api_key:
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+    
+    url = f"https://finnhub.io/api/v1/stock/financials-reported?symbol={symbol}&freq=annual&token={api_key}"
+    
+    try:
+        r = requests.get(url, timeout=timeout)
+        if r.status_code != 200:
+            return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+        
+        data = r.json()
+        if not data.get("data"):
+            return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+        
+        rows = []
+        
+        # Process only 10-K filings (annual reports)
+        filings = [f for f in data["data"] if f.get("form") == "10-K"]
+        filings = sorted(filings, key=lambda x: x.get("year", 0), reverse=True)[:years_to_fetch]
+        
+        for filing in filings:
+            year = filing.get("year")
+            report = filing.get("report", {})
+            
+            if not report or "ic" not in report:
+                continue
+            
+            ic = report["ic"]  # Income statement is a list of concept/value dicts
+            
+            # Build lookup dict for quick access
+            ic_lookup = {}
+            if isinstance(ic, list):
+                for item in ic:
+                    concept = item.get("concept", "").lower()
+                    value = item.get("value")
+                    if concept and value is not None:
+                        ic_lookup[concept] = value
+            
+            # Extract revenue - try multiple concepts (industry-specific)
+            revenue = None
+            
+            # Standard revenue concepts (most companies)
+            revenue_concepts = [
+                "us-gaap_revenuefromcontractwithcustomerexcludingassessedtax",
+                "us-gaap_revenuefromcontractwithcustomerincludingassessedtax",
+                "us-gaap_revenues",
+                "revenues",
+                "us-gaap_totalrevenue",
+                "us-gaap_salesrevenuenet",
+                "us-gaap_revenuesnetofinterestexpense",  # Banks
+                "us-gaap_interestincome",  # Financial services
+            ]
+            
+            for concept in revenue_concepts:
+                if concept in ic_lookup:
+                    revenue = ic_lookup[concept]
+                    break
+            
+            # Special handling for banks: Interest + Non-interest income
+            if revenue is None:
+                interest_income = ic_lookup.get("us-gaap_interestanddividendincomeoperating", 0)
+                noninterest_income = ic_lookup.get("us-gaap_noninterestincome", 0)
+                if interest_income or noninterest_income:
+                    revenue = (interest_income or 0) + (noninterest_income or 0)
+            
+            # Special handling for REITs: Operating lease income
+            if revenue is None:
+                lease_income = ic_lookup.get("operatingleaselearincome") or ic_lookup.get("revenues")
+                if lease_income:
+                    revenue = lease_income
+            
+            # Extract EPS - first try direct EPS fields, then calculate from net income / shares
+            eps_diluted = None
+            
+            # Direct EPS fields (preferred)
+            eps_concepts = [
+                "us-gaap_earningspersharediluted",
+                "earningspersharediluted",
+                "us-gaap_earningspersharebasicanddiluted",
+                "earningspersharebasicanddiluted",
+                "us-gaap_incomelossattributabletoparentperdilutedshare",
+                "us-gaap_earningspersharebasic",
+                "earningspersharebasic",
+            ]
+            
+            for concept in eps_concepts:
+                if concept in ic_lookup:
+                    eps_diluted = ic_lookup[concept]
+                    break
+            
+            # If no direct EPS, calculate from net income and shares
+            if eps_diluted is None:
+                # Extract net income
+                net_income = None
+                net_income_concepts = [
+                    "us-gaap_netincomeloss",
+                    "us-gaap_profitloss",
+                    "profitloss",
+                    "us-gaap_netincomelossavailabletocommonstockholdersbasic",
+                    "us-gaap_netincomelossattributabletoparent",
+                ]
+                
+                for concept in net_income_concepts:
+                    if concept in ic_lookup:
+                        net_income = ic_lookup[concept]
+                        break
+                
+                # Extract diluted shares for EPS calculation
+                shares_diluted = None
+                shares_concepts = [
+                    "us-gaap_weightedaveragenumberofdilutedsharesoutstanding",
+                    "us-gaap_weightedaveragenumberofsharesoutstandingdiluted",
+                    "us-gaap_weightedaveragenumberofsharesoutstandingbasic",
+                ]
+                
+                for concept in shares_concepts:
+                    if concept in ic_lookup:
+                        shares_diluted = ic_lookup[concept]
+                        break
+                
+                # Calculate EPS if we have net income and shares
+                if net_income is not None and shares_diluted and shares_diluted > 0:
+                    eps_diluted = net_income / shares_diluted
+            
+            # Create fiscal year end date
+            fiscal_year_end = f"{year}-12-31"  # Default to Dec 31
+            
+            # Try to get more accurate end date from filing
+            if filing.get("endDate"):
+                fiscal_year_end = filing["endDate"][:10]  # Take YYYY-MM-DD part
+            
+            if revenue is not None or eps_diluted is not None:
+                rows.append({
+                    "end": fiscal_year_end,
+                    "revenue": revenue,
+                    "eps_diluted": eps_diluted,
+                    "source": "finnhub_as_reported"
+                })
+        
+        if not rows:
+            return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+        
+        df = pd.DataFrame(rows)
+        df = df.sort_values("end", ascending=False).drop_duplicates("end", keep="first")
+        return df
+        
+    except Exception as e:
+        print(f"[warn] Finnhub As Reported error for {symbol}: {e}")
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
 
 
 # ============================================================================

@@ -46,6 +46,16 @@ yfinance:
 alphavantage:
   enabled: true
 
+# Finnhub "Financials As Reported" endpoint - provides raw SEC XBRL filing data
+# This is FREE and has no additional rate limits beyond standard Finnhub limits.
+# Particularly valuable for:
+# - Financial sector companies (banks use InterestIncome + NoninterestIncome as revenue)
+# - REITs (use rental/lease income instead of standard revenue)
+# - Companies where standardized APIs fail to map fields correctly
+# Uses the same FINNHUB_API_KEY environment variable as standard Finnhub.
+finnhub_as_reported:
+  enabled: true
+
 # Finnhub fallback for quarterly data (used when SEC quarterly data is incomplete)
 # API key is read from environment variable FINNHUB_API_KEY
 finnhub:

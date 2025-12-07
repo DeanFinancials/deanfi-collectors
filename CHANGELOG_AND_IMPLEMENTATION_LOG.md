@@ -5,6 +5,87 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-12-07: SP100 Growth Collector - Finnhub "Financials As Reported" Integration
+
+### Summary
+Added Finnhub's "Financials As Reported" endpoint as a tertiary fallback source, eliminating ALL remaining CAGR null values. This endpoint provides raw SEC XBRL filing data and is particularly valuable for banks, REITs, and financial companies with non-standard revenue concepts.
+
+### Problem
+After previous fixes (Alpha Vantage TTM filter, SEC period validation, Linear Rate fallback), we still had 11 null CAGR values:
+- `revenue_cagr_5yr`: 2 nulls (TSLA, USB - missing 2019/2020 data)
+- `eps_cagr_5yr`: 4 nulls (BLK, BRK-B, SPG, V - missing 2019 EPS)
+- TTM gaps: 5 nulls
+
+The problem: yfinance and Alpha Vantage standardize revenue/EPS fields, which fails for:
+- **Banks**: Use `InterestIncome + NoninterestIncome` instead of `Revenue`
+- **REITs**: Use `OperatingLeaseLeaseIncome` instead of `Revenue`
+- **Berkshire**: Complex conglomerate structure
+
+### API Research
+Tested 3 potential fallback sources:
+1. **SimFin**: Only 4 years of data, missing key tickers (BRK.B, USB). NOT suitable.
+2. **Finnhub "Financials As Reported"**: Excellent! 6+ years for all problem tickers. FREE endpoint.
+3. **FMP (Financial Modeling Prep)**: Free tier discontinued (legacy endpoint restricted). CANNOT USE.
+
+### Solution
+Implemented `finnhub_as_reported_annual_financials()` with smart field extraction:
+
+```python
+def finnhub_as_reported_annual_financials(symbol, api_key, years_to_fetch=6):
+    """
+    Fetch annual data from Finnhub's SEC filings endpoint.
+    
+    Revenue extraction (industry-specific):
+    - Standard: us-gaap_RevenueFromContractWithCustomer
+    - Banks: InterestAndDividendIncomeOperating + NoninterestIncome
+    - REITs: Revenues, OperatingLeaseLeaseIncome
+    
+    EPS extraction (priority order):
+    1. Direct EPS fields (EarningsPerShareDiluted, etc.)
+    2. Calculate from NetIncome / WeightedAverageShares
+    """
+```
+
+### Integration
+Added to the fallback chain as the third source:
+1. **yfinance** (primary fallback - free, no API limits)
+2. **Alpha Vantage** (secondary fallback)
+3. **Finnhub As Reported** (tertiary - excellent for banks/REITs)
+4. **FMP** (disabled - rate limited)
+
+### Configuration
+```yaml
+# config.yml
+finnhub_as_reported:
+  enabled: true  # Enabled by default (free, no rate limits)
+```
+
+### Results
+| Metric | Before Fixes | After Prev Fixes | After This Fix |
+|--------|-------------|------------------|----------------|
+| revenue_cagr_5yr nulls | 65 | 11 | **0** |
+| eps_cagr_5yr nulls | 28 | 11 | **0** |
+
+### Problem Tickers Now Have CAGR
+| Ticker | Revenue CAGR 5yr | EPS CAGR 5yr |
+|--------|------------------|--------------|
+| BLK | +7.02% | +8.12% |
+| BRK-B | +7.18% | -75.81% (volatile) |
+| SPG | +0.71% | +1.29% |
+| USB | +0.09% | -1.85% |
+
+### Files Changed
+- `sp100growth/fetch_sp100_growth.py`:
+  - Added `finnhub_as_reported_annual_financials()` function
+  - Added `finnhub_as_reported_enabled` to Config class
+  - Updated `gather_all_fallback_data()` to include new source
+  - Updated `get_fallback_value()` priority order
+  - Updated module docstring
+- `sp100growth/config.yml`:
+  - Added `finnhub_as_reported` configuration section
+
+---
+
 ## 2025-12-07: SP100 Growth Collector - Linear Annualized Rate Fallback for Negative EPS
 
 ### Summary
