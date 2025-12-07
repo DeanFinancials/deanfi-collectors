@@ -356,6 +356,10 @@ def finnhub_as_reported_quarterly_financials(symbol: str, api_key: str, quarters
             shares_diluted = None
             shares_basic = None
             eps_reported_ytd = None
+            eps_basic_ytd = None  # Fallback for Class A shares (BRK-B)
+            # Bank-specific revenue components
+            net_interest_income_ytd = None
+            noninterest_income_ytd = None
             
             for item in ic:
                 concept = item.get("concept", "")
@@ -375,6 +379,27 @@ def finnhub_as_reported_quarterly_financials(symbol: str, api_key: str, quarters
                         if value is not None:
                             try:
                                 revenue_ytd = float(value)
+                            except (ValueError, TypeError):
+                                pass
+                
+                # Bank-specific revenue: Net Interest Income + Noninterest Income
+                # Banks like USB, JPM, BAC use these instead of standard Revenue
+                if net_interest_income_ytd is None:
+                    if concept in [
+                        "us-gaap_InterestIncomeExpenseNet",
+                        "us-gaap_NetInterestIncome",
+                    ]:
+                        if value is not None:
+                            try:
+                                net_interest_income_ytd = float(value)
+                            except (ValueError, TypeError):
+                                pass
+                
+                if noninterest_income_ytd is None:
+                    if concept == "us-gaap_NoninterestIncome":
+                        if value is not None:
+                            try:
+                                noninterest_income_ytd = float(value)
                             except (ValueError, TypeError):
                                 pass
                 
@@ -417,6 +442,19 @@ def finnhub_as_reported_quarterly_financials(symbol: str, api_key: str, quarters
                                 eps_reported_ytd = float(value)
                             except (ValueError, TypeError):
                                 pass
+                
+                # Basic EPS fallback (for BRK-B which only reports Class A EPS)
+                if eps_basic_ytd is None:
+                    if concept == "us-gaap_EarningsPerShareBasic":
+                        if value is not None:
+                            try:
+                                eps_basic_ytd = float(value)
+                            except (ValueError, TypeError):
+                                pass
+            
+            # Special handling for banks: If no standard revenue, use NetInterestIncome + NoninterestIncome
+            if revenue_ytd is None and (net_interest_income_ytd is not None or noninterest_income_ytd is not None):
+                revenue_ytd = (net_interest_income_ytd or 0) + (noninterest_income_ytd or 0)
             
             # Use diluted shares if available, otherwise basic shares
             shares = shares_diluted if shares_diluted is not None else shares_basic
@@ -429,6 +467,9 @@ def finnhub_as_reported_quarterly_financials(symbol: str, api_key: str, quarters
                 "net_income_ytd": net_income_ytd,
                 "shares": shares,
                 "eps_reported_ytd": eps_reported_ytd,
+                "eps_basic_ytd": eps_basic_ytd,
+                "net_interest_income_ytd": net_interest_income_ytd,
+                "noninterest_income_ytd": noninterest_income_ytd,
             })
         
         # Detect if EPS is quarterly or YTD based on pattern
@@ -507,6 +548,40 @@ def finnhub_as_reported_quarterly_financials(symbol: str, api_key: str, quarters
                 # Calculate EPS = Net Income / Diluted Shares
                 if quarterly_net_income is not None:
                     quarterly_eps = quarterly_net_income / curr["shares"]
+            
+            # Strategy 3: Use Basic EPS for BRK-B (Class A EPS / 1500 = Class B EPS)
+            # Berkshire Hathaway only reports Class A shares and EPS, but BRK-B = BRK-A / 1500
+            if quarterly_eps is None and curr["eps_basic_ytd"] is not None:
+                # Check if this is likely a Class A share situation (EPS > $1000)
+                # BRK-A has EPS in thousands, need to convert to BRK-B equivalent
+                if abs(curr["eps_basic_ytd"]) > 1000:  # Class A shares
+                    brk_class_a_to_b_ratio = 1500  # 1 BRK-A = 1500 BRK-B
+                    if eps_is_ytd:
+                        if curr["quarter"] == 1:
+                            quarterly_eps = curr["eps_basic_ytd"] / brk_class_a_to_b_ratio
+                        else:
+                            for j in range(i - 1, -1, -1):
+                                prev = quarterly_ytd[j]
+                                if prev["year"] == curr["year"] and prev["quarter"] == curr["quarter"] - 1:
+                                    if prev.get("eps_basic_ytd") is not None:
+                                        quarterly_eps = (curr["eps_basic_ytd"] - prev["eps_basic_ytd"]) / brk_class_a_to_b_ratio
+                                    break
+                    else:
+                        quarterly_eps = curr["eps_basic_ytd"] / brk_class_a_to_b_ratio
+                else:
+                    # Normal Basic EPS, use as-is (YTD to quarterly conversion)
+                    if eps_is_ytd:
+                        if curr["quarter"] == 1:
+                            quarterly_eps = curr["eps_basic_ytd"]
+                        else:
+                            for j in range(i - 1, -1, -1):
+                                prev = quarterly_ytd[j]
+                                if prev["year"] == curr["year"] and prev["quarter"] == curr["quarter"] - 1:
+                                    if prev.get("eps_basic_ytd") is not None:
+                                        quarterly_eps = curr["eps_basic_ytd"] - prev["eps_basic_ytd"]
+                                    break
+                    else:
+                        quarterly_eps = curr["eps_basic_ytd"]
             
             if quarterly_revenue is not None or quarterly_eps is not None:
                 rows.append({

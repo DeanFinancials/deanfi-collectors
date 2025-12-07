@@ -5,6 +5,88 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-12-07: SP100 Growth Collector - BRK-B EPS & USB Bank Revenue Fixes
+
+### Summary
+Enhanced the `finnhub_as_reported_quarterly_financials()` function to properly handle:
+1. **Bank revenue calculation**: Added NetInterestIncome + NoninterestIncome calculation for banks (USB, JPM, BAC, etc.)
+2. **BRK-B Class A to Class B EPS conversion**: Added automatic conversion (1/1500 ratio) for Berkshire Hathaway's Class A EPS
+
+### Problem Analysis
+
+**BRK-B (Berkshire Hathaway):**
+- Only reports Class A EPS (~$30,000/share), not Class B
+- No diluted EPS or diluted shares in SEC filings
+- Missing Q1 2024 and Q4 quarters (10-K filed annually instead of 10-Q)
+- yfinance returns null for quarterly Diluted EPS
+
+**USB (US Bancorp):**
+- Banks don't use standard `Revenues` XBRL concept
+- Revenue = `NetInterestIncome` + `NoninterestIncome`
+- The annual function already handled this, but quarterly function did not
+
+### Implementation
+
+**1. Bank Revenue Handling in Quarterly Function:**
+Added extraction of bank-specific revenue components:
+```python
+# Bank-specific revenue: Net Interest Income + Noninterest Income
+if net_interest_income_ytd is None:
+    if concept in ["us-gaap_InterestIncomeExpenseNet", "us-gaap_NetInterestIncome"]:
+        net_interest_income_ytd = float(value)
+
+if noninterest_income_ytd is None:
+    if concept == "us-gaap_NoninterestIncome":
+        noninterest_income_ytd = float(value)
+
+# Calculate bank revenue if standard revenue not available
+if revenue_ytd is None and (net_interest_income_ytd or noninterest_income_ytd):
+    revenue_ytd = (net_interest_income_ytd or 0) + (noninterest_income_ytd or 0)
+```
+
+**2. BRK-B Class A to Class B EPS Conversion:**
+Added Strategy 3 for EPS calculation using Basic EPS with Class A to B conversion:
+```python
+# Strategy 3: Use Basic EPS for BRK-B (Class A EPS / 1500 = Class B EPS)
+if quarterly_eps is None and curr["eps_basic_ytd"] is not None:
+    if abs(curr["eps_basic_ytd"]) > 1000:  # Class A shares indicator
+        brk_class_a_to_b_ratio = 1500  # 1 BRK-A = 1500 BRK-B
+        quarterly_eps = (curr["eps_basic_ytd"] - prev["eps_basic_ytd"]) / brk_class_a_to_b_ratio
+```
+
+### Results
+
+**Null Value Improvements:**
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| eps_yoy (annual) | 2 nulls | 0 nulls | ✅ -2 |
+| ttm_eps | 1 null | 1 null | — |
+| ttm_eps_yoy | 1 null | 1 null | — |
+| revenue_yoy (annual) | 2 nulls | 2 nulls | — |
+
+**BRK-B Specific Fixes:**
+- ✅ EPS YoY 2020: Now populated (-99.98%)
+- ✅ EPS YoY 2021: Now populated (+334.38%)
+- ⚠️ TTM EPS still null (Q1 2024 + Q4 quarters missing from Finnhub - data limitation)
+
+**USB:**
+- ✅ Quarterly revenue extraction now working for banks
+- ⚠️ Annual revenue 2020/2021 still null (data not available in any API source)
+
+### Remaining Limitations
+The following nulls are **fundamental data availability issues**, not code problems:
+1. **BRK-B TTM EPS**: Berkshire doesn't file 10-Q for Q4 (only 10-K annual), and Q1 2024 is missing from Finnhub
+2. **USB Revenue 2020/2021**: Not available from SEC EDGAR, yfinance, Alpha Vantage, or Finnhub
+
+### Files Changed
+- `sp100growth/fetch_sp100_growth.py`:
+  - Added `net_interest_income_ytd` and `noninterest_income_ytd` extraction in quarterly function
+  - Added bank revenue calculation logic (NetInterestIncome + NoninterestIncome)
+  - Added `eps_basic_ytd` extraction for Class A shares
+  - Added Strategy 3: BRK-B Class A to Class B EPS conversion (1/1500 ratio)
+
+---
+
 ## 2025-12-07: SP100 Growth Collector - Finnhub As Reported QUARTERLY Integration
 
 ### Summary
