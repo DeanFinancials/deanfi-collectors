@@ -13,9 +13,10 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 | Collector | Description | Update Frequency | Data Source |
 |-----------|-------------|------------------|-------------|
 | **Daily News** | Top market news + sector breakdowns | Twice daily (9:30am & 4pm ET) | Finnhub |
-| **Analyst Trends** | Recommendation changes (buy/hold/sell) | Weekly (Sunday 12pm ET) | Finnhub |
-| **Earnings Calendar** | Upcoming earnings releases + estimates | Weekly (Sunday 12pm ET) | Finnhub |
-| **Earnings Surprises** | Historical EPS vs estimates | Weekly (Sunday 12pm ET) | Finnhub |
+| **Analyst Trends** | Recommendation changes (buy/hold/sell) | Nightly (11pm ET) | Finnhub |
+| **Earnings Calendar** | Upcoming earnings releases + estimates | Nightly (11pm ET) | Finnhub |
+| **Earnings Surprises** | Historical EPS vs estimates | Nightly (11pm ET) | Finnhub |
+| **SP100 Growth** | Revenue & EPS growth metrics for S&P 100 | Nightly (11:15pm ET) | SEC EDGAR |
 | **Advance/Decline** | Market breadth indicators (with caching) | Every 10 min (market hours) | Yahoo Finance |
 | **Major Indexes** | S&P 500, Dow, Nasdaq tracking (with caching) | Every 10 min (market hours) | Yahoo Finance |
 | **Implied Volatility** | VIX and options volatility | Every 10 min (market hours) | Yahoo Finance |
@@ -104,6 +105,7 @@ deanfi-collectors/
 ├── .github/workflows/       # GitHub Actions automation
 ├── shared/                  # Shared utilities
 │   ├── spx_universe.py     # S&P 500 ticker fetcher
+│   ├── sp100_universe.py   # S&P 100 ticker fetcher
 │   ├── cache_manager.py    # Intelligent caching with incremental updates
 │   ├── fred_client.py      # FRED API client for economic data
 │   ├── economy_indicators.py  # Economic indicator definitions
@@ -147,6 +149,9 @@ deanfi-collectors/
 │   └── config.yml
 ├── moneymarkets/           # Interest rates, yield curve, M2
 │   ├── fetch_money_markets.py
+│   └── config.yml
+├── sp100growth/            # S&P 100 revenue & EPS growth
+│   ├── fetch_sp100_growth.py
 │   └── config.yml
 ├── requirements.txt        # Python dependencies
 ├── .env.example           # Environment template

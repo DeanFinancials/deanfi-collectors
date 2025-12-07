@@ -10,8 +10,9 @@ This directory contains automated workflows for collecting market data and publi
 | `daily-news.yml` | Twice daily (9:30am & 4pm ET) | Daily news, Sector news | ~2 min | ~1.5h |
 | `analyst-trends.yml` | Weeknights 11:00pm ET (Tue–Sat UTC) | Recommendations, sector trends | ~5 min | ~2h |
 | `earnings.yml` | Weeknights 11:00pm ET (Tue–Sat UTC) | Calendar, surprises | ~5 min | ~2h |
+| `sp100-growth.yml` | Weeknights 11:15pm ET (Tue–Sat UTC) | SP100 revenue & EPS growth | ~8 min | ~3h |
 | `economy-indicators.yml` | Weekdays 8:00am & 12:00pm ET | Growth, inflation, labor, money markets | ~6 min | ~11h |
-| **TOTAL** | - | **5 workflows** | - | **~106 hours** |
+| **TOTAL** | - | **6 workflows** | - | **~109 hours** |
 
 ## 🔒 Required Secrets
 

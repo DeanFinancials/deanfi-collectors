@@ -1,0 +1,45 @@
+# ============================================================================
+# SP100 Growth Extractor Configuration
+# Extracts annual & quarterly revenue/EPS from SEC EDGAR for S&P 100 companies
+# ============================================================================
+
+sec:
+  # Required by SEC - use a descriptive user agent with contact info
+  user_agent: "DeanFiCollectors/1.0 (wesdean13@gmail.com)"
+
+# How many years of annual data to fetch (10-K filings)
+# Note: To show 5 years of YoY growth, we need 6 years of data
+years_to_fetch: 6
+
+# How many quarters to fetch for TTM calculations
+quarters_to_fetch: 8  # 8 quarters = 2 years (for TTM YoY comparison)
+
+# SEC XBRL concepts to extract (in priority order - first match wins)
+concepts:
+  revenue:
+    - "RevenueFromContractWithCustomerExcludingAssessedTax"
+    - "Revenues"
+    - "SalesRevenueNet"
+    - "SalesRevenueGoodsNet"
+    - "RevenueFromContractWithCustomerIncludingAssessedTax"
+    - "TotalRevenuesAndOtherIncome"
+  eps_diluted:
+    - "EarningsPerShareDiluted"
+    - "IncomeLossFromContinuingOperationsPerDilutedShare"
+    - "EarningsPerShareBasicAndDiluted"
+    - "EarningsPerShareBasic"
+
+# Finnhub fallback for quarterly data (used when SEC quarterly data is incomplete)
+# API key is read from environment variable FINNHUB_API_KEY
+finnhub:
+  enabled: true
+
+# Output settings
+output:
+  # Directory for JSON files (relative to this config or absolute)
+  # In CI/CD, this is overridden to output to deanfi-data repo
+  directory: "./output"
+  # Output filename (without directory)
+  filename: "sp100growth.json"
+  # Pretty print JSON
+  indent: 2

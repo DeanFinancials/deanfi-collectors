@@ -1,0 +1,74 @@
+name: SP100 Growth Collection
+
+on:
+  schedule:
+    # Weeknights at 11:15pm Eastern (04:15 UTC Tue-Sat) - 15 minutes after analyst-trends/earnings
+    # GitHub Actions cron uses UTC; 04:15 UTC maps to:
+    #   • 11:15pm EST (standard time roughly Nov–Mar)
+    #   • 12:15am EDT (daylight saving time roughly Mar–Nov)
+    # This ensures we run after the 04:00 UTC jobs (analyst-trends, earnings) with a 15-minute buffer
+    - cron: '15 4 * * 2-6'
+    # - cron: '15 3 * * 2-6'  # Optional: run at 11:15pm EDT instead of 12:15am EDT
+  workflow_dispatch:
+
+env:
+  FINNHUB_API_KEY: "${{ secrets.FINNHUB_API_KEY }}"
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+
+jobs:
+  fetch-and-publish:
+    runs-on: ubuntu-latest
+    
+    # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
+    concurrency:
+      group: deanfi-data-repo
+      cancel-in-progress: false
+    
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v4
+      
+      - name: Checkout data repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Fetch SP100 growth metrics
+        run: |
+          cd sp100growth
+          python fetch_sp100_growth.py
+          echo "✅ SP100 growth metrics fetched"
+      
+      - name: Copy to data repo
+        run: |
+          mkdir -p data-cache/sp100growth
+          cp sp100growth/output/sp100growth.json data-cache/sp100growth/
+          echo "✅ Files copied to data repo"
+      
+      - name: Commit and push
+        run: |
+          cd data-cache
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sp100growth/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update SP100 growth metrics - $(date -u +"%Y-%m-%d")"
+            git pull --rebase origin main
+            git push
+            echo "✅ Data pushed to repository"
+          fi

@@ -483,6 +483,81 @@ The DeanFi Collectors project was established with the following collectors:
 
 ---
 
+## 2025-12-06: Added SP100 Growth Collector
+
+### Summary
+Added a new collector to extract annual and quarterly revenue/EPS growth metrics for S&P 100 companies from SEC EDGAR, with Finnhub fallback for quarterly data.
+
+### New Files Created
+- **sp100growth/fetch_sp100_growth.py**: Main extraction script
+- **shared/sp100_universe.py**: S&P 100 universe fetcher with Wikipedia primary source and hardcoded fallback (in shared for reuse)
+- **.github/workflows/sp100-growth.yml**: Nightly workflow at 11:15pm ET (04:15 UTC)
+- **deanfi-data/sp100growth/README.md**: Data directory documentation
+
+### Files Modified
+- **sp100growth/config.yml**: Updated to use `FINNHUB_API_KEY` environment variable (removed hardcoded key), simplified output settings
+- **sp100growth/README.md**: Complete rewrite to match project documentation standards
+- **requirements.txt**: Added `sec-edgar-api>=0.1.0`
+
+### Files Removed
+- **sp100growth/extractor.py**: Old script replaced by fetch_sp100_growth.py
+- **sp100growth/tickers-sp100.csv**: Fallback now hardcoded in shared/sp100_universe.py
+
+### Key Changes
+
+#### S&P 100 Universe (shared/sp100_universe.py)
+- Fetches ticker list from Wikipedia's S&P 100 constituents page
+- Falls back to hardcoded list if Wikipedia fails
+- Handles BRK.B → BRK-B conversion for SEC EDGAR compatibility
+- Deduplicates share classes (keeps GOOGL, removes GOOG)
+
+#### Configuration Updates
+- Removed hardcoded Finnhub API key from config.yml
+- Now reads `FINNHUB_API_KEY` from environment variable (matches other collectors)
+- Output filename set to `sp100growth.json` (single combined file)
+
+#### Workflow Schedule
+- Runs at 04:15 UTC (11:15pm EST / 12:15am EDT)
+- 15 minutes after analyst-trends and earnings collectors (04:00 UTC)
+- Uses same concurrency group (`deanfi-data-repo`) to prevent conflicts
+
+### Data Output
+Output saved to `deanfi-data/sp100growth/sp100growth.json`:
+```json
+{
+  "_README": { ... },
+  "metadata": {
+    "generated_at": "2025-12-06T04:15:00Z",
+    "data_source": "SEC EDGAR + Finnhub",
+    "ticker_count": 100,
+    "successful_extractions": 98
+  },
+  "companies": {
+    "AAPL": {
+      "growth": {
+        "revenue_yoy": {"2024": -0.028},
+        "eps_yoy": {"2024": -0.003},
+        "ttm": { ... },
+        "revenue_cagr_3yr": 0.024
+      }
+    }
+  }
+}
+```
+
+### Metrics Provided
+- Year-over-year revenue growth (up to 5 years)
+- Year-over-year EPS growth (up to 5 years)
+- Trailing Twelve Months (TTM) metrics
+- 3-year and 5-year CAGR for both revenue and EPS
+
+### Notes
+- Original `extractor.py` preserved for reference (can be removed later)
+- SEC EDGAR is primary data source; Finnhub used only for missing quarterly data
+- All growth rates expressed as decimals (0.05 = 5%)
+
+---
+
 ## Future Enhancements
 
 ### Planned Features
