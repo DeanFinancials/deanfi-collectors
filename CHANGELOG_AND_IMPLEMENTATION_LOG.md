@@ -5,6 +5,357 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-12-07: SP100 Growth Collector - 3-Source Consensus Validation
+
+### Summary
+Upgraded from tiered fallback validation to consensus-based validation using 3 sources (yfinance, Alpha Vantage, FMP). Now all three sources are queried upfront and consensus voting determines the final value. This provides higher confidence validation for all fallback data.
+
+### Previous Approach (Tiered)
+- yfinance and Alpha Vantage queried first
+- If values within 5%: "validated"
+- If values 5-10% apart: "averaged"
+- If values >10% apart: Call FMP as tiebreaker, "validated_by_fmp"
+
+### New Approach (Consensus)
+- All 3 sources (yfinance, Alpha Vantage, FMP) queried upfront
+- If 2+ sources agree (within 5%): Use consensus value, "validated"
+- If all 3 differ: Average all 3, "discrepancy"
+- With ~100 tickers, uses ~100 FMP calls/day (well under 250/day limit)
+
+### Changes Made
+
+#### sp100growth/fetch_sp100_growth.py
+
+**Updated validate_across_sources() - Consensus-Based Logic:**
+```python
+def validate_across_sources(source_values, tolerance_pct=5.0):
+    """
+    Cross-validate a value using consensus-based voting.
+    
+    Logic:
+    - If 2+ sources agree (within tolerance): Use the consensus value, status = "validated"
+    - If all sources differ: Average all values, status = "discrepancy"
+    - If only 1 source: Use that value, status = "single_source"
+    """
+    # Check all pairs to find consensus groups
+    for i, (name1, val1) in enumerate(valid_sources.items()):
+        matching_sources = [name1]
+        for j, (name2, val2) in enumerate(valid_sources.items()):
+            if i != j and _values_match(val1, val2, tolerance_pct):
+                matching_sources.append(name2)
+        
+        if len(matching_sources) >= 2:
+            # Consensus found - use average of matching values
+            return ValidationResult(value=consensus_value, status="validated", ...)
+    
+    # No consensus - all differ, average and flag
+    return ValidationResult(value=avg_value, status="discrepancy", ...)
+```
+
+**Updated gather_all_fallback_data():**
+Now includes FMP as a primary source alongside yfinance and Alpha Vantage (Finnhub reserved for quarterly fallback only).
+
+**Removed resolve_discrepancy_with_fmp():**
+No longer needed since FMP is gathered upfront with other sources.
+
+#### sp100growth/config.yml
+```yaml
+# Financial Modeling Prep (FMP) - Primary validation source for annual fallback data.
+# Used alongside yfinance and Alpha Vantage for 3-source consensus validation.
+# With ~100 tickers in SP100, this uses ~100 calls/day (well under 250/day limit).
+# Consensus logic: 2+ sources agree = validated, all differ = discrepancy (averaged)
+fmp:
+  enabled: true
+```
+
+### Validation Status Meanings (Simplified)
+- **validated**: 2+ sources agree within 5% tolerance (high confidence)
+- **discrepancy**: All sources differ >5% (averaged, needs review)
+- **single_source**: Only one fallback source had data
+
+Note: "validated_by_fmp" and "averaged" statuses are no longer used - replaced by simpler consensus logic.
+
+### Benefits
+1. **Higher confidence**: 2-out-of-3 consensus is more reliable than pairwise comparison
+2. **Simpler logic**: No tiered tolerance levels (5%, 10%, etc.)
+3. **Clearer output**: Either sources agree ("validated") or they don't ("discrepancy")
+4. **Same API usage**: ~100 calls/day for ~100 tickers (well under FMP's 250/day)
+
+### Example Output
+```json
+{
+  "fiscal_year_end": "2025-09-30",
+  "eps_diluted": 10.2,
+  "eps_concept": "fallback:yfinance,alphavantage,fmp",
+  "eps_validation": "validated",
+  "eps_sources": ["yfinance", "alphavantage", "fmp"],
+  "eps_discrepancy_pct": 5.8
+}
+```
+In this example, 2 of 3 sources agreed within 5%, so the consensus value is used and marked "validated".
+
+---
+
+## 2025-12-07 (Earlier): SP100 Growth Collector - FMP Tiebreaker (Superseded)
+
+---
+
+## 2025-01-XX: SP100 Growth Collector - SEC Concept Selection Fix & Multi-Source Validation
+
+### Summary
+Fixed a critical bug in SEC EDGAR concept selection and added cross-source validation for fallback data. Previously, the "first match wins" logic selected outdated SEC concepts when newer concepts had more recent data. Now the system intelligently selects the concept with the most recent fiscal year end date and validates fallback data across multiple providers.
+
+### Problem 1: SEC Concept Selection Bug
+The `extract_concept_values()` function was returning the first concept that had ANY data, regardless of how recent that data was:
+- **NVDA**: Had `RevenueFromContractWithCustomerExcludingAssessedTax` (data up to 2022) listed BEFORE `Revenues` (data up to 2025). Result: outdated 2022 data ($26.9B) instead of current 2025 data ($130.5B)
+- **WFC**: Had `Revenues` (data up to 2019 at $85B) listed BEFORE `RevenuesNetOfInterestExpense` (data up to 2024 at $82.3B). Result: outdated 2019 data
+
+### Problem 2: Unvalidated Fallback Data
+When SEC data was unavailable and fallback sources were used, there was no validation:
+- Only one fallback source was queried (first success was used)
+- No comparison between yfinance, Alpha Vantage, and Finnhub data
+- No way to detect data discrepancies between providers
+
+### Solution 1: Smart SEC Concept Selection
+Modified `extract_concept_values()` to:
+1. Try ALL concepts in the list (not just first match)
+2. Track the most recent `end` date for each concept
+3. Select the concept with the most recent fiscal year end
+4. Log selection when multiple concepts were available
+
+### Solution 2: Multi-Source Cross-Validation
+Added a comprehensive validation system for fallback data:
+1. **Gather all sources**: Query ALL available fallback sources (yfinance, Alpha Vantage, Finnhub) simultaneously
+2. **Cross-validate values**: Compare values for each year/metric across all sources
+3. **Apply tolerance logic**:
+   - ≤5% discrepancy: Mark as "validated", use primary source value
+   - 5-10% discrepancy: Mark as "averaged", use average of all values
+   - >10% discrepancy: Mark as "discrepancy", use average, flag in output
+4. **Track validation metadata**: Record validation status, sources compared, and discrepancy percentage
+
+### Changes Made
+
+#### sp100growth/fetch_sp100_growth.py
+
+**New Dataclass: ValidationResult**
+```python
+@dataclass
+class ValidationResult:
+    value: Optional[float] = None
+    status: str = "none"  # "validated", "averaged", "discrepancy", "single_source", "none"
+    sources_compared: List[str] = field(default_factory=list)
+    source_values: Dict[str, float] = field(default_factory=dict)
+    discrepancy_pct: Optional[float] = None
+```
+
+**Updated Dataclass: AnnualRecord**
+Added validation fields:
+- `revenue_validation: Optional[str]` - Validation status for revenue
+- `eps_validation: Optional[str]` - Validation status for EPS
+- `revenue_sources: Optional[List[str]]` - Sources compared for revenue
+- `eps_sources: Optional[List[str]]` - Sources compared for EPS
+- `revenue_discrepancy_pct: Optional[float]` - Max % difference between sources
+- `eps_discrepancy_pct: Optional[float]` - Max % difference between sources
+
+**New Function: validate_across_sources()**
+Cross-validates a value across multiple fallback sources with configurable tolerance.
+
+**New Function: gather_all_fallback_data()**
+Fetches data from ALL available fallback sources for a ticker.
+
+**New Function: cross_validate_fallback_year()**
+Cross-validates a specific year/metric across all fallback sources.
+
+**Updated Function: extract_concept_values()**
+Now tries ALL concepts and returns the one with the most recent fiscal year end date.
+
+**Updated Fallback Logic**
+Changed from sequential fallback to parallel gathering with cross-validation:
+- Old: yfinance → Alpha Vantage → Finnhub (first success wins)
+- New: Gather all sources → Cross-validate per year/metric → Apply tolerance logic
+
+### Results After Implementation
+
+**SEC Concept Selection Fix:**
+| Ticker | Before | After | Change |
+|--------|--------|-------|--------|
+| NVDA | $26.9B (2022) | $130.5B (2025) | ✅ Correct concept selected |
+| WFC | $85.0B (2019) | $82.3B (2024) | ✅ Correct concept selected |
+| GS | No data | $53.5B (2024) | ✅ SEC data now found |
+| BKNG | No data | $23.7B (2024) | ✅ SEC data now found |
+
+**Cross-Validation Results (V - Visa EPS):**
+| Year | yfinance | Alpha Vantage | Discrepancy | Status | Final Value |
+|------|----------|---------------|-------------|--------|-------------|
+| 2024-09-30 | 9.73 | 10.05 | 3.18% | validated | 9.73 |
+| 2023-09-30 | 8.29 | 8.75 | 5.48% | averaged | 8.52 |
+| 2025-09-30 | 10.20 | 11.47 | 11.07% | discrepancy | 10.835 |
+
+### Output JSON Example
+```json
+{
+  "fiscal_year_end": "2024-09-30",
+  "revenue": 35926000000,
+  "eps_diluted": 9.73,
+  "revenue_concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+  "eps_concept": "fallback:yfinance,alphavantage",
+  "eps_validation": "validated",
+  "eps_sources": ["yfinance", "alphavantage"],
+  "eps_discrepancy_pct": 3.18
+}
+```
+
+### Validation Status Meanings
+- **validated**: Multiple sources agree within 5% tolerance - high confidence
+- **averaged**: Sources differ by 5-10% - averaged for best estimate
+- **discrepancy**: Sources differ by >10% - notable discrepancy, investigate manually
+- **single_source**: Only one fallback source had data - cannot validate
+
+### Technical Details
+
+**Concept Selection Algorithm**:
+```python
+# Old: First match wins
+for concept in concepts:
+    if concept in data:
+        return data[concept]  # Returns potentially outdated concept
+
+# New: Most recent data wins
+all_results = []
+for concept in concepts:
+    if concept in data:
+        most_recent = max(data[concept], key=lambda x: x['end'])
+        all_results.append({'concept': concept, 'most_recent_end': most_recent['end'], 'data': data[concept]})
+return max(all_results, key=lambda x: x['most_recent_end'])['data']
+```
+
+**Cross-Validation Algorithm**:
+```python
+# Gather values from all sources for a year
+source_values = {
+    'yfinance': get_value_for_year(yf_df, year, metric),
+    'alphavantage': get_value_for_year(av_df, year, metric),
+    'finnhub': get_value_for_year(fh_df, year, metric),
+}
+
+# Calculate max discrepancy
+max_val, min_val = max(values), min(values)
+discrepancy_pct = ((max_val - min_val) / max_val) * 100
+
+# Apply tolerance logic
+if discrepancy_pct <= 5:
+    return ValidationResult(value=primary_value, status='validated')
+elif discrepancy_pct <= 10:
+    return ValidationResult(value=average(values), status='averaged')
+else:
+    return ValidationResult(value=average(values), status='discrepancy')
+```
+
+### API Keys Required
+- `ALPHA_VANTAGE_API_KEY`: For Alpha Vantage fallback
+- `FINNHUB_API_KEY`: For Finnhub fallback
+- yfinance requires no API key
+
+### Notes
+- SEC EDGAR remains the primary authoritative source - fallback only used when SEC data is missing
+- The concept selection fix ensures we always get the most current SEC data available
+- Cross-validation provides transparency into data quality for fallback sources
+- Discrepancy flags help identify tickers that may need manual review
+
+---
+
+## 2025-01-XX: SP100 Growth Collector - Multi-Source Fallback Implementation
+
+### Summary
+Enhanced the SP100 Growth Collector with a comprehensive multi-source fallback system to dramatically reduce null values in the output. Previously, many tickers (especially banks and companies with non-standard fiscal years) had missing revenue and EPS data. The new fallback hierarchy ensures near-complete data coverage across all S&P 100 companies.
+
+### Problem
+Analysis of the live `sp100growth.json` output revealed significant data gaps:
+- **Bank stocks (GS, WFC, MS)**: SEC EDGAR uses different revenue concepts for financials (`RevenuesNetOfInterestExpense` instead of `Revenues`)
+- **NVDA**: SEC data only went back to 2022 due to concept priority issues
+- **V (Visa)**: Missing EPS data
+- **BRK-B**: Doesn't report standard EPS
+
+### Solution
+Implemented a three-tier fallback hierarchy for annual data:
+1. **SEC EDGAR** (Primary): Standard XBRL concepts with expanded revenue list for financials
+2. **yfinance** (First Fallback): Free Yahoo Finance data via `yfinance` library
+3. **Alpha Vantage** (Second Fallback): Premium API with `ALPHA_VANTAGE_API_KEY`
+4. **Finnhub** (Final Fallback): Existing API already configured
+
+### Changes Made
+
+#### sp100growth/config.yml
+- Added new SEC concepts for financial sector:
+  - `RevenuesNetOfInterestExpense` - Used by banks like Goldman Sachs, Wells Fargo
+  - `NoninterestIncome` - Fee-based income for banks
+  - `NetInterestIncome` - Interest income for banks
+  - `TotalRevenuesNet` - Alternative revenue concept
+  - `InterestAndDividendIncomeOperating` - Investment income
+  - `FinancialServicesRevenue` - Broad financial services
+  - `InsurancePremiumsRevenueNet` - Insurance revenue
+- Added `yfinance: enabled: true` configuration
+- Added `alphavantage: enabled: true` configuration
+
+#### sp100growth/fetch_sp100_growth.py
+- Added `yfinance_annual_financials()` function:
+  - Fetches annual income statement from Yahoo Finance
+  - Extracts `Total Revenue` and `Diluted EPS`
+  - Returns DataFrame with `end`, `revenue`, `eps_diluted`, `source`
+- Added `alphavantage_annual_financials()` function:
+  - Uses `INCOME_STATEMENT` and `EARNINGS` API endpoints
+  - Returns annual revenue and EPS data
+  - Reads API key from `ALPHA_VANTAGE_API_KEY` environment variable
+- Added `finnhub_annual_financials()` function:
+  - Extends existing Finnhub quarterly support to annual data
+  - Uses `freq=annual` parameter
+- Updated `Config` dataclass:
+  - Added `yfinance_enabled: bool`
+  - Added `alphavantage_enabled: bool`
+  - Added `alphavantage_api_key: str`
+- Updated `extract_company_data()`:
+  - Detects when annual records have null revenue or EPS
+  - Cascades through fallback sources in priority order
+  - Uses year-based matching to handle fiscal year variations (e.g., 2022-01-30 vs 2022-01-31)
+  - Records fallback source in `revenue_concept` and `eps_concept` fields (e.g., `fallback:yfinance`)
+- Updated metadata and README section in output JSON to document all data sources
+
+### Results After Implementation
+| Ticker | Before | After | Source |
+|--------|--------|-------|--------|
+| GS | Null revenue | $53.5B | SEC (RevenuesNetOfInterestExpense) |
+| NVDA | Null 2023-2025 revenue | $130B (2025) | yfinance fallback |
+| WFC | Null revenue | $82.3B | yfinance fallback |
+| V | Null EPS | $10.20 | yfinance fallback |
+| BRK-B | Null EPS | $41.27 | yfinance fallback |
+| BKNG | Working | $23.7B | SEC (unchanged) |
+
+### Technical Details
+
+**Fallback Matching Logic**:
+- First attempts exact date match (e.g., `2024-12-31`)
+- Falls back to year match (e.g., `2024-*`) to handle fiscal year variations
+- Adds missing years entirely from fallback if not present in SEC data
+
+**Source Tracking**:
+- `revenue_concept` and `eps_concept` fields now indicate data source:
+  - SEC concept name (e.g., `RevenueFromContractWithCustomerExcludingAssessedTax`)
+  - `fallback:yfinance` - Data from Yahoo Finance
+  - `fallback:alphavantage` - Data from Alpha Vantage API
+  - `fallback:finnhub` - Data from Finnhub API
+
+### Environment Variables
+- `ALPHA_VANTAGE_API_KEY`: Required for Alpha Vantage fallback (already set in GitHub secrets)
+- `FINNHUB_API_KEY`: Required for Finnhub fallback (already set in GitHub secrets)
+
+### Notes
+- yfinance requires no API key and is the preferred first fallback
+- The `yfinance` package is already in `requirements.txt`
+- Fallback data is only used when SEC EDGAR data is null
+- SEC EDGAR remains the primary authoritative source
+
+---
+
 ## 2025-11-28: Extended Holiday Gap Fix to All Major Index Collectors
 
 ### Summary

@@ -16,7 +16,7 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 | **Analyst Trends** | Recommendation changes (buy/hold/sell) | Nightly (11pm ET) | Finnhub |
 | **Earnings Calendar** | Upcoming earnings releases + estimates | Nightly (11pm ET) | Finnhub |
 | **Earnings Surprises** | Historical EPS vs estimates | Nightly (11pm ET) | Finnhub |
-| **SP100 Growth** | Revenue & EPS growth metrics for S&P 100 | Nightly (11:15pm ET) | SEC EDGAR |
+| **SP100 Growth** | Revenue & EPS growth metrics for S&P 100 | Nightly (11:15pm ET) | SEC EDGAR + fallback¹ |
 | **Advance/Decline** | Market breadth indicators (with caching) | Every 10 min (market hours) | Yahoo Finance |
 | **Major Indexes** | S&P 500, Dow, Nasdaq tracking (with caching) | Every 10 min (market hours) | Yahoo Finance |
 | **Implied Volatility** | VIX and options volatility | Every 10 min (market hours) | Yahoo Finance |
@@ -25,6 +25,8 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 | **Labor & Employment** | Unemployment, payrolls, wages, job openings | Daily (12pm ET Mon-Fri) | FRED |
 | **Money & Markets** | Fed funds, Treasuries, yield spread, M2 | Daily (12pm ET Mon-Fri) | FRED |
 | **Mean Reversion** | Price vs MA metrics + MA spreads with z-scores | Every 10 min (market hours) | Yahoo Finance |
+
+¹ **SP100 Growth Data Sources**: Primary source is SEC EDGAR XBRL filings. When SEC data is unavailable (e.g., some financial sector companies, companies with non-standard filings), uses 3-source consensus validation: yfinance, Alpha Vantage, and FMP (Financial Modeling Prep). If 2+ sources agree within 5%, the value is marked "validated". If all sources differ, the average is used and marked "discrepancy".
 
 ## 🚀 Quick Start
 
@@ -190,6 +192,8 @@ This repository uses GitHub Actions to automatically collect data and publish to
 1. **Create secrets** in repository settings:
    - `FINNHUB_API_KEY` - Your Finnhub API key
    - `FRED_API_KEY` - Your FRED API key
+   - `ALPHA_VANTAGE_API_KEY` - Your Alpha Vantage API key (for SP100 Growth fallback)
+   - `FMP_API_KEY` - Your Financial Modeling Prep API key (for SP100 Growth tiebreaker)
    - `DATA_REPO_TOKEN` - Personal access token with `repo` scope
 
 2. **Enable Actions** in Settings → Actions → General

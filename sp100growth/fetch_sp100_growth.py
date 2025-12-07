@@ -3,18 +3,25 @@
 SP100 Growth Extractor - SEC EDGAR data extractor for annual & quarterly financials.
 
 Pulls annual (10-K) and quarterly (10-Q) revenue and EPS data from SEC EDGAR,
-with Finnhub fallback for quarterly data. Calculates YoY growth, TTM, and CAGR.
+with multi-source fallback for complete data coverage. Calculates YoY growth, TTM, and CAGR.
 
 This collector fetches fundamental growth metrics for S&P 100 companies:
 - Annual revenue and EPS (from 10-K filings)
-- Quarterly revenue and EPS (from 10-Q filings, with Finnhub fallback)
+- Quarterly revenue and EPS (from 10-Q filings)
 - Year-over-Year growth rates
 - Trailing Twelve Months (TTM) metrics
 - 3-year and 5-year CAGR
 
-Data Sources:
+Data Sources (in priority order):
 - SEC EDGAR: Primary source for all annual and quarterly data
-- Finnhub API: Fallback for quarterly data when SEC data is incomplete
+- yfinance (Yahoo Finance): First fallback for annual data
+- Alpha Vantage API: Second fallback for annual data
+- Finnhub API: Final fallback for annual data, also used for quarterly fallback
+
+The fallback hierarchy ensures maximum data coverage, especially for:
+- Financial sector companies (banks use different revenue concepts)
+- Companies with non-standard SEC filings
+- Recent quarters before SEC filings are available
 
 Usage:
     python fetch_sp100_growth.py                    # Use S&P 100 universe
@@ -24,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -58,6 +66,16 @@ from shared.sp100_universe import fetch_sp100_tickers
 # ============================================================================
 
 @dataclass
+class ValidationResult:
+    """Result of cross-validating a value across multiple fallback sources."""
+    value: Optional[float] = None
+    status: str = "none"  # "validated", "averaged", "discrepancy", "single_source", "none"
+    sources_compared: List[str] = field(default_factory=list)
+    source_values: Dict[str, float] = field(default_factory=dict)
+    discrepancy_pct: Optional[float] = None  # Max percentage difference between sources
+
+
+@dataclass
 class AnnualRecord:
     """Single year of financial data."""
     fiscal_year_end: str
@@ -65,6 +83,13 @@ class AnnualRecord:
     eps_diluted: Optional[float] = None
     revenue_concept: Optional[str] = None
     eps_concept: Optional[str] = None
+    # Validation fields for fallback data
+    revenue_validation: Optional[str] = None  # "validated", "averaged", "discrepancy", "single_source", None
+    eps_validation: Optional[str] = None
+    revenue_sources: Optional[List[str]] = None  # Sources compared for revenue
+    eps_sources: Optional[List[str]] = None  # Sources compared for EPS
+    revenue_discrepancy_pct: Optional[float] = None  # Max % diff between sources
+    eps_discrepancy_pct: Optional[float] = None
 
 
 @dataclass
@@ -127,6 +152,11 @@ class Config:
     indent: int
     finnhub_enabled: bool
     finnhub_api_key: str
+    yfinance_enabled: bool
+    alphavantage_enabled: bool
+    alphavantage_api_key: str
+    fmp_enabled: bool  # Financial Modeling Prep (tiebreaker for discrepancies)
+    fmp_api_key: str
 
     @staticmethod
     def from_yaml(path: str) -> "Config":
@@ -136,9 +166,14 @@ class Config:
         sec = raw.get("sec", {})
         output = raw.get("output", {})
         finnhub = raw.get("finnhub", {})
+        yfinance = raw.get("yfinance", {})
+        alphavantage = raw.get("alphavantage", {})
+        fmp = raw.get("fmp", {})
         
-        # Read Finnhub API key from environment variable (standard pattern)
+        # Read API keys from environment variables (standard pattern)
         finnhub_api_key = os.environ.get("FINNHUB_API_KEY", "")
+        alphavantage_api_key = os.environ.get("ALPHA_VANTAGE_API_KEY", "")
+        fmp_api_key = os.environ.get("FMP_API_KEY", "")
         
         return Config(
             user_agent=sec.get("user_agent", ""),
@@ -150,6 +185,11 @@ class Config:
             indent=output.get("indent", 2),
             finnhub_enabled=finnhub.get("enabled", False),
             finnhub_api_key=finnhub_api_key,
+            yfinance_enabled=yfinance.get("enabled", True),
+            alphavantage_enabled=alphavantage.get("enabled", False),
+            alphavantage_api_key=alphavantage_api_key,
+            fmp_enabled=fmp.get("enabled", False),  # Disabled by default - only enable when needed
+            fmp_api_key=fmp_api_key,
         )
 
 
@@ -250,6 +290,457 @@ def finnhub_quarterly_financials(symbol: str, api_key: str, timeout: int = 15) -
 
 
 # ============================================================================
+# Multi-Source Validation (Consensus-Based)
+# ============================================================================
+
+def _values_match(v1: float, v2: float, tolerance_pct: float) -> bool:
+    """Check if two values are within tolerance percentage of each other."""
+    if v1 == 0 and v2 == 0:
+        return True
+    if v1 == 0 or v2 == 0:
+        return False
+    max_val = max(abs(v1), abs(v2))
+    diff_pct = abs(v1 - v2) / max_val * 100
+    return diff_pct <= tolerance_pct
+
+
+def validate_across_sources(
+    source_values: Dict[str, Optional[float]],
+    tolerance_pct: float = 5.0
+) -> ValidationResult:
+    """
+    Cross-validate a value using consensus-based voting.
+    
+    Logic:
+    - If 2+ sources agree (within tolerance): Use the consensus value, status = "validated"
+    - If all sources differ: Average all values, status = "discrepancy"
+    - If only 1 source: Use that value, status = "single_source"
+    
+    Args:
+        source_values: Dict mapping source name to value (e.g., {"yfinance": 10.2, "alphavantage": 10.3, "fmp": 10.2})
+        tolerance_pct: Maximum percentage difference to consider values as "matching" (default 5%)
+    
+    Returns:
+        ValidationResult with consensus value and validation status
+    """
+    # Filter out None values
+    valid_sources = {k: v for k, v in source_values.items() if v is not None}
+    
+    if not valid_sources:
+        return ValidationResult(status="none")
+    
+    if len(valid_sources) == 1:
+        source_name, value = list(valid_sources.items())[0]
+        return ValidationResult(
+            value=value,
+            status="single_source",
+            sources_compared=[source_name],
+            source_values=valid_sources
+        )
+    
+    # Calculate overall discrepancy for reporting
+    values = list(valid_sources.values())
+    max_val = max(values)
+    min_val = min(values)
+    discrepancy_pct = ((max_val - min_val) / max_val) * 100 if max_val > 0 else 0
+    
+    # With only 2 sources, check if they match
+    if len(valid_sources) == 2:
+        source_names = list(valid_sources.keys())
+        v1, v2 = values[0], values[1]
+        if _values_match(v1, v2, tolerance_pct):
+            return ValidationResult(
+                value=v1,  # Use first source
+                status="validated",
+                sources_compared=source_names,
+                source_values=valid_sources,
+                discrepancy_pct=round(discrepancy_pct, 2)
+            )
+        else:
+            # 2 sources disagree - average and flag
+            avg_value = sum(values) / len(values)
+            return ValidationResult(
+                value=avg_value,
+                status="discrepancy",
+                sources_compared=source_names,
+                source_values=valid_sources,
+                discrepancy_pct=round(discrepancy_pct, 2)
+            )
+    
+    # With 3+ sources, find consensus (2+ sources that agree)
+    source_names = list(valid_sources.keys())
+    
+    # Check all pairs to find consensus groups
+    for i, (name1, val1) in enumerate(valid_sources.items()):
+        matching_sources = [name1]
+        matching_values = [val1]
+        
+        for j, (name2, val2) in enumerate(valid_sources.items()):
+            if i != j and _values_match(val1, val2, tolerance_pct):
+                matching_sources.append(name2)
+                matching_values.append(val2)
+        
+        # If 2+ sources agree, we have consensus
+        if len(matching_sources) >= 2:
+            # Use the average of matching values for precision
+            consensus_value = sum(matching_values) / len(matching_values)
+            return ValidationResult(
+                value=consensus_value,
+                status="validated",
+                sources_compared=source_names,
+                source_values=valid_sources,
+                discrepancy_pct=round(discrepancy_pct, 2)
+            )
+    
+    # No consensus found - all sources differ, average and flag as discrepancy
+    avg_value = sum(values) / len(values)
+    return ValidationResult(
+        value=avg_value,
+        status="discrepancy",
+        sources_compared=source_names,
+        source_values=valid_sources,
+        discrepancy_pct=round(discrepancy_pct, 2)
+    )
+
+
+def gather_all_fallback_data(
+    ticker: str, 
+    config,
+    years_to_fetch: int = 6
+) -> Dict[str, pd.DataFrame]:
+    """
+    Fetch data from ALL available fallback sources for consensus-based validation.
+    
+    Sources (in order):
+    - yfinance: Free, no API key required
+    - Alpha Vantage: Requires ALPHA_VANTAGE_API_KEY
+    - FMP (Financial Modeling Prep): Requires FMP_API_KEY (250 calls/day limit)
+    
+    Note: Finnhub is reserved for quarterly fallback only.
+    
+    Returns dict mapping source name to DataFrame with columns: end, revenue, eps_diluted
+    """
+    all_sources = {}
+    
+    # yfinance (always try - no API key needed)
+    if config.yfinance_enabled:
+        yf_df = yfinance_annual_financials(ticker, years_to_fetch)
+        if not yf_df.empty:
+            all_sources["yfinance"] = yf_df
+    
+    # Alpha Vantage
+    if config.alphavantage_enabled and config.alphavantage_api_key:
+        av_df = alphavantage_annual_financials(ticker, config.alphavantage_api_key, years_to_fetch)
+        if not av_df.empty:
+            all_sources["alphavantage"] = av_df
+    
+    # FMP (Financial Modeling Prep) - primary validation source
+    if config.fmp_enabled and config.fmp_api_key:
+        fmp_df = fmp_annual_financials(ticker, config.fmp_api_key, years_to_fetch)
+        if not fmp_df.empty:
+            all_sources["fmp"] = fmp_df
+    
+    return all_sources
+
+
+def cross_validate_fallback_year(
+    year_date: str,
+    all_sources: Dict[str, pd.DataFrame],
+    metric: str,  # "revenue" or "eps_diluted"
+    tolerance_pct: float = 5.0
+) -> ValidationResult:
+    """
+    Cross-validate a specific year/metric across all fallback sources.
+    
+    Args:
+        year_date: Fiscal year end date (e.g., "2024-12-31")
+        all_sources: Dict from gather_all_fallback_data()
+        metric: "revenue" or "eps_diluted"
+        tolerance_pct: Tolerance for considering values validated
+    
+    Returns:
+        ValidationResult with cross-validated value
+    """
+    year_prefix = year_date[:4]  # Extract year for fuzzy matching
+    source_values = {}
+    
+    for source_name, df in all_sources.items():
+        # Try exact match first
+        match = df[df["end"] == year_date]
+        if match.empty:
+            # Try year match (handles different fiscal year endings)
+            match = df[df["end"].str.startswith(year_prefix)]
+        
+        if not match.empty:
+            val = match.iloc[0].get(metric)
+            if pd.notna(val):
+                source_values[source_name] = float(val)
+    
+    return validate_across_sources(source_values, tolerance_pct)
+
+
+# ============================================================================
+# yfinance Fallback (Annual)
+# ============================================================================
+
+def yfinance_annual_financials(symbol: str, years_to_fetch: int = 6) -> pd.DataFrame:
+    """
+    Fetch annual revenue and EPS from Yahoo Finance.
+    Returns DataFrame with columns: end, revenue, eps_diluted, source
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        print(f"[warn] yfinance not installed, skipping yfinance fallback")
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+    
+    try:
+        ticker = yf.Ticker(symbol)
+        income_stmt = ticker.income_stmt
+        
+        if income_stmt is None or income_stmt.empty:
+            return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+        
+        rows = []
+        for col in income_stmt.columns[:years_to_fetch]:
+            # col is a Timestamp for the fiscal year end
+            end_date = col.strftime("%Y-%m-%d")
+            
+            # Revenue - try multiple field names
+            revenue = None
+            for rev_field in ["Total Revenue", "Revenue", "Total Operating Revenue", "Gross Revenue"]:
+                if rev_field in income_stmt.index:
+                    val = income_stmt.loc[rev_field, col]
+                    if pd.notna(val):
+                        revenue = float(val)
+                        break
+            
+            # EPS Diluted - try multiple field names
+            eps = None
+            for eps_field in ["Diluted EPS", "Basic EPS", "EPS"]:
+                if eps_field in income_stmt.index:
+                    val = income_stmt.loc[eps_field, col]
+                    if pd.notna(val):
+                        eps = float(val)
+                        break
+            
+            if revenue is not None or eps is not None:
+                rows.append({
+                    "end": end_date,
+                    "revenue": revenue,
+                    "eps_diluted": eps,
+                    "source": "yfinance"
+                })
+        
+        if not rows:
+            return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+        
+        df = pd.DataFrame(rows)
+        df = df.sort_values("end", ascending=False).drop_duplicates("end", keep="first")
+        return df
+        
+    except Exception as e:
+        print(f"[warn] yfinance error for {symbol}: {e}")
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+
+
+# ============================================================================
+# Alpha Vantage Fallback (Annual)
+# ============================================================================
+
+def alphavantage_annual_financials(symbol: str, api_key: str, years_to_fetch: int = 6, timeout: int = 15) -> pd.DataFrame:
+    """
+    Fetch annual revenue and EPS from Alpha Vantage.
+    Returns DataFrame with columns: end, revenue, eps_diluted, source
+    """
+    if not api_key:
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+    
+    base = "https://www.alphavantage.co/query"
+    rows = {}
+    
+    # Income statement for revenue and EPS
+    try:
+        url = f"{base}?function=INCOME_STATEMENT&symbol={symbol}&apikey={api_key}"
+        r = requests.get(url, timeout=timeout)
+        if r.status_code == 200:
+            js = r.json()
+            for report in (js.get("annualReports") or [])[:years_to_fetch]:
+                fiscal_end = report.get("fiscalDateEnding")
+                if not fiscal_end:
+                    continue
+                
+                rec = rows.setdefault(fiscal_end, {"end": fiscal_end, "source": "alphavantage"})
+                
+                # Revenue
+                rev = report.get("totalRevenue")
+                if rev and rev != "None":
+                    try:
+                        rec["revenue"] = float(rev)
+                    except:
+                        pass
+                
+                # EPS (Alpha Vantage earnings endpoint)
+    except Exception as e:
+        print(f"[warn] Alpha Vantage income statement error for {symbol}: {e}")
+    
+    # Also fetch earnings for EPS
+    try:
+        url = f"{base}?function=EARNINGS&symbol={symbol}&apikey={api_key}"
+        r = requests.get(url, timeout=timeout)
+        if r.status_code == 200:
+            js = r.json()
+            for report in (js.get("annualEarnings") or [])[:years_to_fetch]:
+                fiscal_end = report.get("fiscalDateEnding")
+                if not fiscal_end:
+                    continue
+                
+                rec = rows.setdefault(fiscal_end, {"end": fiscal_end, "source": "alphavantage"})
+                
+                eps = report.get("reportedEPS")
+                if eps and eps != "None":
+                    try:
+                        rec["eps_diluted"] = float(eps)
+                    except:
+                        pass
+    except Exception as e:
+        print(f"[warn] Alpha Vantage earnings error for {symbol}: {e}")
+    
+    if not rows:
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+    
+    df = pd.DataFrame(list(rows.values()))
+    df = df.sort_values("end", ascending=False).drop_duplicates("end", keep="first")
+    return df
+
+
+# ============================================================================
+# Finnhub Annual Fallback
+# ============================================================================
+
+def finnhub_annual_financials(symbol: str, api_key: str, years_to_fetch: int = 6, timeout: int = 15) -> pd.DataFrame:
+    """
+    Fetch annual revenue and EPS from Finnhub.
+    Returns DataFrame with columns: end, revenue, eps_diluted, source
+    """
+    if not api_key:
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+    
+    base = "https://finnhub.io/api/v1"
+    rows = {}
+    
+    # Income statement for revenue (annual frequency)
+    try:
+        url = f"{base}/stock/financials?symbol={symbol}&statement=ic&freq=annual&token={api_key}"
+        r = requests.get(url, timeout=timeout)
+        if r.status_code == 200:
+            js = r.json() or {}
+            for item in (js.get("data") or [])[:years_to_fetch]:
+                end = item.get("period") or item.get("endDate") or item.get("end")
+                if not end:
+                    continue
+                rec = rows.setdefault(end, {"end": end, "source": "finnhub"})
+                
+                # Revenue
+                rev = item.get("revenue") or item.get("totalRevenue") or item.get("Revenue")
+                if rev is not None:
+                    try:
+                        rec["revenue"] = float(rev)
+                    except:
+                        pass
+                
+                # EPS Diluted
+                eps = item.get("epsdiluted") or item.get("epsDiluted") or item.get("EPSDiluted")
+                if eps is not None:
+                    try:
+                        rec["eps_diluted"] = float(eps)
+                    except:
+                        pass
+    except Exception:
+        pass
+    
+    if not rows:
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+    
+    df = pd.DataFrame(list(rows.values()))
+    df = df.sort_values("end", ascending=False).drop_duplicates("end", keep="first")
+    return df
+
+
+# ============================================================================
+# Financial Modeling Prep (FMP) - Primary Validation Source
+# ============================================================================
+
+def fmp_annual_financials(symbol: str, api_key: str, years_to_fetch: int = 6, timeout: int = 15) -> pd.DataFrame:
+    """
+    Fetch annual revenue and EPS from Financial Modeling Prep API.
+    
+    FMP is used as part of the 3-source consensus validation system.
+    With ~100 tickers and 250 calls/day, FMP provides reliable third-party 
+    validation for all fallback data.
+    
+    Returns DataFrame with columns: end, revenue, eps_diluted, source
+    """
+    if not api_key:
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+    
+    base = "https://financialmodelingprep.com/stable"
+    rows = {}
+    
+    try:
+        # Income statement endpoint provides revenue, net income, and EPS
+        url = f"{base}/income-statement?symbol={symbol}&apikey={api_key}"
+        r = requests.get(url, timeout=timeout)
+        
+        if r.status_code == 200:
+            data = r.json()
+            
+            # Response is a list of annual reports, most recent first
+            for item in (data or [])[:years_to_fetch]:
+                # Only process annual (FY) periods
+                period = item.get("period", "")
+                if period != "FY":
+                    continue
+                
+                # Get fiscal year end date
+                end = item.get("date")  # Format: "2025-09-30"
+                if not end:
+                    continue
+                
+                rec = rows.setdefault(end, {"end": end, "source": "fmp"})
+                
+                # Revenue
+                rev = item.get("revenue")
+                if rev is not None:
+                    try:
+                        rec["revenue"] = float(rev)
+                    except:
+                        pass
+                
+                # EPS Diluted
+                eps = item.get("epsDiluted")
+                if eps is not None:
+                    try:
+                        rec["eps_diluted"] = float(eps)
+                    except:
+                        pass
+        elif r.status_code == 429:
+            print(f"[warn] FMP rate limit reached for {symbol}")
+        else:
+            print(f"[warn] FMP error for {symbol}: HTTP {r.status_code}")
+            
+    except Exception as e:
+        print(f"[warn] FMP error for {symbol}: {e}")
+    
+    if not rows:
+        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
+    
+    df = pd.DataFrame(list(rows.values()))
+    df = df.sort_values("end", ascending=False).drop_duplicates("end", keep="first")
+    return df
+
+
+# ============================================================================
 # Data Extraction Helpers
 # ============================================================================
 
@@ -297,10 +788,19 @@ def extract_concept_values(
     filter_func=None
 ) -> List[dict]:
     """
-    Extract values for a list of concept names (first match wins).
+    Extract values for a list of concept names, selecting the concept with 
+    the most recent data (not first match).
+    
+    This fixes issues where older concepts (like RevenueFromContractWithCustomer
+    ExcludingAssessedTax) are listed first but have outdated data, while newer
+    concepts (like Revenues) have current data.
+    
     Returns list of {end, val, concept, filed} dicts.
     """
     facts = companyfacts.get("facts", {}) or {}
+    
+    # Collect data from ALL matching concepts, then pick best one
+    all_concept_results = []
     
     for taxonomy in ("us-gaap", "dei"):
         sec = facts.get(taxonomy, {}) or {}
@@ -335,9 +835,28 @@ def extract_concept_values(
                 
                 if filtered_rows:
                     deduped = _dedupe_by_end(filtered_rows)
-                    return deduped
+                    # Track the most recent end date for this concept
+                    most_recent_end = max(r.get("end", "") for r in deduped)
+                    all_concept_results.append({
+                        "concept": concept_name,
+                        "most_recent_end": most_recent_end,
+                        "data": deduped
+                    })
     
-    return []
+    if not all_concept_results:
+        return []
+    
+    # Select the concept with the most recent fiscal year end date
+    best_concept = max(all_concept_results, key=lambda x: x["most_recent_end"])
+    
+    # Log selection if we had multiple options
+    if len(all_concept_results) > 1:
+        logging.debug(
+            f"Selected concept '{best_concept['concept']}' with most recent data "
+            f"({best_concept['most_recent_end']}) over {len(all_concept_results)-1} other concepts"
+        )
+    
+    return best_concept["data"]
 
 
 # ============================================================================
@@ -479,6 +998,89 @@ def extract_company_data(
             revenue_concept=rev_rec["concept"] if rev_rec else None,
             eps_concept=eps_rec["concept"] if eps_rec else None,
         ))
+    
+    # ========== ANNUAL FALLBACK WITH CROSS-VALIDATION ==========
+    # Count how many annual records have null revenue or EPS
+    annual_null_revenue = sum(1 for a in annual_data if a.revenue is None)
+    annual_null_eps = sum(1 for a in annual_data if a.eps_diluted is None)
+    need_annual_fallback = (annual_null_revenue > 0 or annual_null_eps > 0 or len(annual_data) == 0)
+    
+    if need_annual_fallback:
+        # Gather data from ALL available fallback sources for consensus-based validation
+        # FMP is now included upfront for 2-out-of-3 consensus voting
+        all_fallback_sources = gather_all_fallback_data(ticker, config, config.years_to_fetch)
+        
+        if all_fallback_sources:
+            # For each annual record that needs fallback data, cross-validate
+            for a in annual_data:
+                # Revenue cross-validation
+                if a.revenue is None:
+                    rev_validation = cross_validate_fallback_year(
+                        a.fiscal_year_end, 
+                        all_fallback_sources, 
+                        "revenue",
+                        tolerance_pct=5.0
+                    )
+                    if rev_validation.value is not None:
+                        a.revenue = rev_validation.value
+                        a.revenue_concept = f"fallback:{','.join(rev_validation.sources_compared)}"
+                        a.revenue_validation = rev_validation.status
+                        a.revenue_sources = rev_validation.sources_compared
+                        a.revenue_discrepancy_pct = rev_validation.discrepancy_pct
+                
+                # EPS cross-validation
+                if a.eps_diluted is None:
+                    eps_validation = cross_validate_fallback_year(
+                        a.fiscal_year_end, 
+                        all_fallback_sources, 
+                        "eps_diluted",
+                        tolerance_pct=5.0
+                    )
+                    if eps_validation.value is not None:
+                        a.eps_diluted = eps_validation.value
+                        a.eps_concept = f"fallback:{','.join(eps_validation.sources_compared)}"
+                        a.eps_validation = eps_validation.status
+                        a.eps_sources = eps_validation.sources_compared
+                        a.eps_discrepancy_pct = eps_validation.discrepancy_pct
+            
+            # Add new years from fallback sources that we're missing entirely
+            existing_years = {a.fiscal_year_end[:4] for a in annual_data}
+            
+            # Collect all unique year dates from all sources
+            all_year_dates = {}
+            for source_name, df in all_fallback_sources.items():
+                for _, row in df.iterrows():
+                    end = row.get("end")
+                    if end:
+                        year = end[:4]
+                        if year not in existing_years:
+                            all_year_dates[year] = end
+            
+            # Add missing years with cross-validation (consensus-based)
+            for year, year_date in all_year_dates.items():
+                if year not in existing_years:
+                    rev_validation = cross_validate_fallback_year(year_date, all_fallback_sources, "revenue", 5.0)
+                    eps_validation = cross_validate_fallback_year(year_date, all_fallback_sources, "eps_diluted", 5.0)
+                    
+                    if rev_validation.value is not None or eps_validation.value is not None:
+                        annual_data.append(AnnualRecord(
+                            fiscal_year_end=year_date,
+                            revenue=rev_validation.value,
+                            eps_diluted=eps_validation.value,
+                            revenue_concept=f"fallback:{','.join(rev_validation.sources_compared)}" if rev_validation.sources_compared else None,
+                            eps_concept=f"fallback:{','.join(eps_validation.sources_compared)}" if eps_validation.sources_compared else None,
+                            revenue_validation=rev_validation.status if rev_validation.value else None,
+                            eps_validation=eps_validation.status if eps_validation.value else None,
+                            revenue_sources=rev_validation.sources_compared if rev_validation.value else None,
+                            eps_sources=eps_validation.sources_compared if eps_validation.value else None,
+                            revenue_discrepancy_pct=rev_validation.discrepancy_pct,
+                            eps_discrepancy_pct=eps_validation.discrepancy_pct,
+                        ))
+                        existing_years.add(year)
+            
+            # Re-sort and limit
+            annual_data.sort(key=lambda x: x.fiscal_year_end, reverse=True)
+            annual_data = annual_data[:config.years_to_fetch]
     
     # ========== QUARTERLY DATA (10-Q) ==========
     quarterly_data = []
@@ -729,7 +1331,8 @@ def main():
     
     print(f"[info] Processing {len(tickers)} S&P 100 ticker(s)")
     print(f"[info] Output: {config.output_dir / config.output_filename}")
-    print(f"[info] Finnhub fallback: {'enabled' if config.finnhub_enabled and config.finnhub_api_key else 'disabled'}")
+    print(f"[info] Annual fallbacks: yfinance={'enabled' if config.yfinance_enabled else 'disabled'}, Alpha Vantage={'enabled' if config.alphavantage_enabled and config.alphavantage_api_key else 'disabled'}, Finnhub={'enabled' if config.finnhub_enabled and config.finnhub_api_key else 'disabled'}")
+    print(f"[info] Quarterly fallback: Finnhub={'enabled' if config.finnhub_enabled and config.finnhub_api_key else 'disabled'}")
     
     # Load CIK mapping
     print("[info] Loading SEC CIK mapping...")
@@ -788,7 +1391,12 @@ def main():
         "purpose": "Track revenue and EPS growth for the largest US companies",
         "data_sources": {
             "primary": "SEC EDGAR (10-K and 10-Q filings)",
-            "fallback": "Finnhub API (for quarterly data when SEC is incomplete)"
+            "annual_fallbacks": [
+                "yfinance (Yahoo Finance)",
+                "Alpha Vantage API",
+                "Finnhub API"
+            ],
+            "quarterly_fallback": "Finnhub API"
         },
         "metrics_explained": {
             "revenue_yoy": {
@@ -820,6 +1428,12 @@ def main():
                 "calculation": "(end_value / start_value)^(1/5) - 1"
             }
         },
+        "concept_sources": {
+            "sec": "Direct SEC XBRL concept extraction",
+            "fallback:yfinance": "Yahoo Finance annual data via yfinance",
+            "fallback:alphavantage": "Alpha Vantage fundamental data API",
+            "fallback:finnhub": "Finnhub stock fundamentals API"
+        },
         "trading_applications": {
             "growth_screening": "Filter companies by revenue/EPS growth rates",
             "momentum_analysis": "Track acceleration/deceleration in fundamentals",
@@ -828,16 +1442,17 @@ def main():
         },
         "notes": [
             "All growth rates are decimals (multiply by 100 for percentage)",
-            "Null values indicate insufficient data",
+            "Null values indicate insufficient data from all sources",
             "Revenue figures are in USD (not scaled)",
-            "Fiscal year end dates vary by company"
+            "Fiscal year end dates vary by company",
+            "revenue_concept and eps_concept fields indicate data source"
         ]
     }
     
     # Build metadata
     metadata = {
         "generated_at": datetime.utcnow().isoformat() + "Z",
-        "data_source": "SEC EDGAR + Finnhub",
+        "data_sources": "SEC EDGAR + yfinance + Alpha Vantage + Finnhub",
         "ticker_count": len(results),
         "successful_extractions": success_count,
         "universe": "S&P 100"

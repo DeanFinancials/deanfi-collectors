@@ -1,20 +1,24 @@
 # SP100 Growth Collector
 
-Extracts annual (10-K) and quarterly (10-Q) financial data from SEC EDGAR for S&P 100 companies, with Finnhub fallback for quarterly data.
+Extracts annual (10-K) and quarterly (10-Q) financial data from SEC EDGAR for S&P 100 companies, with multi-source fallback for complete data coverage.
 
 ## What It Does
 
 1. Fetches S&P 100 ticker list from Wikipedia (with CSV fallback)
 2. Retrieves annual (10-K) and quarterly (10-Q) filings from SEC EDGAR
 3. Extracts **Revenue** and **EPS (Diluted)** metrics
-4. Calculates **Year-over-Year growth rates**, **TTM metrics**, and **CAGR**
-5. Falls back to Finnhub for missing quarterly data
+4. Uses fallback sources (yfinance, Alpha Vantage, Finnhub) when SEC data is incomplete
+5. Calculates **Year-over-Year growth rates**, **TTM metrics**, and **CAGR**
 6. Outputs a single **sp100growth.json** file
 
 ## Data Sources
 
 - **Primary**: SEC EDGAR (10-K and 10-Q filings)
-- **Fallback**: Finnhub API (for quarterly data when SEC is incomplete)
+- **Annual Fallbacks** (in priority order):
+  1. **yfinance** (Yahoo Finance) - Free, no API key required
+  2. **Alpha Vantage** - Requires `ALPHA_VANTAGE_API_KEY`
+  3. **Finnhub** - Requires `FINNHUB_API_KEY`
+- **Quarterly Fallback**: Finnhub API (when SEC quarterly data is incomplete)
 - **Universe**: Wikipedia S&P 100 constituents (with CSV fallback)
 
 ## Usage
@@ -105,7 +109,10 @@ Edit `config.yml` to customize:
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `FINNHUB_API_KEY` | Finnhub API key for quarterly fallback | Optional |
+| `FINNHUB_API_KEY` | Finnhub API key for quarterly and annual fallback | Optional |
+| `ALPHA_VANTAGE_API_KEY` | Alpha Vantage API key for annual fallback | Optional |
+
+Note: yfinance requires no API key and is the primary fallback source.
 
 ## Files
 
@@ -119,11 +126,23 @@ The S&P 100 universe is fetched from `shared/sp100_universe.py`.
 ## Dependencies
 
 - `secedgar` - SEC EDGAR API client
+- `yfinance` - Yahoo Finance API for fallback data
 - `pandas` - Data handling
 - `pyyaml` - Config parsing
 - `requests` - HTTP requests
 
 These are included in the project's `requirements.txt`.
+
+## Fallback Coverage
+
+The multi-source fallback ensures near-complete data coverage:
+
+| Ticker Type | Issue | Solution |
+|-------------|-------|----------|
+| Banks (GS, WFC, MS) | Use different revenue concepts | Expanded SEC concepts + yfinance |
+| Non-calendar FY (NVDA) | SEC data gaps | yfinance fills missing years |
+| Payment processors (V) | Missing EPS | yfinance fallback |
+| Holding companies (BRK-B) | Non-standard EPS | yfinance fallback |
 
 ## Schedule
 
