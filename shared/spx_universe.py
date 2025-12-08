@@ -7,9 +7,10 @@ Fetches the list of S&P 500 tickers with multiple fallback sources:
 3. Hardcoded list (last resort)
 
 Includes logic to remove duplicate share classes and keep the most liquid ticker.
+Also provides SEC EDGAR compatible ticker conversion.
 """
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 import pandas as pd
 import requests
 from io import StringIO
@@ -18,6 +19,13 @@ import sys
 
 WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 GITHUB_SPX_URL = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
+
+# SEC EDGAR ticker mapping (some tickers need conversion)
+# BRK.B on Wikipedia -> BRK-B for SEC EDGAR lookups
+SEC_TICKER_MAP = {
+    "BRK.B": "BRK-B",
+    "BF.B": "BF-B",
+}
 
 # Fallback: Static list (last updated: 2025-11-16)
 FALLBACK_TICKERS = [
@@ -118,13 +126,36 @@ def deduplicate_tickers(tickers: list) -> list:
     return sorted(deduplicated)
 
 
-def fetch_spx_tickers() -> list:
+def convert_ticker_for_sec(ticker: str) -> str:
+    """
+    Convert Wikipedia ticker format to SEC EDGAR format.
+    
+    Args:
+        ticker: Ticker symbol from Wikipedia
+        
+    Returns:
+        SEC EDGAR compatible ticker
+    """
+    # Apply known conversions
+    if ticker in SEC_TICKER_MAP:
+        return SEC_TICKER_MAP[ticker]
+    
+    # Replace . with - for general compatibility
+    return ticker.replace('.', '-')
+
+
+def fetch_spx_tickers(sec_compatible: bool = False) -> list:
     """
     Fetch S&P 500 ticker symbols with multiple fallback sources.
+    
+    Args:
+        sec_compatible: If True, convert tickers to SEC EDGAR compatible format
     
     Returns:
         List of S&P 500 ticker symbols (deduplicated, with . replaced by -)
     """
+    tickers = []
+    
     # Try Wikipedia first
     try:
         print("Fetching S&P 500 tickers from Wikipedia...", file=sys.stderr)
@@ -149,8 +180,13 @@ def fetch_spx_tickers() -> list:
         if df is None:
             raise ValueError("Could not find S&P 500 constituents table")
         
-        # Replace . with - for Yahoo Finance compatibility (e.g., BRK.B -> BRK-B)
-        tickers = df['Symbol'].str.replace('.', '-', regex=False).tolist()
+        # Convert tickers
+        if sec_compatible:
+            tickers = [convert_ticker_for_sec(t) for t in df['Symbol'].tolist()]
+        else:
+            # Replace . with - for Yahoo Finance compatibility (e.g., BRK.B -> BRK-B)
+            tickers = df['Symbol'].str.replace('.', '-', regex=False).tolist()
+        
         tickers = deduplicate_tickers(tickers)
         print(f"✓ Fetched {len(tickers)} tickers from Wikipedia", file=sys.stderr)
         return tickers
@@ -163,8 +199,14 @@ def fetch_spx_tickers() -> list:
         response = requests.get(GITHUB_SPX_URL, timeout=10)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.text))
-        # Replace . with - for Yahoo Finance compatibility
-        tickers = df['Symbol'].str.replace('.', '-', regex=False).tolist()
+        
+        # Convert tickers
+        if sec_compatible:
+            tickers = [convert_ticker_for_sec(t) for t in df['Symbol'].tolist()]
+        else:
+            # Replace . with - for Yahoo Finance compatibility
+            tickers = df['Symbol'].str.replace('.', '-', regex=False).tolist()
+        
         tickers = deduplicate_tickers(tickers)
         print(f"✓ Fetched {len(tickers)} tickers from GitHub", file=sys.stderr)
         return tickers

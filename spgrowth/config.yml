@@ -1,0 +1,85 @@
+# ============================================================================
+# S&P Growth Extractor Configuration
+# Extracts annual & quarterly revenue/EPS from SEC EDGAR for S&P 500 companies
+# Generates both sp100growth.json and sp500growth.json from a single run
+# ============================================================================
+
+sec:
+  # Required by SEC - use a descriptive user agent with contact info
+  user_agent: "DeanFiCollectors/1.0 (support@deanfinancials.com)"
+
+# How many years of annual data to fetch (10-K filings)
+# Note: To show 5 years of YoY growth, we need 6 years of data
+years_to_fetch: 6
+
+# How many quarters to fetch for TTM calculations
+quarters_to_fetch: 8  # 8 quarters = 2 years (for TTM YoY comparison)
+
+# SEC XBRL concepts to extract (in priority order - first match wins)
+concepts:
+  revenue:
+    # Standard revenue concepts (most companies)
+    - "RevenueFromContractWithCustomerExcludingAssessedTax"
+    - "Revenues"
+    - "SalesRevenueNet"
+    - "SalesRevenueGoodsNet"
+    - "RevenueFromContractWithCustomerIncludingAssessedTax"
+    - "TotalRevenuesAndOtherIncome"
+    # Financial services (banks, investment banks, insurance)
+    - "RevenuesNetOfInterestExpense"
+    - "NoninterestIncome"
+    - "NetInterestIncome"
+    - "TotalRevenuesNet"
+    - "InterestAndDividendIncomeOperating"
+    - "FinancialServicesRevenue"
+    - "InsurancePremiumsRevenueNet"
+  eps_diluted:
+    - "EarningsPerShareDiluted"
+    - "IncomeLossFromContinuingOperationsPerDilutedShare"
+    - "EarningsPerShareBasicAndDiluted"
+    - "EarningsPerShareBasic"
+
+# Enable yfinance fallback for annual data when SEC is incomplete
+yfinance:
+  enabled: true
+
+# Alpha Vantage fallback (API key from environment variable ALPHA_VANTAGE_API_KEY)
+alphavantage:
+  enabled: true
+
+# Finnhub "Financials As Reported" endpoint - provides raw SEC XBRL filing data
+# This is FREE and has no additional rate limits beyond standard Finnhub limits.
+# Particularly valuable for:
+# - Financial sector companies (banks use InterestIncome + NoninterestIncome as revenue)
+# - REITs (use rental/lease income instead of standard revenue)
+# - Companies where standardized APIs fail to map fields correctly
+# Uses the same FINNHUB_API_KEY environment variable as standard Finnhub.
+finnhub_as_reported:
+  enabled: true
+
+# Finnhub fallback for quarterly data (used when SEC quarterly data is incomplete)
+# API key is read from environment variable FINNHUB_API_KEY
+finnhub:
+  enabled: true
+
+# Financial Modeling Prep (FMP) - Optional final fallback source.
+# DISABLED BY DEFAULT due to 250 calls/day limit on free tier.
+# 
+# Free Tier Coverage:
+# - Works for ~90% of major SP500 tickers (AAPL, MSFT, JPM, BAC, etc.)
+# - Some tickers require premium subscription (402 error) - silently skipped
+# - Returns 5 years of annual data when available
+#
+# When enabled, FMP provides additional validation and fallback data alongside
+# yfinance, Alpha Vantage, and Finnhub As Reported.
+# API key is read from environment variable FMP_API_KEY
+fmp:
+  enabled: true
+
+# Output settings
+output:
+  # Directory for JSON files (relative to this config or absolute)
+  # In CI/CD, this is overridden to output to deanfi-data repo
+  directory: "./output"
+  # Pretty print JSON
+  indent: 2

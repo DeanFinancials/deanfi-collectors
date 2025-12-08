@@ -1,0 +1,105 @@
+name: S&P Growth Collection
+
+on:
+  schedule:
+    # Weeknights at 11:15pm Eastern (04:15 UTC Tue-Sat) - 15 minutes after analyst-trends/earnings
+    # GitHub Actions cron uses UTC; 04:15 UTC maps to:
+    #   • 11:15pm EST (standard time roughly Nov–Mar)
+    #   • 12:15am EDT (daylight saving time roughly Mar–Nov)
+    # This ensures we run after the 04:00 UTC jobs (analyst-trends, earnings) with a 15-minute buffer
+    - cron: '15 4 * * 2-6'
+  workflow_dispatch:
+    inputs:
+      universe:
+        description: 'Which universe to process'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - sp100-only
+          - sp500-only
+
+env:
+  FINNHUB_API_KEY: "${{ secrets.FINNHUB_API_KEY }}"
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+
+jobs:
+  fetch-and-publish:
+    runs-on: ubuntu-latest
+    
+    # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
+    concurrency:
+      group: deanfi-data-repo
+      cancel-in-progress: false
+    
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v4
+      
+      - name: Checkout data repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Fetch S&P growth metrics
+        run: |
+          cd spgrowth
+          
+          # Determine which universe(s) to process based on workflow input
+          UNIVERSE_FLAG=""
+          if [ "${{ github.event.inputs.universe }}" = "sp100-only" ]; then
+            UNIVERSE_FLAG="--sp100-only"
+          elif [ "${{ github.event.inputs.universe }}" = "sp500-only" ]; then
+            UNIVERSE_FLAG="--sp500-only"
+          fi
+          
+          python fetch_sp_growth.py $UNIVERSE_FLAG
+          echo "✅ S&P growth metrics fetched"
+      
+      - name: Copy to data repo
+        run: |
+          # Create directories if they don't exist
+          mkdir -p data-cache/sp100growth
+          mkdir -p data-cache/sp500growth
+          
+          # Copy files if they were generated
+          if [ -f spgrowth/output/sp100growth.json ]; then
+            cp spgrowth/output/sp100growth.json data-cache/sp100growth/
+            echo "✅ SP100 growth file copied"
+          fi
+          
+          if [ -f spgrowth/output/sp500growth.json ]; then
+            cp spgrowth/output/sp500growth.json data-cache/sp500growth/
+            echo "✅ SP500 growth file copied"
+          fi
+      
+      - name: Commit and push
+        run: |
+          cd data-cache
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Stage both directories
+          git add sp100growth/ sp500growth/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update S&P growth metrics - $(date -u +"%Y-%m-%d")"
+            git pull --rebase origin main
+            git push
+            echo "✅ Data pushed to repository"
+          fi

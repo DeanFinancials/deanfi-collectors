@@ -5,6 +5,105 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-12-08: Unified S&P Growth Collector - Added SP500 Support
+
+### Summary
+Created a unified S&P growth collector (`spgrowth/fetch_sp_growth.py`) that processes the full S&P 500 and generates both sp100growth.json and sp500growth.json from a single run. This eliminates duplicate API calls for S&P 100 companies since they're already included in the S&P 500.
+
+### Problem
+The existing sp100growth collector only processed S&P 100 companies. To add S&P 500 coverage, we could either:
+1. Create a separate collector (inefficient - duplicates API calls for all 100 SP100 companies)
+2. Create a unified collector that processes SP500 once and filters output
+
+### Solution
+Created `spgrowth/fetch_sp_growth.py` - a unified collector that:
+1. Fetches S&P 500 ticker list (full ~500 companies)
+2. Fetches S&P 100 ticker list (for filtering)
+3. Processes all S&P 500 tickers once through SEC EDGAR + fallbacks
+4. Generates two output files from the same dataset:
+   - `sp100growth.json` - Filtered to S&P 100 subset
+   - `sp500growth.json` - Full S&P 500
+
+### Key Changes
+
+#### New Files
+- `spgrowth/fetch_sp_growth.py` - Unified collector script
+- `spgrowth/config.yml` - Configuration (no hardcoded output filename)
+- `spgrowth/README.md` - Documentation
+- `.github/workflows/sp-growth.yml` - New workflow (replaces sp100-growth.yml)
+
+#### Modified Files
+- `shared/spx_universe.py`:
+  - Added `SEC_TICKER_MAP` for SEC-incompatible ticker conversions (BRK-B → BRK.B, BF-B → BF.B)
+  - Added `convert_ticker_for_sec()` function
+  - Updated `fetch_spx_tickers()` with `sec_compatible` parameter
+
+#### Data Repo Updates
+- Created `deanfi-data/sp500growth/` directory with README.md
+
+### Architecture
+
+```
+S&P 500 Tickers (500)
+       │
+       ▼
+fetch_sp_growth.py
+       │
+       ├─► SEC EDGAR API (primary)
+       ├─► yfinance (annual fallback)
+       ├─► Alpha Vantage (annual fallback)
+       └─► Finnhub (annual & quarterly fallback)
+       │
+       ▼
+   [Results Array]
+       │
+       ├─► Filter to SP100 ─► sp100growth.json
+       │
+       └─► All companies ─► sp500growth.json
+```
+
+### Command Line Options
+
+```bash
+# Default: Process SP500, output both files
+python fetch_sp_growth.py
+
+# Only SP100 output (processes SP100 only)
+python fetch_sp_growth.py --sp100-only
+
+# Only SP500 output (processes SP500)
+python fetch_sp_growth.py --sp500-only
+```
+
+### Workflow Changes
+- Renamed workflow from `sp100-growth.yml` to `sp-growth.yml`
+- Workflow now copies to both `sp100growth/` and `sp500growth/` directories
+- Added workflow dispatch input to select universe (both, sp100-only, sp500-only)
+
+### SEC Ticker Compatibility
+Some tickers have different formats between Wikipedia and SEC:
+- `BRK-B` → `BRK.B` (Berkshire Hathaway B)
+- `BF-B` → `BF.B` (Brown-Forman B)
+
+The `convert_ticker_for_sec()` function handles these conversions automatically.
+
+### Files Changed
+| File | Action | Description |
+|------|--------|-------------|
+| `spgrowth/fetch_sp_growth.py` | Created | Unified collector |
+| `spgrowth/config.yml` | Created | Configuration |
+| `spgrowth/README.md` | Created | Documentation |
+| `shared/spx_universe.py` | Modified | Added SEC ticker conversion |
+| `.github/workflows/sp-growth.yml` | Created | New workflow |
+| `deanfi-data/sp500growth/README.md` | Created | Data directory docs |
+
+### Notes
+- The original `sp100growth/` collector is preserved for reference
+- Processing ~500 companies takes approximately 15-20 minutes
+- The old `sp100-growth.yml` workflow should be disabled/removed
+
+---
+
 ## 2025-12-08: SP100 Growth Collector - Added Actual Revenue and EPS Values
 
 ### Summary
