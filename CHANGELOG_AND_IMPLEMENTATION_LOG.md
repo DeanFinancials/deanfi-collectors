@@ -5,6 +5,56 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-12-08: SP100 Growth Collector - Added Actual Revenue and EPS Values
+
+### Summary
+Enhanced the SP100 Growth collector to include actual revenue and EPS values alongside the existing growth percentages. This provides users with the raw financial data for each fiscal year (6 years) and quarter (8 quarters).
+
+### Problem
+Previously, the sp100growth.json only contained growth rates (YoY percentages, CAGR, TTM) without the underlying actual numbers. Users couldn't see the raw revenue and EPS values that these growth metrics were calculated from.
+
+### Solution
+Added two new fields to each company's output:
+- `annual_values`: Actual annual revenue and EPS for each fiscal year (keyed by year)
+- `quarterly_values`: Actual quarterly revenue and EPS (keyed by quarter label like '2024-Q3')
+
+Both use a simple format to minimize JSON bulk:
+```json
+{
+  "annual_values": {
+    "2024": {"revenue": 391035000000, "eps": 6.08},
+    "2023": {"revenue": 383285000000, "eps": 6.13}
+  },
+  "quarterly_values": {
+    "2024-Q3": {"revenue": 94930000000, "eps": 1.40},
+    "2024-Q2": {"revenue": 85777000000, "eps": 1.53}
+  }
+}
+```
+
+### Files Changed
+- `sp100growth/fetch_sp100_growth.py`:
+  - Updated `company_data_to_dict()` to include `annual_values` and `quarterly_values`
+  - Added quarter label conversion logic (e.g., "2024-09-30" → "2024-Q3")
+  - Updated `_README.metrics_explained` section to document new fields
+- `sp100growth/README.md`:
+  - Updated output format example to show new fields
+  - Added new metrics to the Metrics Explained table
+
+### Output Format
+Each company now includes:
+- `annual_values`: 6 years of annual data
+- `quarterly_values`: 8 quarters of quarterly data
+- `growth`: (existing) All calculated growth metrics
+
+### Benefits
+1. **Transparency**: Users can see the actual numbers behind growth calculations
+2. **Flexibility**: Enables custom calculations and analysis
+3. **Context**: Raw values provide context when growth percentages are extreme
+4. **Minimal Overhead**: Simple key-value format keeps JSON size manageable
+
+---
+
 ## 2025-12-07: SP100 Growth Collector - Fixed EPS YoY Calculation Edge Cases
 
 ### Summary

@@ -68,6 +68,24 @@ Output is saved to `output/sp100growth.json`:
       "cik": "0000320193",
       "company_name": "Apple Inc.",
       "extracted_at": "2025-12-06T23:30:00Z",
+      "annual_values": {
+        "2024": {"revenue": 391035000000, "eps": 6.08},
+        "2023": {"revenue": 383285000000, "eps": 6.13},
+        "2022": {"revenue": 394328000000, "eps": 6.11},
+        "2021": {"revenue": 365817000000, "eps": 5.61},
+        "2020": {"revenue": 274515000000, "eps": 3.28},
+        "2019": {"revenue": 260174000000, "eps": 2.97}
+      },
+      "quarterly_values": {
+        "2024-Q3": {"revenue": 94930000000, "eps": 1.40},
+        "2024-Q2": {"revenue": 85777000000, "eps": 1.53},
+        "2024-Q1": {"revenue": 90753000000, "eps": 1.53},
+        "2023-Q4": {"revenue": 119575000000, "eps": 2.18},
+        "2023-Q3": {"revenue": 89498000000, "eps": 1.29},
+        "2023-Q2": {"revenue": 81797000000, "eps": 1.26},
+        "2023-Q1": {"revenue": 94836000000, "eps": 1.52},
+        "2022-Q4": {"revenue": 117154000000, "eps": 1.88}
+      },
       "growth": {
         "revenue_yoy": {"2024": -0.028, "2023": 0.078},
         "eps_yoy": {"2024": -0.003, "2023": 0.041},
@@ -95,6 +113,12 @@ Output is saved to `output/sp100growth.json`:
 | Metric | Description | Format |
 |--------|-------------|--------|
 | `sector` | GICS sector classification | String (e.g., 'Information Technology') |
+| `annual_values` | Actual annual revenue and EPS by year | Object keyed by year (e.g., '2024') |
+| `annual_values[year].revenue` | Annual revenue | USD |
+| `annual_values[year].eps` | Annual diluted EPS | USD per share |
+| `quarterly_values` | Actual quarterly revenue and EPS | Object keyed by quarter (e.g., '2024-Q3') |
+| `quarterly_values[qtr].revenue` | Quarterly revenue | USD |
+| `quarterly_values[qtr].eps` | Quarterly diluted EPS | USD per share |
 | `revenue_yoy` | Year-over-year revenue growth | Decimal (0.05 = 5%) |
 | `eps_yoy` | Year-over-year EPS growth | Decimal |
 | `ttm.revenue` | Trailing 12 months revenue | USD |

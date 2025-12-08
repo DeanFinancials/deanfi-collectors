@@ -2111,12 +2111,44 @@ def extract_company_data(
 
 def company_data_to_dict(data: CompanyData) -> dict:
     """Convert CompanyData to JSON-serializable dict."""
+    # Build annual values dict: {"2024": {"revenue": 123456, "eps": 1.23}, ...}
+    annual_values = {}
+    for a in data.annual_data:
+        year = a.fiscal_year_end[:4]
+        annual_values[year] = {
+            "revenue": a.revenue,
+            "eps": a.eps_diluted,
+        }
+    
+    # Build quarterly values dict: {"2024-Q3": {"revenue": 123456, "eps": 0.45}, ...}
+    quarterly_values = {}
+    for q in data.quarterly_data:
+        # Convert date to quarter label (e.g., "2024-09-30" -> "2024-Q3")
+        try:
+            date_parts = q.fiscal_quarter_end.split("-")
+            if len(date_parts) >= 2:
+                year = date_parts[0]
+                month = int(date_parts[1])
+                quarter = (month - 1) // 3 + 1
+                quarter_label = f"{year}-Q{quarter}"
+            else:
+                quarter_label = q.fiscal_quarter_end
+        except (ValueError, AttributeError):
+            quarter_label = q.fiscal_quarter_end
+        
+        quarterly_values[quarter_label] = {
+            "revenue": q.revenue,
+            "eps": q.eps_diluted,
+        }
+    
     return {
         "ticker": data.ticker,
         "sector": get_sector(data.ticker),
         "cik": data.cik,
         "company_name": data.company_name,
         "extracted_at": data.extracted_at,
+        "annual_values": annual_values,
+        "quarterly_values": quarterly_values,
         "growth": {
             "revenue_yoy": data.growth.revenue_yoy,
             "eps_yoy": data.growth.eps_yoy,
@@ -2245,6 +2277,24 @@ def main():
                 "description": "GICS sector classification for the company",
                 "format": "String (e.g., 'Information Technology', 'Health Care', 'Financials')",
                 "source": "shared/sector_mapping.py - comprehensive S&P 500 sector mapping"
+            },
+            "annual_values": {
+                "description": "Actual annual revenue and EPS values for each fiscal year",
+                "format": "Object keyed by year (e.g., '2024', '2023')",
+                "fields": {
+                    "revenue": "Annual revenue in USD",
+                    "eps": "Annual diluted EPS in USD per share"
+                },
+                "years_available": f"{config.years_to_fetch} years of data"
+            },
+            "quarterly_values": {
+                "description": "Actual quarterly revenue and EPS values",
+                "format": "Object keyed by quarter (e.g., '2024-Q3', '2024-Q2')",
+                "fields": {
+                    "revenue": "Quarterly revenue in USD",
+                    "eps": "Quarterly diluted EPS in USD per share"
+                },
+                "quarters_available": f"{config.quarters_to_fetch} quarters of data"
             },
             "revenue_yoy": {
                 "description": "Year-over-year revenue growth rate",
