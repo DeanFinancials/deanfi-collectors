@@ -12,8 +12,12 @@ Outputs:
 import json
 import yaml
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 import pandas as pd
+
+# Use Eastern Time for market data timestamps
+ET = ZoneInfo('America/New_York')
 
 from utils import (
     get_option_snapshot,
@@ -44,7 +48,7 @@ def fetch_sector_etfs_snapshot():
     print("FETCHING SECTOR ETFs IMPLIED VOLATILITY SNAPSHOT")
     print("="*80)
     print(f"Symbols: {', '.join(SECTOR_ETFS.keys())}")
-    print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Timestamp: {datetime.now(ET).strftime('%Y-%m-%d %H:%M:%S %Z')}")
     print()
     
     results = {}
@@ -98,7 +102,7 @@ def fetch_sector_etfs_snapshot():
             'description': 'Implied volatility snapshot for S&P 500 sector ETFs',
             'data_source': 'yfinance (Yahoo Finance) - Options data',
             'update_frequency': 'Real-time (run script to update)',
-            'last_updated': datetime.now().isoformat(),
+            'last_updated': datetime.now(ET).isoformat(),
             'num_symbols': len(results),
             'symbols': list(results.keys()),
             'options_criteria': {

@@ -5,6 +5,33 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-12-12: Implied Volatility Timezone Fix
+
+### Summary
+Fixed timezone-naive timestamps in the implied volatility collectors that were causing "future" dates to display on the frontend. All timestamps now include explicit Eastern Time (ET) timezone information.
+
+### Problem
+The `last_updated` and `timestamp` fields in the IV JSON output were using `datetime.now().isoformat()`, which produces a timezone-naive ISO string (e.g., `2025-12-12T17:50:00.271216`). When the frontend parsed this with JavaScript's `Date` constructor, it was interpreted as local time on the user's machine, then converted to ET for display. This caused times to appear "in the future" for users in timezones earlier than ET.
+
+### Solution
+Added explicit Eastern Time timezone to all datetime operations using Python's built-in `zoneinfo.ZoneInfo`. Timestamps now include timezone offset (e.g., `2025-12-12T17:50:00.271216-05:00`), which JavaScript's `Date` correctly interprets.
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `impliedvol/fetch_major_indices_iv.py` | Added `zoneinfo` import, ET constant, updated all `datetime.now()` calls |
+| `impliedvol/fetch_sector_etfs_iv.py` | Added `zoneinfo` import, ET constant, updated all `datetime.now()` calls |
+| `impliedvol/fetch_vix_options.py` | Added `zoneinfo` import, ET constant, updated all `datetime.now()` calls |
+| `impliedvol/utils.py` | Added `zoneinfo` import, ET constant, updated `timestamp` in `get_option_snapshot()` |
+
+### Technical Details
+- Used `zoneinfo.ZoneInfo('America/New_York')` (Python 3.9+ stdlib, no external deps)
+- Eastern Time automatically handles EST/EDT transitions
+- Console output now shows timezone suffix (e.g., `EST` or `EDT`)
+- All ISO timestamps include UTC offset for unambiguous parsing
+
+---
+
 ## 2025-12-08: Unified S&P Growth Collector - Added SP500 Support
 
 ### Summary

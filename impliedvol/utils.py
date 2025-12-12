@@ -13,10 +13,14 @@ Provides:
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import yfinance as yf
 from typing import Dict, List, Optional, Tuple
 import warnings
 warnings.filterwarnings('ignore')
+
+# Use Eastern Time for market data timestamps
+ET = ZoneInfo('America/New_York')
 
 
 # Historical IV Reference Ranges (based on market research)
@@ -349,7 +353,7 @@ def get_option_snapshot(symbol: str,
         snapshot = {
             'symbol': symbol,
             'current_price': round(current_price, 2),
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now(ET).isoformat(),
             'expiration_date': exp_date,
             'days_to_expiration': dte,
             
