@@ -25,6 +25,8 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 | **Labor & Employment** | Unemployment, payrolls, wages, job openings | Daily (12pm ET Mon-Fri) | FRED |
 | **Money & Markets** | Fed funds, Treasuries, yield spread, M2 | Daily (12pm ET Mon-Fri) | FRED |
 | **Mean Reversion** | Price vs MA metrics + MA spreads with z-scores | Every 10 min (market hours) | Yahoo Finance |
+| **Options Whales** | Large OTM options trades with sweep detection | Twice daily (12pm & 9pm ET) | Alpaca Markets |
+| **Stock Whales** | Large stock trades with dark pool detection | Twice daily (12pm & 9pm ET) | Alpaca Markets |
 
 ¹ **SP100 Growth Data Sources**: Primary source is SEC EDGAR XBRL filings. When SEC data is unavailable (e.g., some financial sector companies, companies with non-standard filings), uses 3-source consensus validation: yfinance, Alpha Vantage, and FMP (Financial Modeling Prep). If 2+ sources agree within 5%, the value is marked "validated". If all sources differ, the average is used and marked "discrepancy".
 

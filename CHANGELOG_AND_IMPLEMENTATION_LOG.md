@@ -5,6 +5,157 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-12-17: Stock Whale Collector - GitHub Actions Workflow
+
+### Summary
+Added GitHub Actions workflow for automated stock whale collection, scheduled 30 minutes after the options whale workflow.
+
+### Schedule
+- **12:30 PM ET (mid-market)**: 30 min after options whales complete
+- **9:30 PM ET (post-market)**: 30 min after options whales complete
+- Runs Mon-Fri (market days only)
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `.github/workflows/stock-whales.yml` | Automated collection workflow |
+
+### Features
+- Manual trigger with test mode option
+- Concurrency control to prevent git conflicts with other data collectors
+- Summary output in GitHub Actions showing dark pool statistics
+- Same pattern as options-whales.yml for consistency
+
+---
+
+## 2025-12-17: Stock Whale Collector
+
+### Summary
+Created a new collector for detecting large stock trades ("whale trades") across S&P 500 constituents with a focus on dark pool (off-exchange) institutional activity. Uses the Alpaca Markets Stock Trades API with direction inference via the Lee-Ready algorithm.
+
+### Problem
+No existing tool to identify large institutional stock trades, particularly dark pool activity. Needed to:
+1. Find trades that indicate institutional activity (large share counts or dollar values)
+2. Identify dark pool trades (Exchange D = FINRA ADF)
+3. Infer trade direction (buy vs sell) using bid/ask spread analysis
+4. Provide sentiment analysis at ticker, sector, and market levels
+5. Track high-confidence trades (≥80% direction confidence) separately
+
+### Solution
+Created `stockwhales/` collector following the same pattern as `optionswhales/`:
+- **Dynamic thresholds**: Starts at 5K shares/$1M minimum, steps up through tiers until ≤10 trades per ticker
+- **Dark pool detection**: Exchange code 'D' flagged with `is_dark_pool: true`
+- **Direction inference**: Lee-Ready algorithm comparing trade price to bid/ask spread
+- **High-confidence filtering**: Trades with ≥80% confidence tracked separately
+- **Smart lookback**: Uses 5 NYSE trading days (skips weekends and holidays)
+- **Sector aggregation**: Uses GICS sector mapping for sector-level sentiment
+- **Split output**: Summary JSON (aggregates/sentiment) + Trades JSON (individual trades)
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `stockwhales/config.yml` | Configuration: thresholds, tiers, exchange codes, rate limits |
+| `stockwhales/utils.py` | Helpers: trading days, direction inference, thresholds, sentiment |
+| `stockwhales/fetch_stock_whales.py` | Main collector script with Alpaca API integration |
+| `stockwhales/README.md` | Collector documentation |
+| `deanfi-data/stock-whales/README.md` | Data output documentation |
+
+### Architecture
+
+```
+S&P 500 Tickers (via spx_universe.py)
+       │
+       ▼
+fetch_stock_whales.py
+       │
+       ├─► Alpaca /v2/stocks/{symbol}/trades (trade history)
+       └─► Alpaca /v2/stocks/{symbol}/quotes (for direction inference)
+       │
+       ▼
+Dynamic Threshold Selection
+(step up until ≤10 trades per ticker)
+       │
+       ▼
+Direction Inference (Lee-Ready Algorithm)
+       │
+       ▼
+   [Split Output]
+       │
+       ├─► stock_whale_summary.json (aggregates, sentiment, sectors, dark pool)
+       │
+       └─► stock_whale_trades.json (individual trades by ticker)
+```
+
+### Key Features
+
+#### Dynamic Threshold System
+```yaml
+tiers:
+  - shares: 5000,    value: 1000000     # $1M
+  - shares: 10000,   value: 2500000     # $2.5M
+  - shares: 25000,   value: 5000000     # $5M
+  - shares: 50000,   value: 10000000    # $10M
+  - shares: 100000,  value: 25000000    # $25M
+  # ... higher tiers
+```
+Trade qualifies if it meets EITHER threshold (OR logic).
+
+#### Tier Labels
+| Tier | Value Range | Label |
+|------|-------------|-------|
+| Notable | $1M - $2.5M | 📊 Notable |
+| Large | $2.5M - $5M | 🐋 Large |
+| Whale | $5M - $10M | 🐋🐋 Whale |
+| Mega Whale | $10M+ | 🐋🐋🐋 Mega Whale |
+
+#### Direction Inference (Lee-Ready)
+- Trade at/above ASK → 95% BUY (buyer lifted offer)
+- Trade at/below BID → 95% SELL (seller hit bid)
+- Trade near ASK (70-100%) → Likely BUY
+- Trade near BID (0-30%) → Likely SELL
+- Trade at midpoint → Direction unclear
+
+#### Dark Pool Analysis
+- Exchange D = FINRA ADF (off-exchange / dark pool)
+- Separate sentiment calculations for dark pool vs lit exchanges
+- Percentage of whale volume from dark pools
+- Typically indicates institutional block trades
+
+#### JSON Output Structure
+**Summary JSON** (`stock_whale_summary.json`):
+- `_README`: Documentation and field descriptions
+- `metadata`: Collection info (dates, counts)
+- `overall_sentiment`: Market-wide buy/sell sentiment
+- `dark_pool_sentiment`: Institutional-specific sentiment
+- `lit_exchange_sentiment`: Public exchange sentiment
+- `top_bullish_trades`: Top 10 tickers by BUY activity
+- `top_bearish_trades`: Top 10 tickers by SELL activity
+- `sector_sentiment`: Aggregated by GICS sector
+- `tier_breakdown`: Counts by size tier
+- `exchange_breakdown`: Volume by exchange
+
+**Trades JSON** (`stock_whale_trades.json`):
+- `by_ticker`: Per-ticker trade data
+  - Sentiment and direction stats
+  - Dark pool counts and values
+  - Individual trades in compact format
+
+### Usage
+
+```bash
+# Full S&P 500 scan
+python fetch_stock_whales.py
+
+# Test mode (5 tickers)
+python fetch_stock_whales.py --test
+
+# Custom tickers
+python fetch_stock_whales.py --tickers AAPL,MSFT,NVDA
+```
+
+---
+
 ## 2025-12-17: Options Whale Collector - Missing Classifications Fix
 
 ### Problem

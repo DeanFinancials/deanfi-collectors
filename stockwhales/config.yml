@@ -1,0 +1,171 @@
+# Stock Whale Collector Configuration
+# ====================================
+# Detects large stock trades ("whale trades") for S&P 500 constituents
+# using the Alpaca Markets Stock Trades API.
+# Focus on dark pool (off-exchange) institutional activity.
+
+# Data Collection Settings
+# ------------------------
+collection:
+  # Number of trading days to look back (excludes weekends/holidays)
+  lookback_trading_days: 5
+  
+  # Fetch limit per ticker request
+  fetch_limit: 10000
+
+# Dynamic Threshold Settings
+# --------------------------
+# A trade qualifies as a "whale" if it meets EITHER:
+# - shares >= share threshold, OR
+# - value >= value threshold
+#
+# We start at the minimum threshold and step up until we have target_max or fewer trades
+# Never go below minimum thresholds even if no trades are found
+thresholds:
+  # Minimum thresholds (never go below these)
+  minimum_shares: 5000       # 5K shares
+  minimum_value: 1000000     # $1M
+  
+  # Target number of trades per ticker
+  target_min: 5
+  target_max: 10
+  
+  # Absolute maximum trades to return per ticker (even if more qualify)
+  hard_max: 20
+  
+  # Threshold tiers to try (in ascending order)
+  # Format: [share_threshold, value_threshold]
+  # We step through these until we have <= target_max trades
+  tiers:
+    - shares: 5000
+      value: 1000000       # $1M
+    - shares: 10000
+      value: 2500000       # $2.5M
+    - shares: 25000
+      value: 5000000       # $5M
+    - shares: 50000
+      value: 10000000      # $10M
+    - shares: 100000
+      value: 25000000      # $25M
+    - shares: 250000
+      value: 50000000      # $50M
+    - shares: 500000
+      value: 100000000     # $100M
+    - shares: 1000000
+      value: 250000000     # $250M
+
+# Tier Labels for Display
+# -----------------------
+tier_labels:
+  notable:
+    min_value: 1000000
+    max_value: 2500000
+    label: "Notable"
+    emoji: "📊"
+  large:
+    min_value: 2500000
+    max_value: 5000000
+    label: "Large"
+    emoji: "🐋"
+  whale:
+    min_value: 5000000
+    max_value: 10000000
+    label: "Whale"
+    emoji: "🐋🐋"
+  mega_whale:
+    min_value: 10000000
+    max_value: null
+    label: "Mega Whale"
+    emoji: "🐋🐋🐋"
+
+# Direction Inference Settings
+# ----------------------------
+direction:
+  # Minimum confidence threshold for high-confidence summaries
+  high_confidence_threshold: 80
+  
+  # Quote position thresholds for direction inference
+  near_ask_threshold: 0.7    # >= 70% of spread = near ask
+  near_bid_threshold: 0.3    # <= 30% of spread = near bid
+
+# Ticker Size Multipliers
+# -----------------------
+# Larger, more liquid tickers require higher thresholds to be considered "whale"
+# These multipliers are applied to the threshold tiers
+ticker_size:
+  multipliers:
+    mega: 2.0    # SPY, QQQ, AAPL, MSFT, etc. - very liquid
+    large: 1.5   # TSLA, NVDA, META - highly active
+    mid: 1.0     # Standard threshold (default)
+    small: 0.5   # Less liquid names
+
+# Rate Limiting Settings
+# ----------------------
+# Alpaca API rate limits: 200 requests/minute for standard tier
+rate_limiting:
+  # Maximum requests per minute (set to 180 to have buffer)
+  max_requests_per_minute: 180
+  
+  # Delay between batches in seconds
+  batch_delay: 0.5
+
+# Exchange Codes Reference
+# ------------------------
+# D = FINRA ADF (Dark Pool / Off-Exchange) - INSTITUTIONAL
+# A = NYSE American
+# B = NASDAQ BX
+# C = NSX
+# H = MIAX
+# J = Cboe EDGA
+# K = Cboe EDGX
+# M = CHX
+# N = NYSE
+# P = NYSE Arca
+# Q = NASDAQ
+# U = MEMX
+# V = IEX
+# W = CBOE
+# X = NASDAQ PSX
+# Y = Cboe BYX
+# Z = Cboe BZX
+exchange_names:
+  D: "Dark Pool (FINRA ADF)"
+  A: "NYSE American"
+  B: "NASDAQ BX"
+  C: "NSX"
+  H: "MIAX"
+  J: "Cboe EDGA"
+  K: "Cboe EDGX"
+  M: "CHX"
+  N: "NYSE"
+  P: "NYSE Arca"
+  Q: "NASDAQ"
+  U: "MEMX"
+  V: "IEX"
+  W: "CBOE"
+  X: "NASDAQ PSX"
+  Y: "Cboe BYX"
+  Z: "Cboe BZX"
+
+# Interpretation Guidance
+# -----------------------
+interpretation:
+  tier_descriptions:
+    notable: "Notable institutional activity ($1M-$2.5M)"
+    large: "Large block trade ($2.5M-$5M)"
+    whale: "Whale-sized institutional trade ($5M-$10M)"
+    mega_whale: "Mega whale - major institutional positioning ($10M+)"
+  
+  dark_pool_context: |
+    Dark pool trades (Exchange D) execute off-exchange to minimize market impact.
+    These are typically institutional block trades where large players don't want
+    to reveal their positioning to the market. High dark pool activity often
+    indicates significant institutional interest or repositioning.
+  
+  direction_methodology: |
+    Trade direction is inferred using the Quote Rule (Lee-Ready algorithm):
+    - Trade at/above ASK → Aggressive BUY (buyer lifted offer)
+    - Trade at/below BID → Aggressive SELL (seller hit bid)
+    - Trade near ASK (70-100% of spread) → Likely BUY
+    - Trade near BID (0-30% of spread) → Likely SELL
+    - Trade at midpoint → Direction unclear
