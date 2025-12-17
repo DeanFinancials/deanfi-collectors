@@ -55,7 +55,9 @@ from utils import (
     calculate_sector_sentiment,
     aggregate_by_dte_bucket,
     format_currency,
-    safe_round
+    safe_round,
+    convert_ticker_for_alpaca,
+    convert_ticker_from_alpaca
 )
 
 
@@ -404,8 +406,99 @@ def generate_readme_section(config: Dict) -> Dict:
         },
         "tier_descriptions": config['interpretation']['tier_descriptions'],
         "dte_bucket_descriptions": config['interpretation']['dte_buckets'],
-        "update_schedule": "Daily at 9 PM ET (after market close)"
+        "update_schedule": "Daily at Noon ET (mid-market) and 9 PM ET (post-market)"
     }
+
+
+def _build_top_trades_by_ticker(trades: List[Dict], max_tickers: int = 10) -> List[Dict]:
+    """
+    Build a top trades list with one entry per ticker.
+    
+    For each ticker, shows its largest trade and counts how many additional
+    trades it has above the next ticker's highest trade threshold.
+    
+    This prevents one heavily-traded ticker from dominating the top 10 while
+    still conveying the depth of activity on that ticker.
+    
+    Args:
+        trades: List of trade dictionaries (all same type - calls or puts)
+        max_tickers: Maximum number of tickers to include
+        
+    Returns:
+        List of trade summaries, one per ticker
+    """
+    if not trades:
+        return []
+    
+    # Group trades by ticker and sort each group by premium descending
+    trades_by_ticker = defaultdict(list)
+    for t in trades:
+        ticker = t.get('underlying')
+        if ticker:
+            trades_by_ticker[ticker].append(t)
+    
+    # Sort trades within each ticker by premium (highest first)
+    for ticker in trades_by_ticker:
+        trades_by_ticker[ticker].sort(key=lambda x: x.get('premium', 0), reverse=True)
+    
+    # Get the highest trade for each ticker and sort tickers by their max premium
+    ticker_max_trades = []
+    for ticker, ticker_trades in trades_by_ticker.items():
+        if ticker_trades:
+            ticker_max_trades.append({
+                'ticker': ticker,
+                'max_trade': ticker_trades[0],
+                'max_premium': ticker_trades[0].get('premium', 0),
+                'all_trades': ticker_trades
+            })
+    
+    # Sort by max premium descending
+    ticker_max_trades.sort(key=lambda x: x['max_premium'], reverse=True)
+    
+    # Take top N tickers
+    top_tickers = ticker_max_trades[:max_tickers]
+    
+    # Build result with additional trade counts
+    result = []
+    for i, entry in enumerate(top_tickers):
+        ticker = entry['ticker']
+        max_trade = entry['max_trade']
+        all_trades = entry['all_trades']
+        
+        # Determine threshold: next ticker's highest trade, or 0 if last
+        if i + 1 < len(top_tickers):
+            next_threshold = top_tickers[i + 1]['max_premium']
+        else:
+            # For the last ticker, use half of its own max as threshold
+            # or a minimum sensible value
+            next_threshold = min(entry['max_premium'] * 0.5, 100000)
+        
+        # Count additional trades above the threshold
+        additional_above_threshold = sum(
+            1 for t in all_trades[1:]  # Skip the first (shown) trade
+            if t.get('premium', 0) > next_threshold
+        )
+        
+        # Total premium for this ticker
+        total_ticker_premium = sum(t.get('premium', 0) for t in all_trades)
+        
+        result.append({
+            "ticker": ticker,
+            "contract": max_trade.get('contract'),
+            "strike": max_trade.get('strike'),
+            "expiration": max_trade.get('expiration'),
+            "dte": max_trade.get('dte'),
+            "premium": max_trade.get('premium'),
+            "contracts": max_trade.get('contracts'),
+            "tier": max_trade.get('tier_label', max_trade.get('tier')),
+            "sector": TICKER_TO_SECTOR.get(ticker, 'Unknown'),
+            "total_trades": len(all_trades),
+            "additional_above_threshold": additional_above_threshold,
+            "threshold_comparison": round(next_threshold, 2),
+            "total_ticker_premium": round(total_ticker_premium, 2)
+        })
+    
+    return result
 
 
 def build_summary_json(all_trades: Dict[str, List[Dict]], sweeps: List[Dict], 
@@ -475,6 +568,18 @@ def build_summary_json(all_trades: Dict[str, List[Dict]], sweeps: List[Dict],
     bullish_sweeps = [s for s in sweeps if s['sentiment'] == 'BULLISH']
     bearish_sweeps = [s for s in sweeps if s['sentiment'] == 'BEARISH']
     
+    # Top 10 bullish trades - one per ticker with additional trade count
+    top_bullish = _build_top_trades_by_ticker(
+        [t for t in flat_trades if t.get('type') == 'CALL'],
+        max_tickers=10
+    )
+    
+    # Top 10 bearish trades - one per ticker with additional trade count
+    top_bearish = _build_top_trades_by_ticker(
+        [t for t in flat_trades if t.get('type') == 'PUT'],
+        max_tickers=10
+    )
+    
     return {
         "_README": generate_readme_section(config),
         "metadata": metadata,
@@ -495,6 +600,14 @@ def build_summary_json(all_trades: Dict[str, List[Dict]], sweeps: List[Dict],
             "put_premium": big_whale_sentiment['put_premium'],
             "call_put_ratio": big_whale_sentiment['call_put_ratio'],
             "trade_count": len(big_whale_trades)
+        },
+        "top_bullish_trades": {
+            "description": "Top 10 tickers with largest call trades (one per ticker, bullish bets)",
+            "trades": top_bullish
+        },
+        "top_bearish_trades": {
+            "description": "Top 10 tickers with largest put trades (one per ticker, bearish bets)",
+            "trades": top_bearish
         },
         "tier_breakdown": dict(tier_counts),
         "expiration_breakdown": dte_breakdown,
@@ -615,15 +728,31 @@ def collect_options_whales(tickers: List[str], config: Dict,
     
     tickers_with_whales = 0
     total_whale_trades = 0
+    skipped_tickers = 0
     
     for i, ticker in enumerate(tickers, 1):
-        print(f"[{i}/{len(tickers)}] Scanning {ticker}...", end=" ", flush=True)
+        # Convert ticker to Alpaca format
+        alpaca_ticker = convert_ticker_for_alpaca(ticker)
+        
+        # Skip problematic tickers
+        if alpaca_ticker is None:
+            print(f"[{i}/{len(tickers)}] Skipping {ticker} (not supported)")
+            skipped_tickers += 1
+            continue
+        
+        # Use original ticker for display, alpaca ticker for API
+        display_ticker = ticker
+        print(f"[{i}/{len(tickers)}] Scanning {display_ticker}...", end=" ", flush=True)
         
         try:
-            # Get OTM and ATM trades
+            # Get OTM and ATM trades (use alpaca_ticker for API call)
             otm_trades, atm_trades = process_trades_for_ticker(
-                client, ticker, start_date, config
+                client, alpaca_ticker, start_date, config
             )
+            
+            # Convert ticker back to standard format in trade records
+            for trade in otm_trades + atm_trades:
+                trade['underlying'] = display_ticker
             
             all_otm_trades.extend(otm_trades)
             all_atm_trades.extend(atm_trades)
@@ -631,12 +760,12 @@ def collect_options_whales(tickers: List[str], config: Dict,
             if otm_trades:
                 # Apply dynamic threshold
                 threshold, filtered_trades = apply_dynamic_threshold(
-                    otm_trades, ticker, config
+                    otm_trades, display_ticker, config
                 )
                 
                 if filtered_trades:
-                    all_trades[ticker] = filtered_trades
-                    ticker_thresholds[ticker] = threshold
+                    all_trades[display_ticker] = filtered_trades
+                    ticker_thresholds[display_ticker] = threshold
                     tickers_with_whales += 1
                     total_whale_trades += len(filtered_trades)
                     print(f"found {len(filtered_trades)} trades (threshold: {format_currency(threshold)})")
@@ -646,7 +775,12 @@ def collect_options_whales(tickers: List[str], config: Dict,
                 print(f"no OTM trades")
                 
         except Exception as e:
-            print(f"error: {e}")
+            error_msg = str(e)
+            # Don't log full error for expected "no options" situations
+            if "invalid underlying" in error_msg.lower() or "not found" in error_msg.lower():
+                print(f"no options available")
+            else:
+                print(f"error: {error_msg[:50]}")
     
     # Detect sweeps from all OTM + ATM trades
     print(f"\nDetecting sweeps...")
