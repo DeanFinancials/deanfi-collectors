@@ -345,7 +345,7 @@ def apply_dynamic_threshold(trades: List[Dict], ticker: str, config: Dict) -> Tu
     # Get ticker multiplier
     multiplier = get_ticker_multiplier(
         ticker,
-        config['ticker_size']['classifications'],
+        config['ticker_size'].get('classifications', {}),
         config['ticker_size']['multipliers']
     )
     
@@ -656,7 +656,7 @@ def build_trades_json(all_trades: Dict[str, List[Dict]],
         stock_price = trades[0].get('stock_price', 0) if trades else 0
         
         # Get ticker size category
-        size_class = config['ticker_size']['classifications'].get(ticker, 'mid')
+        size_class = config['ticker_size'].get('classifications', {}).get(ticker, 'mid')
         
         # Sort trades by premium descending
         sorted_trades = sorted(trades, key=lambda x: x['premium'], reverse=True)

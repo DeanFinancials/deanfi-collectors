@@ -5,6 +5,28 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-12-17: Options Whale Collector - Missing Classifications Fix
+
+### Problem
+Production workflow failing with `error: 'classifications'` for every ticker. The `config['ticker_size']['classifications']` section was commented out in config.yml, but the Python code was trying to access it directly, causing a KeyError.
+
+### Solution
+Changed two lines in `fetch_options_whales.py` to use `.get('classifications', {})` with a default empty dict:
+```python
+# Before (line 348)
+config['ticker_size']['classifications']
+
+# After
+config['ticker_size'].get('classifications', {})
+```
+
+This allows the config to optionally include ticker classifications while defaulting all tickers to 'mid' size category when not specified.
+
+### Files Modified
+- `optionswhales/fetch_options_whales.py`: Lines 348 and 659
+
+---
+
 ## 2025-12-17: Options Whale Collector - File Size Fix
 
 ### Problem
