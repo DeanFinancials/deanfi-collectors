@@ -1,0 +1,199 @@
+# Options Whale Collector Configuration
+# ======================================
+# Detects large OTM options trades ("whale trades") for S&P 500 constituents
+# using the Alpaca Markets Options API.
+
+# Data Collection Settings
+# ------------------------
+collection:
+  # Number of trading days to look back (excludes weekends/holidays)
+  lookback_trading_days: 5
+  
+  # Moneyness filter: Only collect OTM trades for main analysis
+  # ATM trades are fetched for sweep detection but not included in primary output
+  moneyness_filter: 
+    - OTM  # Out of the money (>1% from stock price)
+  
+  # ATM threshold: +/- 1% from stock price
+  atm_threshold_pct: 1.0
+
+# Dynamic Threshold Settings
+# --------------------------
+# We start at the minimum threshold and step up until we have target_max or fewer trades
+# Never go below minimum_threshold even if no trades are found
+thresholds:
+  # Minimum premium threshold in USD (never go below this)
+  minimum_threshold: 100000  # $100K
+  
+  # Target number of trades per ticker
+  target_min: 5
+  target_max: 10
+  
+  # Absolute maximum trades to return per ticker (even if more qualify)
+  hard_max: 20
+  
+  # Threshold tiers to try (in ascending order)
+  # We step through these until we have <= target_max trades
+  tiers:
+    - 100000      # $100K
+    - 250000      # $250K
+    - 500000      # $500K
+    - 1000000     # $1M
+    - 2000000     # $2M
+    - 5000000     # $5M
+    - 10000000    # $10M
+    - 25000000    # $25M
+    - 50000000    # $50M
+    - 100000000   # $100M
+    - 250000000   # $250M
+    - 500000000   # $500M
+    - 1000000000  # $1B
+
+# Ticker Size Multipliers
+# -----------------------
+# Larger, more liquid tickers require higher thresholds to be considered "whale"
+# These multipliers are applied to the threshold tiers
+ticker_size:
+  multipliers:
+    mega: 2.0    # SPY, QQQ, AAPL, MSFT, etc. - very liquid
+    large: 1.5   # TSLA, NVDA, META - highly active options
+    mid: 1.0     # Standard threshold (default)
+    small: 0.5   # Less liquid names
+  
+  # Explicit ticker classifications (others default to 'mid')
+  classifications:
+    # Mega caps (2x threshold)
+    SPY: mega
+    QQQ: mega
+    IWM: mega
+    AAPL: mega
+    MSFT: mega
+    GOOGL: mega
+    AMZN: mega
+    META: mega
+    # Large caps (1.5x threshold)
+    NVDA: large
+    TSLA: large
+    AMD: large
+    NFLX: large
+    JPM: large
+    V: large
+    MA: large
+
+# Sweep Detection Settings
+# ------------------------
+sweeps:
+  # Time window in seconds - trades within this window may be a sweep
+  time_window_seconds: 60
+  
+  # Minimum number of trades/legs to qualify as a sweep
+  min_legs: 3
+  
+  # Include ATM trades in sweep detection (even though primary filter is OTM)
+  include_atm_for_sweeps: true
+
+# Rate Limiting Settings
+# ----------------------
+# Alpaca API rate limits: 200 requests/minute for standard tier
+rate_limiting:
+  # Maximum requests per minute (set to 180 to have buffer)
+  max_requests_per_minute: 180
+  
+  # Delay between ticker API calls (in seconds)
+  # 0.35s = ~171 requests/min max, leaving headroom
+  delay_between_tickers: 0.35
+  
+  # Batch size for options trades API (API limit is 100)
+  options_batch_size: 100
+  
+  # Retry settings for rate limit (429) errors
+  retry_attempts: 3
+  retry_wait_seconds: 5
+
+# Output Settings
+# ---------------
+output:
+  # Output directory (relative to deanfi-data repo)
+  data_dir: "../deanfi-data/options-whales"
+  
+  # Output file names
+  summary_file: "options_whale_summary.json"
+  trades_file: "options_whale_trades.json"
+
+# API Environment Variables
+# -------------------------
+# These environment variable names must be set in GitHub Secrets
+api_keys:
+  api_key_env: "ALPACA_API_KEY"
+  api_secret_env: "ALPACA_API_SECRET"
+
+# GICS Sector Definitions
+# -----------------------
+# For sector-level analysis and aggregation
+sectors:
+  - name: "Information Technology"
+    etf: "XLK"
+    description: "Technology hardware, software, and IT services"
+  - name: "Health Care"
+    etf: "XLV"
+    description: "Pharmaceuticals, biotech, medical devices, and healthcare services"
+  - name: "Financials"
+    etf: "XLF"
+    description: "Banks, insurance, asset management, and financial services"
+  - name: "Consumer Discretionary"
+    etf: "XLY"
+    description: "Retail, automotive, hospitality, and consumer services"
+  - name: "Communication Services"
+    etf: "XLC"
+    description: "Media, entertainment, and telecommunications"
+  - name: "Industrials"
+    etf: "XLI"
+    description: "Aerospace, defense, machinery, and industrial conglomerates"
+  - name: "Consumer Staples"
+    etf: "XLP"
+    description: "Food, beverages, household products, and personal care"
+  - name: "Energy"
+    etf: "XLE"
+    description: "Oil, gas, and energy equipment and services"
+  - name: "Utilities"
+    etf: "XLU"
+    description: "Electric, gas, and water utilities"
+  - name: "Real Estate"
+    etf: "XLRE"
+    description: "REITs and real estate management"
+  - name: "Materials"
+    etf: "XLB"
+    description: "Chemicals, metals, mining, and construction materials"
+
+# Documentation / Interpretation
+# ------------------------------
+interpretation:
+  premium_calculation: "Premium = Option Price × 100 × Contracts"
+  
+  tier_descriptions:
+    headline: "$1M+ (adjusted) - Major institutional activity"
+    strong_whale: "$250K-$1M - Large conviction bet"
+    whale: "$100K-$250K - Significant trade"
+    unusual: "$50K-$100K - Notable activity"
+    notable: "$10K-$50K - Worth watching"
+  
+  moneyness_descriptions:
+    OTM: "Out of the money - Higher leverage, lottery ticket style bets"
+    ATM: "At the money - Balanced risk/reward"
+    ITM: "In the money - Stock replacement, hedging, structured trades"
+  
+  sentiment_descriptions:
+    CALL: "Bullish bet - profits if stock price increases"
+    PUT: "Bearish bet - profits if stock price decreases"
+  
+  vol_oi_flags:
+    high_threshold: 0.20  # 20%+ of open interest = very unusual
+    notable_threshold: 0.05  # 5%+ of open interest = notable
+  
+  dte_buckets:
+    0dte: "Expiring today - YOLO bets, very aggressive"
+    1_2_days: "1-2 days - Very aggressive short-term"
+    3_7_days: "3-7 days - Short-term directional"
+    8_30_days: "8-30 days - Near-term swing trades"
+    31_90_days: "31-90 days - Medium-term positioning"
+    90_plus: "90+ days - LEAPS, longer-term conviction"

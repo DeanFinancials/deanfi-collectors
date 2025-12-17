@@ -5,6 +5,161 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 # DeanFi Collectors - Changelog and Implementation Log
 
+## 2025-12-17: Options Whale Trades Collector
+
+### Summary
+Created a new collector for detecting large institutional options trades (whale trades) across S&P 500 constituents. The collector scans for OTM (out-of-the-money) options trades that meet dynamic premium thresholds, detects sweep orders, and provides sector-level sentiment analysis.
+
+### Problem
+No existing tool to identify large institutional options bets across the S&P 500 universe. Needed to:
+1. Find trades that indicate institutional activity (large premium sizes)
+2. Filter for directional bets (OTM options only)
+3. Detect sweep orders (same strike/expiry executed rapidly across exchanges)
+4. Provide sentiment analysis at ticker, sector, and market levels
+
+### Solution
+Created `optionswhales/` collector using Alpaca Markets Options API with:
+- **Dynamic thresholds**: Starts at $100K minimum, steps up through tiers ($250K → $500K → $1M → $2M → $5M+) until ≤10 trades per ticker. Thresholds also adjust based on ticker market cap (mega cap uses higher base).
+- **OTM filtering**: Only includes options >2% out of the money for directional bias clarity
+- **Sweep detection**: Identifies trades in same contract within 5 seconds across exchanges
+- **Smart lookback**: Uses 5 NYSE trading days (skips weekends and holidays via pandas_market_calendars)
+- **Sector aggregation**: Uses GICS sector mapping for sector-level sentiment
+- **Split output**: Summary JSON (aggregates/sentiment) + Trades JSON (individual trades)
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `optionswhales/config.yml` | Configuration: thresholds, rate limits, sector definitions |
+| `optionswhales/utils.py` | Helpers: trading days, option parsing, thresholds, sweep detection |
+| `optionswhales/fetch_options_whales.py` | Main collector script with Alpaca API integration |
+| `optionswhales/README.md` | Collector documentation |
+| `deanfi-data/options-whales/README.md` | Data output documentation |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `requirements.txt` | Added `pandas_market_calendars>=4.4.0` for NYSE holiday awareness |
+
+### Architecture
+
+```
+S&P 500 Tickers (via spx_universe.py)
+       │
+       ▼
+fetch_options_whales.py
+       │
+       ├─► Alpaca /v2/stocks/{symbol}/quotes (current price)
+       ├─► Alpaca /v1beta1/options/snapshots (option chains)
+       └─► Alpaca /v1beta1/options/trades (trade history)
+       │
+       ▼
+Dynamic Threshold Selection
+(step up until ≤10 trades per ticker)
+       │
+       ▼
+OTM Filtering (>2% out of money)
+       │
+       ▼
+Sweep Detection (5-second window)
+       │
+       ▼
+   [Split Output]
+       │
+       ├─► options_whale_summary.json (aggregates, sentiment, sectors)
+       │
+       └─► options_whale_trades.json (individual trades by ticker)
+```
+
+### Key Features
+
+#### Dynamic Threshold System
+```python
+THRESHOLD_TIERS = [100000, 250000, 500000, 1000000, 2000000, 5000000, ...]
+TICKER_SIZE_MULTIPLIERS = {
+    "mega": 2.0,    # Top 50 by market cap (AAPL, MSFT, etc.)
+    "large": 1.5,   # Positions 51-150
+    "mid": 1.0,     # Default for rest
+    "small": 0.75   # Low volume tickers
+}
+```
+
+#### Sweep Detection
+- Groups trades by underlying + strike + expiration
+- Window: 5 seconds between trades
+- Minimum: 3 legs to qualify as sweep
+- Output: Both in sweeps array AND flagged inline with `is_sweep: true`
+
+#### JSON Output Structure
+**Summary JSON** (`options_whale_summary.json`):
+- `_README`: Documentation and field descriptions
+- `metadata`: Collection info (dates, counts)
+- `overall_sentiment`: Market-wide call/put sentiment
+- `big_whale_sentiment`: Sentiment for $250K+ trades only
+- `tier_breakdown`: Trade counts by size tier
+- `expiration_breakdown`: Trades by DTE bucket
+- `sector_sentiment`: Per-sector call/put analysis
+- `sweeps_summary`: Aggregate sweep statistics
+
+**Trades JSON** (`options_whale_trades.json`):
+- `_README`: Same documentation
+- `metadata`: Same collection info
+- `sweeps`: Array of detected sweep orders
+- `by_ticker`: Trades grouped by ticker with full details
+
+### Rate Limiting
+- Alpaca tier: 200 requests/minute
+- Implementation: 180 req/min max (10% buffer)
+- Delay: 0.35 seconds between ticker batches
+- Burst tracking with automatic sleep when approaching limit
+
+### Environment Variables
+- `ALPACA_API_KEY`: Alpaca API key ID
+- `ALPACA_API_SECRET`: Alpaca API secret key
+
+### Command Line Options
+```bash
+# Test mode (5 sample tickers)
+python fetch_options_whales.py --test
+
+# Full S&P 500 scan
+python fetch_options_whales.py
+
+# Custom lookback days
+python fetch_options_whales.py --lookback 10
+```
+
+### Testing
+Verified with test run on 5 sample tickers (AAPL, MSFT, NVDA, TSLA, META):
+- Successfully detected 6 whale trades
+- 1 sweep order identified
+- Correct sector mapping
+- Proper OTM filtering
+- Dynamic threshold stepping working
+
+### GitHub Action Workflow
+Added `.github/workflows/options-whales.yml` with dual schedule:
+- **Noon ET (mid-market)**: Updates during trading to show same-day trades
+- **9 PM ET (post-market)**: Full end-of-day capture after market close
+
+Schedule (EST/UTC):
+| Time (ET) | Purpose | Cron (EST) |
+|-----------|---------|------------|
+| 12:00 PM | Mid-market update | `0 17 * * 1-5` |
+| 9:00 PM | Post-market capture | `0 2 * * 2-6` |
+
+R2 Sync: Handled automatically by existing `deanfi-data/.github/workflows/sync-to-r2.yml` which syncs all `**/*.json` files on push.
+
+### Future Enhancements
+- [x] GitHub Action workflow for daily runs ✅
+- [x] R2 sync integration (automatic via existing workflow) ✅
+- [ ] Historical data archiving
+- [ ] IV/HV correlation analysis
+- [ ] Earnings proximity flagging
+
+---
+
 ## 2025-12-12: Implied Volatility Timezone Fix
 
 ### Summary

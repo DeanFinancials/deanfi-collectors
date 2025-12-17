@@ -1,0 +1,142 @@
+name: Options Whale Trades Collection
+
+on:
+  schedule:
+    # Noon ET (mid-market) - EST: 17:00 UTC, EDT: 16:00 UTC
+    - cron: '0 17 * * 1-5'  # EST (Nov-Mar)
+    # - cron: '0 16 * * 1-5'  # EDT (Mar-Nov) - uncomment when observing daylight saving time
+    
+    # 9 PM ET (post-market) - EST: 02:00 UTC next day, EDT: 01:00 UTC next day
+    - cron: '0 2 * * 2-6'   # EST (Nov-Mar) - runs Tue-Sat for Mon-Fri market close
+    # - cron: '0 1 * * 2-6'   # EDT (Mar-Nov) - uncomment when observing daylight saving time
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Run in test mode (5 sample tickers only)'
+        required: false
+        default: 'false'
+        type: boolean
+      lookback_days:
+        description: 'Number of trading days to look back'
+        required: false
+        default: '5'
+        type: string
+
+env:
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+  ALPACA_API_KEY: "${{ secrets.ALPACA_API_KEY }}"
+  ALPACA_API_SECRET: "${{ secrets.ALPACA_API_SECRET }}"
+
+jobs:
+  fetch-options-whales:
+    runs-on: ubuntu-latest
+    
+    # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
+    concurrency:
+      group: deanfi-data-repo
+      cancel-in-progress: false
+    
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v4
+      
+      - name: Checkout data repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-repo
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Create output directory
+        run: mkdir -p data-repo/options-whales
+      
+      - name: Fetch options whale trades
+        run: |
+          cd optionswhales
+          
+          # Build command with output directory and optional flags
+          CMD="python fetch_options_whales.py --output-dir ../data-repo/options-whales"
+          
+          if [ "${{ inputs.test_mode }}" = "true" ]; then
+            CMD="$CMD --test"
+            echo "🧪 Running in TEST mode (5 sample tickers)"
+          fi
+          
+          if [ -n "${{ inputs.lookback_days }}" ] && [ "${{ inputs.lookback_days }}" != "5" ]; then
+            CMD="$CMD --lookback ${{ inputs.lookback_days }}"
+            echo "📅 Using custom lookback: ${{ inputs.lookback_days }} trading days"
+          fi
+          
+          echo "🐋 Starting options whale collection..."
+          $CMD
+          echo "✅ Options whale collection complete"
+          
+          # Verify output
+          echo "📦 Output files:"
+          ls -la ../data-repo/options-whales/
+      
+      - name: Commit and push to data repo
+        run: |
+          cd data-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if there are changes
+          if [ -n "$(git status --porcelain options-whales/)" ]; then
+            git add options-whales/
+            
+            # Determine run type for commit message
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              RUN_TYPE="manual"
+            else
+              # Check if this is the noon or 9pm run based on current hour
+              HOUR=$(date -u +%H)
+              if [ "$HOUR" -ge "15" ] && [ "$HOUR" -le "18" ]; then
+                RUN_TYPE="mid-market"
+              else
+                RUN_TYPE="post-market"
+              fi
+            fi
+            
+            git commit -m "🐋 Options whale trades update ($RUN_TYPE)"
+            git push
+            echo "✅ Changes pushed to data repo"
+          else
+            echo "ℹ️ No changes to commit"
+          fi
+      
+      - name: Summary
+        run: |
+          echo "## 🐋 Options Whale Collection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "data-repo/options-whales/options_whale_summary.json" ]; then
+            # Extract summary stats using Python
+            python3 << 'EOF' >> $GITHUB_STEP_SUMMARY
+import json
+with open('data-repo/options-whales/options_whale_summary.json') as f:
+    data = json.load(f)
+
+meta = data.get('metadata', {})
+sentiment = data.get('overall_sentiment', {})
+
+print(f"- **Tickers Scanned**: {meta.get('tickers_scanned', 'N/A')}")
+print(f"- **Tickers with Whales**: {meta.get('tickers_with_whales', 'N/A')}")
+print(f"- **Total Whale Trades**: {meta.get('total_whale_trades', 'N/A')}")
+print(f"- **Sweeps Detected**: {meta.get('sweeps_detected', 'N/A')}")
+print(f"- **Overall Sentiment**: {sentiment.get('direction', 'N/A')}")
+print(f"- **Call/Put Ratio**: {sentiment.get('call_put_ratio', 'N/A')}")
+EOF
+          else
+            echo "⚠️ Summary file not found" >> $GITHUB_STEP_SUMMARY
+          fi
