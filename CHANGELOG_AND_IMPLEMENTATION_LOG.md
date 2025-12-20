@@ -3,6 +3,40 @@
 ## Overview
 This document tracks all implementations, changes, and updates to the DeanFi Collectors project. It serves as a comprehensive history of the codebase evolution.
 
+---
+
+## 2025-12-20: Support / Resistence Collector (Pivots + SMAs)
+
+### Summary
+Added a new Alpaca-based collector that produces daily support/resistance levels for major index ETFs using traditional pivot points, Fibonacci pivots, and SMA trend references.
+
+### Output
+Generates a single JSON snapshot (gitignored by repo conventions) containing for each ticker:
+- Traditional pivots: `P, R1, R2, S1, S2`
+- Fibonacci pivots: `FP, FR1, FR2, FS1, FS2`
+- Moving averages: `SMA20, SMA50, SMA200`
+
+### Data Source
+- Alpaca Market Data API: `GET https://data.alpaca.markets/v2/stocks/bars`
+
+### Notes
+- Collector uses the **market data** host (`data.alpaca.markets`). Paper trading (`paper-api.alpaca.markets/v2`) is for trading/account APIs.
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `supportresistence/fetch_support_resistence.py` | Fetch bars, compute pivots + SMAs, write JSON output |
+| `supportresistence/utils.py` | Config/env helpers, Alpaca request retries, formulas |
+| `supportresistence/config.yml` | Collector configuration (tickers, lookback, Alpaca options) |
+| `supportresistence/README.md` | Collector usage + env vars |
+
+### Automation
+Mirrors the options/stock whale workflow pattern by running the collector on a schedule and copying outputs into the `deanfi-data` repo.
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/support-resistence.yml` | Daily scheduled run (5am ET) + publish to deanfi-data |
+
 # DeanFi Collectors - Changelog and Implementation Log
 
 ## 2025-12-17: Stock Whale Workflow Fix - Output Directory

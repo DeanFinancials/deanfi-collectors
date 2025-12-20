@@ -1,0 +1,97 @@
+name: Support / Resistence Collection
+
+on:
+  schedule:
+    # 5:00 AM ET - EST: 10:00 UTC, EDT: 09:00 UTC
+    - cron: '0 10 * * 1-5'  # EST (Nov-Mar)
+    # - cron: '0 9 * * 1-5'  # EDT (Mar-Nov) - uncomment when observing daylight saving time
+  workflow_dispatch:
+
+env:
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+  ALPACA_API_KEY: "${{ secrets.ALPACA_API_KEY }}"
+  ALPACA_API_SECRET: "${{ secrets.ALPACA_API_SECRET }}"
+
+jobs:
+  fetch-support-resistence:
+    runs-on: ubuntu-latest
+
+    # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
+    concurrency:
+      group: deanfi-data-repo
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v4
+
+      - name: Checkout data repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch support / resistence levels
+        run: |
+          cd supportresistence
+          echo "📈 Starting support/resistence collection..."
+          python fetch_support_resistence.py
+          echo "✅ Support/resistence collection complete"
+
+      - name: Copy output to data repo
+        run: |
+          mkdir -p data-cache/supportresistence
+          cp supportresistence/*.json data-cache/supportresistence/ 2>/dev/null || echo "No JSON files found in supportresistence/"
+          echo "📦 Output files:"
+          ls -la data-cache/supportresistence/
+
+      - name: Commit and push to data repo
+        run: |
+          cd data-cache
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add supportresistence/
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              RUN_TYPE="manual"
+            else
+              RUN_TYPE="scheduled"
+            fi
+
+            git commit -m "📈 Support/resistence update ($RUN_TYPE) - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git pull --rebase origin main
+            git push
+            echo "✅ Changes pushed to data repo"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 📈 Support / Resistence Collection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "data-cache/supportresistence/support_resistence.json" ]; then
+            echo "- **Generated**: $(date -u +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+            TICKERS=$(python3 -c "import json; d=json.load(open('data-cache/supportresistence/support_resistence.json')); print(d.get('metadata',{}).get('tickers_count','N/A'))")
+            WITH_DATA=$(python3 -c "import json; d=json.load(open('data-cache/supportresistence/support_resistence.json')); print(d.get('metadata',{}).get('symbols_with_data','N/A'))")
+            REF_DATE=$(python3 -c "import json; d=json.load(open('data-cache/supportresistence/support_resistence.json')); data=d.get('data',{}); sym=next(iter(data.keys()),None); print((data.get(sym,{}).get('reference_bar',{}) or {}).get('date','N/A'))")
+            echo "- **Tickers**: $TICKERS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Symbols with Data**: $WITH_DATA" >> $GITHUB_STEP_SUMMARY
+            echo "- **Reference Bar Date**: $REF_DATE" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Output file not found" >> $GITHUB_STEP_SUMMARY
+          fi

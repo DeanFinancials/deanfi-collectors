@@ -2,9 +2,9 @@ name: Economy Indicators Collection
 
 on:
   schedule:
-    # Every weekday at 8:00am ET (13:00 UTC during EST, 12:00 UTC during EDT)
-    - cron: '0 13 * * 1-5'
-    # - cron: '0 12 * * 1-5'  # EDT (Daylight Saving Time)
+    # Every weekday at 8:00am ET (14:00 UTC during EST, 13:00 UTC during EDT)
+    - cron: '0 14 * * 1-5'
+    # - cron: '0 13 * * 1-5'  # EDT (Daylight Saving Time)
     # Every weekday at 12:00pm ET (17:00 UTC during EST, 16:00 UTC during EDT)
     - cron: '0 17 * * 1-5'
     # - cron: '0 16 * * 1-5'  # EDT (Daylight Saving Time)

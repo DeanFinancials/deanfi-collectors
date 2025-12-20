@@ -1,0 +1,16 @@
+api:
+  # Alpaca Market Data base URL is fixed in code: https://data.alpaca.markets
+  # (Paper trading https://paper-api.alpaca.markets/v2 is for trading/account APIs.)
+  feed: "iex"         # sip|iex|otc|boats
+  adjustment: "all"   # raw|split|dividend|spin-off|all
+  timeout_seconds: 30
+  rate_limit_per_minute: 180
+
+collector:
+  tickers: ["SPY", "QQQ", "IWM", "DIA"]
+  timeframe: "1Day"
+  # We need >=200 daily closes to compute SMA200. This is a safety buffer.
+  lookback_days: 420
+  max_bars_limit: 1000
+  output_filename: "support_resistence.json"
+  round_to_decimals: 2
