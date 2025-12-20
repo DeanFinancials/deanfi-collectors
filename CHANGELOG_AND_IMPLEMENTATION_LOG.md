@@ -16,6 +16,22 @@ Generates a single JSON snapshot (gitignored by repo conventions) containing for
 - Fibonacci pivots: `FP, FR1, FR2, FS1, FS2`
 - Moving averages: `SMA20, SMA50, SMA200`
 
+### 2025-12-20 (Update): Add 1-year historical series (chart-ready)
+Extended the output schema to include a per-ticker historical series under:
+- `data.{TICKER}.history.daily[]`
+
+Each daily point includes:
+- `date` (session date)
+- `close` (session close)
+- `floor.S2/R2` computed from the prior session's H/L/C
+- `fib.S2/R2` (FS2/FR2) computed from the prior session's H/L/C
+- `sma.SMA20/SMA50/SMA200` computed from closes through the prior session
+
+This aligns the time series with how the dashboard is used: today's levels are a "morning reference" derived from the most recent completed session.
+
+Added config knob:
+- `collector.history_sessions` (default 252)
+
 ### Data Source
 - Alpaca Market Data API: `GET https://data.alpaca.markets/v2/stocks/bars`
 

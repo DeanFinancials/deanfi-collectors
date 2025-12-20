@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Tuple, List
 
 import yaml
 
@@ -111,3 +111,26 @@ def simple_moving_average(values: Iterable[float], window: int) -> Optional[floa
     if len(vals) < window:
         return None
     return sum(vals[-window:]) / float(window)
+
+
+def rolling_sma(closes: List[float], window: int) -> List[Optional[float]]:
+    """Compute rolling SMA series.
+
+    Returns a list with the same length as `closes`, where index i is the SMA
+    over the last `window` closes ending at i (inclusive). If there are not
+    enough data points yet, the value is None.
+    """
+    if window <= 0:
+        return [None for _ in closes]
+
+    out: List[Optional[float]] = [None for _ in closes]
+    running_sum = 0.0
+    for i, c in enumerate(closes):
+        running_sum += float(c)
+        if i >= window:
+            running_sum -= float(closes[i - window])
+
+        if i >= window - 1:
+            out[i] = running_sum / float(window)
+
+    return out

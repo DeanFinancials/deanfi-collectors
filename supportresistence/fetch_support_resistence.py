@@ -37,6 +37,7 @@ from utils import (
     get_alpaca_credentials,
     parse_rfc3339_to_datetime,
     round_price,
+    rolling_sma,
     simple_moving_average,
     utc_now_iso,
     write_json,
@@ -162,6 +163,19 @@ def build_readme_section() -> Dict[str, Any]:
                 "formula": "SMA200 = average(last 200 closes)",
                 "interpretation": "Long-term trend proxy; widely used as a bull/bear regime reference.",
             },
+            "historical_series": {
+                "description": "A 1-year daily time series for each ticker, intended for charting.",
+                "formula": (
+                    "For each session date D, levels are derived from the prior completed session (D-1). "
+                    "Floor/fib levels are computed from (H/L/C) of (D-1). SMAs are computed from closes up "
+                    "through (D-1)."
+                ),
+                "interpretation": (
+                    "Matches how the dashboard uses levels as a morning reference: today's levels come from "
+                    "yesterday's completed bar. Historical charts can compare how session closes behaved versus "
+                    "the prior-session levels."
+                ),
+            },
         },
         "trading_applications": {
             "support_resistance": (
@@ -173,8 +187,122 @@ def build_readme_section() -> Dict[str, Any]:
             "reference_bar": "All calculations are based on the most recent completed 1Day bar returned by Alpaca.",
             "rounding": "All price levels are rounded for display; raw computations use full precision.",
             "naming": "Traditional pivots are P/R*/S*. Fibonacci pivots are FP/FR*/FS*.",
+            "history": "History points are keyed by session date and use prior-session inputs for pivots/SMAs.",
         },
     }
+
+
+def _bar_date_utc(bar: Dict[str, Any]) -> Optional[str]:
+    t = bar.get("t")
+    if not isinstance(t, str):
+        return None
+    try:
+        return parse_rfc3339_to_datetime(t).astimezone(timezone.utc).date().isoformat()
+    except Exception:
+        return None
+
+
+def _completed_daily_bars(ticker_bars: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Return daily bars excluding today's in-progress bar if present."""
+    if not ticker_bars:
+        return []
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    last_date = _bar_date_utc(ticker_bars[-1])
+    if last_date == today and len(ticker_bars) >= 2:
+        return ticker_bars[:-1]
+    return ticker_bars
+
+
+def build_history_series(
+    completed_bars: List[Dict[str, Any]],
+    *,
+    sessions: int,
+    round_to_decimals: int,
+) -> List[Dict[str, Any]]:
+    """Build a daily historical series.
+
+    For each session date D (bar i), computes pivots from the prior bar (i-1)
+    and SMAs from closes through (i-1). Includes the session close (i).
+    """
+    if len(completed_bars) < 2:
+        return []
+
+    # Ensure chronological order
+    bars_sorted = sorted(completed_bars, key=lambda b: b.get("t") or "")
+
+    closes: List[float] = []
+    for b in bars_sorted:
+        c = b.get("c")
+        try:
+            closes.append(float(c))
+        except Exception:
+            closes.append(float("nan"))
+
+    # Build SMA series on bar closes; we'll sample these at (i-1) for session i.
+    sma20_series = rolling_sma(closes, 20)
+    sma50_series = rolling_sma(closes, 50)
+    sma200_series = rolling_sma(closes, 200)
+
+    # Last `sessions` session dates require `sessions + 1` bars.
+    available_sessions = max(0, len(bars_sorted) - 1)
+    session_count = min(int(sessions), available_sessions)
+    if session_count <= 0:
+        return []
+
+    start_i = len(bars_sorted) - session_count
+    if start_i < 1:
+        start_i = 1
+
+    out: List[Dict[str, Any]] = []
+
+    for i in range(start_i, len(bars_sorted)):
+        session_bar = bars_sorted[i]
+        ref_bar = bars_sorted[i - 1]
+
+        session_date = _bar_date_utc(session_bar)
+        reference_date = _bar_date_utc(ref_bar)
+        if not session_date or not reference_date:
+            continue
+
+        session_close = None
+        ref_close = None
+        try:
+            session_close = float(session_bar.get("c"))
+            ref_close = float(ref_bar.get("c"))
+        except Exception:
+            continue
+
+        hlc = _bar_hlc(ref_bar)
+        if hlc is None:
+            continue
+
+        trad = compute_traditional_pivots(hlc["high"], hlc["low"], hlc["close"])
+        fib = compute_fibonacci_pivots(hlc["high"], hlc["low"], hlc["close"])
+
+        out.append(
+            {
+                "date": session_date,
+                "reference_date": reference_date,
+                "close": round_price(session_close, round_to_decimals),
+                "reference_close": round_price(ref_close, round_to_decimals),
+                "floor": {
+                    "S2": round_price(trad.get("S2"), round_to_decimals),
+                    "R2": round_price(trad.get("R2"), round_to_decimals),
+                },
+                "fib": {
+                    "S2": round_price(fib.get("FS2"), round_to_decimals),
+                    "R2": round_price(fib.get("FR2"), round_to_decimals),
+                },
+                "sma": {
+                    "SMA20": round_price(sma20_series[i - 1], round_to_decimals),
+                    "SMA50": round_price(sma50_series[i - 1], round_to_decimals),
+                    "SMA200": round_price(sma200_series[i - 1], round_to_decimals),
+                },
+            }
+        )
+
+    return out
 
 
 def fetch_daily_bars(
@@ -259,6 +387,7 @@ def main() -> int:
     timeframe = str(collector_cfg.get("timeframe") or "1Day")
     lookback_days = int(collector_cfg.get("lookback_days") or 420)
     max_bars_limit = int(collector_cfg.get("max_bars_limit") or 1000)
+    history_sessions = int(collector_cfg.get("history_sessions") or 252)
     round_to_decimals = int(collector_cfg.get("round_to_decimals") or 2)
 
     output_filename = str(args.output or collector_cfg.get("output_filename") or "support_resistence.json")
@@ -300,18 +429,12 @@ def main() -> int:
             errors[ticker] = "No bars returned"
             continue
 
+        completed_bars = _completed_daily_bars(ticker_bars)
+        history = build_history_series(completed_bars, sessions=history_sessions, round_to_decimals=round_to_decimals)
+
         # Use the most recent *completed* daily bar.
         # If today's daily bar exists (often in-progress during market hours), use yesterday's bar instead.
-        ref_index = -1
-        if len(ticker_bars) >= 2 and isinstance(ticker_bars[-1].get("t"), str):
-            try:
-                last_dt = parse_rfc3339_to_datetime(ticker_bars[-1]["t"]).astimezone(timezone.utc)
-                if last_dt.date() == datetime.now(timezone.utc).date():
-                    ref_index = -2
-            except Exception:
-                pass
-
-        ref_bar = ticker_bars[ref_index]
+        ref_bar = completed_bars[-1]
         hlc = _bar_hlc(ref_bar)
         if hlc is None:
             errors[ticker] = "Invalid bar shape (missing h/l/c)"
@@ -329,8 +452,7 @@ def main() -> int:
                 ref_dt_iso = ref_ts
 
         closes: List[float] = []
-        bars_for_sma = ticker_bars[: ref_index + 1] if ref_index != -1 else ticker_bars
-        for b in bars_for_sma:
+        for b in completed_bars:
             c = b.get("c")
             if c is None:
                 continue
@@ -362,6 +484,9 @@ def main() -> int:
                 "SMA50": round_price(sma50, round_to_decimals),
                 "SMA200": round_price(sma200, round_to_decimals),
             },
+            "history": {
+                "daily": history,
+            },
             "inputs": {
                 "bars_used": len(ticker_bars),
                 "closes_used": len(closes),
@@ -383,6 +508,7 @@ def main() -> int:
             "tickers_count": len(tickers),
             "symbols_with_data": len(data),
             "lookback_days": lookback_days,
+            "history_sessions": history_sessions,
             "errors": errors,
         },
         "data": data,

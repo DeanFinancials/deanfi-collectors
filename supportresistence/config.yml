@@ -11,6 +11,8 @@ collector:
   timeframe: "1Day"
   # We need >=200 daily closes to compute SMA200. This is a safety buffer.
   lookback_days: 420
+  # Number of historical sessions to include for charting (approx 1 trading year).
+  history_sessions: 252
   max_bars_limit: 1000
   output_filename: "support_resistence.json"
   round_to_decimals: 2
