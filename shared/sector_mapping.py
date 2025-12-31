@@ -18,6 +18,11 @@ GICS Sectors (11 total):
 11. Materials (XLB)
 """
 
+from __future__ import annotations
+
+from shared.ticker_metadata import get_sector as _get_sector_from_csv
+from shared.ticker_utils import normalize_ticker
+
 # Comprehensive ticker to sector mapping
 TICKER_TO_SECTOR = {
     # Information Technology (XLK)
@@ -222,7 +227,16 @@ def get_sector(ticker: str) -> str:
     Returns:
         GICS sector name or 'Unknown' if not found
     """
-    return TICKER_TO_SECTOR.get(ticker, 'Unknown')
+    t = normalize_ticker(ticker)
+    if not t:
+        return 'Unknown'
+
+    # Prefer CSV enrichment when available for consistency.
+    csv_sector = _get_sector_from_csv(t)
+    if csv_sector:
+        return csv_sector
+
+    return TICKER_TO_SECTOR.get(t, 'Unknown')
 
 
 def get_etf_ticker(sector: str) -> str:

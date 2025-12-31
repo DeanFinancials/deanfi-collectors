@@ -112,6 +112,9 @@ deanfi-collectors/
 ├── shared/                  # Shared utilities
 │   ├── spx_universe.py     # S&P 500 ticker fetcher
 │   ├── sp100_universe.py   # S&P 100 ticker fetcher
+│   ├── sector_mapping.py   # Sector classification (with ticker normalization)
+│   ├── ticker_utils.py     # Ticker normalization helpers
+│   ├── ticker_metadata.py  # Schwab CSV-backed sector/industry lookup
 │   ├── cache_manager.py    # Intelligent caching with incremental updates
 │   ├── fred_client.py      # FRED API client for economic data
 │   ├── economy_indicators.py  # Economic indicator definitions

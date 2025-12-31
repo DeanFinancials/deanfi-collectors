@@ -36,7 +36,8 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from shared.spx_universe import get_spx_tickers
-from shared.sector_mapping import TICKER_TO_SECTOR
+from shared.sector_mapping import get_sector
+from shared.ticker_metadata import get_industry, get_sub_industry
 
 from utils import (
     get_lookback_start_date,
@@ -491,7 +492,9 @@ def _build_top_trades_by_ticker(trades: List[Dict], max_tickers: int = 10) -> Li
             "premium": max_trade.get('premium'),
             "contracts": max_trade.get('contracts'),
             "tier": max_trade.get('tier_label', max_trade.get('tier')),
-            "sector": TICKER_TO_SECTOR.get(ticker, 'Unknown'),
+            "sector": get_sector(ticker),
+            "industry": get_industry(ticker),
+            "sub_industry": get_sub_industry(ticker),
             "total_trades": len(all_trades),
             "additional_above_threshold": additional_above_threshold,
             "threshold_comparison": round(next_threshold, 2),
@@ -529,7 +532,7 @@ def build_summary_json(all_trades: Dict[str, List[Dict]], sweeps: List[Dict],
     
     # Calculate sector sentiment
     trades_by_ticker = {ticker: trades for ticker, trades in all_trades.items()}
-    sector_sentiment = calculate_sector_sentiment(trades_by_ticker, TICKER_TO_SECTOR)
+    sector_sentiment = calculate_sector_sentiment(trades_by_ticker)
     
     # Sort sectors by total activity
     sorted_sectors = sorted(
@@ -688,7 +691,9 @@ def build_trades_json(all_trades: Dict[str, List[Dict]],
             "call_put_ratio": sentiment['call_put_ratio'],
             "trade_count": len(trades),
             "stock_price": stock_price,
-            "sector": TICKER_TO_SECTOR.get(ticker, "Unknown"),
+            "sector": get_sector(ticker),
+            "industry": get_industry(ticker),
+            "sub_industry": get_sub_industry(ticker),
             "ticker_size": size_class,
             "effective_threshold": ticker_thresholds.get(ticker, config['thresholds']['minimum_threshold']),
             "trades": compact_trades

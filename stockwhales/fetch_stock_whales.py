@@ -38,7 +38,8 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from shared.spx_universe import get_spx_tickers
-from shared.sector_mapping import TICKER_TO_SECTOR
+from shared.sector_mapping import get_sector
+from shared.ticker_metadata import get_industry, get_sub_industry
 
 from utils import (
     get_lookback_start_date,
@@ -494,7 +495,9 @@ def _build_top_trades_by_ticker(trades: List[Dict], direction_filter: str, max_t
             "is_dark_pool": max_trade.get('is_dark_pool'),
             "tier": max_trade.get('tier_label', max_trade.get('tier')),
             "direction_confidence": max_trade.get('direction_confidence'),
-            "sector": TICKER_TO_SECTOR.get(ticker, 'Unknown'),
+            "sector": get_sector(ticker),
+            "industry": get_industry(ticker),
+            "sub_industry": get_sub_industry(ticker),
             "total_trades": entry['trade_count'],
             "dark_pool_count": len(dark_pool_trades),
             "dark_pool_value": dark_pool_value,
@@ -552,7 +555,7 @@ def build_summary_json(all_trades: Dict[str, List[Dict]],
     
     # Sector sentiment
     trades_by_ticker = {ticker: trades for ticker, trades in all_trades.items()}
-    sector_sentiment = calculate_sector_sentiment(trades_by_ticker, TICKER_TO_SECTOR, high_conf_threshold)
+    sector_sentiment = calculate_sector_sentiment(trades_by_ticker, None, high_conf_threshold)
     
     # Sort sectors by total value
     sorted_sectors = sorted(
@@ -739,7 +742,9 @@ def build_trades_json(all_trades: Dict[str, List[Dict]],
             "dark_pool_count": len(dark_pool_trades),
             "dark_pool_value": dark_pool_value,
             "dark_pool_pct": round(dark_pool_value / total_value * 100, 1) if total_value > 0 else 0,
-            "sector": TICKER_TO_SECTOR.get(ticker, "Unknown"),
+            "sector": get_sector(ticker),
+            "industry": get_industry(ticker),
+            "sub_industry": get_sub_industry(ticker),
             "effective_threshold": {
                 "shares": threshold.get('shares', config['thresholds']['minimum_shares']),
                 "value": threshold.get('value', config['thresholds']['minimum_value'])

@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Tuple, Any
 from collections import defaultdict
 from functools import wraps
+from shared.sector_mapping import get_sector
 
 # Try to import pandas_market_calendars for NYSE trading days
 try:
@@ -665,14 +666,16 @@ def calculate_sentiment(trades: List[Dict]) -> Dict[str, Any]:
     }
 
 
-def calculate_sector_sentiment(trades_by_ticker: Dict[str, List[Dict]], 
-                               ticker_to_sector: Dict[str, str]) -> Dict[str, Dict]:
+def calculate_sector_sentiment(
+    trades_by_ticker: Dict[str, List[Dict]],
+    ticker_to_sector: Optional[Dict[str, str]] = None,
+) -> Dict[str, Dict]:
     """
     Calculate sentiment aggregated by sector.
     
     Args:
         trades_by_ticker: Dictionary mapping ticker to list of trades
-        ticker_to_sector: Dictionary mapping ticker to sector name
+        ticker_to_sector: Deprecated. Kept for backward compatibility; lookup uses shared.get_sector.
         
     Returns:
         Dictionary mapping sector name to sentiment metrics
@@ -680,7 +683,7 @@ def calculate_sector_sentiment(trades_by_ticker: Dict[str, List[Dict]],
     sector_trades = defaultdict(list)
     
     for ticker, trades in trades_by_ticker.items():
-        sector = ticker_to_sector.get(ticker, 'Unknown')
+        sector = get_sector(ticker)
         sector_trades[sector].extend(trades)
     
     sector_sentiment = {}

@@ -5,6 +5,31 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 ---
 
+## 2025-12-31: Sector/Industry Enrichment Fallback (Schwab CSV)
+
+### Summary
+Fixed recurring **"Unknown" sector** labels across stock/options whale outputs (and any downstream dashboards that rely on sector strings) by:
+- **Normalizing tickers** across sources (e.g., `BRK.B`, `BRK-B`, `BRK/B`)
+- Adding a cached **CSV-backed sector/industry/sub-industry lookup** using `Schwab-Tickers-Combined-Final.csv`
+- Falling back to the existing `shared/sector_mapping.py` map when the CSV lacks a row
+
+### Files Added
+- `shared/ticker_utils.py` — ticker normalization + candidate generation
+- `shared/ticker_metadata.py` — cached Schwab CSV loader + metadata lookup helpers
+
+### Files Updated
+- `shared/sector_mapping.py` — `get_sector()` now normalizes tickers and prefers CSV sector when available
+- `optionswhales/utils.py` — sector aggregation uses normalized `get_sector()`
+- `optionswhales/fetch_options_whales.py` — emits normalized `sector` and adds optional `industry` / `sub_industry` fields
+- `stockwhales/utils.py` — sector aggregation uses normalized `get_sector()`
+- `stockwhales/fetch_stock_whales.py` — emits normalized `sector` and adds optional `industry` / `sub_industry` fields
+
+### Notes
+- This change is intentionally backward-compatible: existing JSON consumers can ignore the new `industry` / `sub_industry` fields.
+- The Schwab CSV currently contains some share classes under one symbol (e.g., `BRK/A`) so collectors still keep the hardcoded mapping as a safety net.
+
+---
+
 ## 2025-12-21: Consumer & Credit Inline README
 
 ### Summary
