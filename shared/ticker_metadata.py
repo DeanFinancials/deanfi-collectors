@@ -13,6 +13,7 @@ collector-specific mappings used as fallback.
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -34,6 +35,37 @@ def _default_csv_path() -> Path:
     return Path(__file__).resolve().parents[1] / "Schwab-Tickers-Combined-Final.csv"
 
 
+def _normalize_header_name(name: str) -> str:
+    """Normalize a CSV header name for tolerant matching.
+
+    Removes whitespace/punctuation and lowercases, so e.g.:
+    - "Sub-Industry" -> "subindustry"
+    - "Market Capitalization" -> "marketcapitalization"
+    """
+
+    return re.sub(r"[^a-z0-9]+", "", (name or "").strip().lower())
+
+
+# Canonical fields we care about, with tolerated header variants.
+_HEADER_ALIASES = {
+    "symbol": ["symbol", "ticker", "sym"],
+    "sector": ["sector", "gicssector"],
+    "industry": ["industry", "gicsindustry"],
+    "sub_industry": ["subindustry", "subindustryname", "gicssubindustry"],
+}
+
+
+def _resolve_header(fieldnames: Optional[list[str]], canonical: str) -> Optional[str]:
+    if not fieldnames:
+        return None
+
+    wanted = set(_HEADER_ALIASES.get(canonical, []))
+    for name in fieldnames:
+        if _normalize_header_name(name) in wanted:
+            return name
+    return None
+
+
 @lru_cache(maxsize=1)
 def _load_schwab_metadata(csv_path: Optional[str] = None) -> Dict[str, TickerMetadata]:
     path = Path(csv_path) if csv_path else _default_csv_path()
@@ -44,16 +76,33 @@ def _load_schwab_metadata(csv_path: Optional[str] = None) -> Dict[str, TickerMet
 
     with path.open("r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
-        # Expected headers:
-        # Symbol,Description,Market Capitalization,Average Volume (10 Day),Price,Universe,Sector,Industry,Sub-Industry
+        # Required headers (order-independent):
+        # - Symbol (or Ticker)
+        # Optional headers we use when present:
+        # - Sector, Industry, Sub-Industry (header variants tolerated)
+
+        symbol_header = _resolve_header(reader.fieldnames, "symbol")
+        sector_header = _resolve_header(reader.fieldnames, "sector")
+        industry_header = _resolve_header(reader.fieldnames, "industry")
+        sub_industry_header = _resolve_header(reader.fieldnames, "sub_industry")
+
+        if not symbol_header:
+            # If we can't identify the symbol column, treat the CSV as unusable
+            # and let the hardcoded mapping handle sector lookups.
+            return mapping
+
         for row in reader:
-            raw_symbol = (row.get("Symbol") or "").strip()
+            raw_symbol = (row.get(symbol_header) or "").strip()
             if not raw_symbol:
                 continue
 
-            sector = (row.get("Sector") or "").strip() or None
-            industry = (row.get("Industry") or "").strip() or None
-            sub_industry = (row.get("Sub-Industry") or "").strip() or None
+            sector = (row.get(sector_header) or "").strip() if sector_header else ""
+            industry = (row.get(industry_header) or "").strip() if industry_header else ""
+            sub_industry = (row.get(sub_industry_header) or "").strip() if sub_industry_header else ""
+
+            sector = sector or None
+            industry = industry or None
+            sub_industry = sub_industry or None
 
             meta = TickerMetadata(
                 symbol=raw_symbol,

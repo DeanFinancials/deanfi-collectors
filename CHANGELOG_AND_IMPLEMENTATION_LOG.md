@@ -55,6 +55,20 @@ Some companies appear in the S&P universes under multiple actively-traded ticker
 
 ---
 
+## 2026-01-01: Schwab Ticker CSV Loader Resiliency
+
+### Summary
+Hardened the Schwab ticker enrichment CSV loader to be **schema/order tolerant** so you can reorder columns or add new columns without breaking collectors.
+
+### Change
+- `shared/ticker_metadata.py` now resolves required/optional columns by **header name (with aliases)** instead of assuming exact header strings.
+- Extra/unknown columns are ignored.
+
+### Notes
+- Only the symbol/ticker column is required; if it cannot be detected, collectors fall back to the existing hardcoded sector mapping.
+
+---
+
 ## 2025-12-21: Consumer & Credit Inline README
 
 ### Summary
