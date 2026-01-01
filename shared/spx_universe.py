@@ -3,8 +3,9 @@ S&P 500 Universe Fetcher with Deduplication
 
 Fetches the list of S&P 500 tickers with multiple fallback sources:
 1. Wikipedia (primary)
-2. GitHub dataset (fallback)
-3. Hardcoded list (last resort)
+2. Local Schwab tickers CSV (fallback)
+3. GitHub dataset (fallback)
+4. Hardcoded list (last resort)
 
 Includes logic to remove duplicate share classes and keep the most liquid ticker.
 Also provides SEC EDGAR compatible ticker conversion.
@@ -16,9 +17,15 @@ import requests
 from io import StringIO
 import json
 import sys
+import csv
+import re
+
+from shared.ticker_utils import normalize_ticker
 
 WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 GITHUB_SPX_URL = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
+
+SCHWAB_TICKERS_CSV = "Schwab-Tickers-Combined-Final.csv"
 
 # SEC EDGAR ticker mapping (some tickers need conversion)
 # BRK.B on Wikipedia -> BRK-B for SEC EDGAR lookups
@@ -144,6 +151,77 @@ def convert_ticker_for_sec(ticker: str) -> str:
     return ticker.replace('.', '-')
 
 
+def _default_schwab_csv_path() -> Path:
+    # shared/ -> project root
+    return Path(__file__).resolve().parents[1] / SCHWAB_TICKERS_CSV
+
+
+def _normalize_header_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", (name or "").strip().lower())
+
+
+def _resolve_header(fieldnames: Optional[list[str]], candidates: list[str]) -> Optional[str]:
+    if not fieldnames:
+        return None
+
+    wanted = set(candidates)
+    for name in fieldnames:
+        if _normalize_header_name(name) in wanted:
+            return name
+    return None
+
+
+def _fetch_spx_tickers_from_schwab_csv(
+    sec_compatible: bool = False,
+    csv_path: Optional[str] = None,
+) -> list[str]:
+    """Fallback S&P 500 universe source.
+
+    Reads `Schwab-Tickers-Combined-Final.csv` from the repo root and selects
+    rows whose Index column contains "S&P 500".
+
+    This is intended as an offline fallback when Wikipedia (and other web
+    sources) are unavailable.
+    """
+
+    path = Path(csv_path) if csv_path else _default_schwab_csv_path()
+    if not path.exists():
+        return []
+
+    tickers: list[str] = []
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        symbol_header = _resolve_header(reader.fieldnames, ["symbol", "ticker", "sym"])
+        index_header = _resolve_header(reader.fieldnames, ["index", "indices", "benchmark", "benchmarks"])
+
+        if not symbol_header or not index_header:
+            return []
+
+        for row in reader:
+            raw_symbol = (row.get(symbol_header) or "").strip()
+            if not raw_symbol:
+                continue
+
+            index_value = (row.get(index_header) or "").strip().lower()
+            if "s&p 500" not in index_value:
+                continue
+
+            # Normalize share-class separators: '.' and '/' -> '-'
+            t = normalize_ticker(raw_symbol)
+
+            # Schwab exports can include BRK/A; for S&P 500 membership we prefer BRK-B.
+            if t == "BRK-A":
+                t = "BRK-B"
+
+            if sec_compatible:
+                t = convert_ticker_for_sec(t)
+
+            if t:
+                tickers.append(t)
+
+    return deduplicate_tickers(sorted(set(tickers)))
+
+
 def fetch_spx_tickers(sec_compatible: bool = False) -> list:
     """
     Fetch S&P 500 ticker symbols with multiple fallback sources.
@@ -192,6 +270,17 @@ def fetch_spx_tickers(sec_compatible: bool = False) -> list:
         return tickers
     except Exception as e:
         print(f"✗ Wikipedia fetch failed: {e}", file=sys.stderr)
+
+    # Try Schwab CSV fallback (offline)
+    try:
+        print(f"Fetching S&P 500 tickers from {SCHWAB_TICKERS_CSV}...", file=sys.stderr)
+        tickers = _fetch_spx_tickers_from_schwab_csv(sec_compatible=sec_compatible)
+        if tickers:
+            print(f"✓ Fetched {len(tickers)} tickers from Schwab CSV", file=sys.stderr)
+            return tickers
+        raise ValueError("Schwab CSV present but yielded 0 S&P 500 tickers")
+    except Exception as e:
+        print(f"✗ Schwab CSV fallback failed: {e}", file=sys.stderr)
     
     # Try GitHub dataset as fallback
     try:

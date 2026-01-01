@@ -69,6 +69,34 @@ Hardened the Schwab ticker enrichment CSV loader to be **schema/order tolerant**
 
 ---
 
+## 2026-01-01: S&P 500 Universe Schwab CSV Fallback + Shared-Only Consolidation
+
+### Summary
+Updated S&P 500 ticker universe sourcing to be more resilient when upstream sources are unavailable.
+
+### Change
+- `shared/spx_universe.py` now uses the following fallback chain:
+  - Wikipedia (primary)
+  - Schwab CSV offline fallback via `Schwab-Tickers-Combined-Final.csv` by filtering rows where the `Index` column contains `S&P 500`
+  - GitHub dataset fallback
+  - Hardcoded list (last resort)
+- Removed collector-local duplicated `spx_universe.py` modules so `shared/spx_universe.py` is the single source of truth.
+
+### Files Updated
+- `shared/spx_universe.py`
+ 
+### Files Removed
+- `analysttrends/spx_universe.py`
+- `earningscalendar/spx_universe.py`
+- `earningssurprises/spx_universe.py`
+- `advancedecline/spx_universe.py`
+
+### Notes
+- Wikipedia remains the first-line source when available.
+- The Schwab fallback is designed to work offline (no network required) and relies on the new `Index` column in the Schwab CSV.
+
+---
+
 ## 2025-12-21: Consumer & Credit Inline README
 
 ### Summary

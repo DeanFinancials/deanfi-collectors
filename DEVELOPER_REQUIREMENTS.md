@@ -74,8 +74,12 @@ deanfi-collectors/
 
 #### S&P 500 Universe (spx_universe.py)
 - **Purpose**: Maintain consistent list of S&P 500 constituents
-- **Source**: Wikipedia S&P 500 table
-- **Fallback**: Hardcoded list if Wikipedia unavailable
+- **Source**: Wikipedia S&P 500 table (primary)
+- **Fallbacks**:
+  - Schwab CSV offline fallback via `Schwab-Tickers-Combined-Final.csv` by filtering rows where the `Index` column contains `S&P 500`
+  - GitHub dataset fallback
+  - Hardcoded list (last resort)
+- **Implementation**: Use `shared/spx_universe.py` as the single source of truth; do not maintain collector-local copies.
 - **Usage**: Market breadth, analyst trends, earnings
 
 #### FRED Client (fred_client.py)
