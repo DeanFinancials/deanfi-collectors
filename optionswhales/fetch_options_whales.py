@@ -38,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.spx_universe import get_spx_tickers
 from shared.sector_mapping import get_sector
 from shared.ticker_metadata import get_industry, get_sub_industry
+from shared.ticker_utils import dedupe_company_tickers
 
 from utils import (
     get_lookback_start_date,
@@ -917,13 +918,13 @@ def main():
     
     # Determine tickers to scan
     if args.tickers:
-        tickers = [t.strip().upper() for t in args.tickers.split(',')]
+        tickers = dedupe_company_tickers([t.strip().upper() for t in args.tickers.split(',')])
         print(f"Using custom tickers: {tickers}")
     elif args.test:
-        tickers = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'META']
+        tickers = dedupe_company_tickers(['AAPL', 'MSFT', 'NVDA', 'TSLA', 'META'])
         print(f"Test mode - using sample tickers: {tickers}")
     else:
-        tickers = get_spx_tickers()
+        tickers = dedupe_company_tickers(get_spx_tickers())
         print(f"Scanning full S&P 500 ({len(tickers)} tickers)")
     
     # Determine output directory

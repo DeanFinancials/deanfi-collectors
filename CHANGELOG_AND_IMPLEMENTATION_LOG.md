@@ -30,6 +30,31 @@ Fixed recurring **"Unknown" sector** labels across stock/options whale outputs (
 
 ---
 
+## 2026-01-01: De-duplicate Dual-Class Tickers in Outputs
+
+### Summary
+Some companies appear in the S&P universes under multiple actively-traded tickers (e.g., **GOOG/GOOGL**, **FOX/FOXA**, **NWS/NWSA**). This caused downstream dashboards to double-count those companies and also increased the chance of seeing `sector: "Unknown"` when the Schwab enrichment CSV only contained one of the pair.
+
+### Change
+- Added shared helpers to **canonicalize** and **deduplicate** known dual-class/alternate tickers at the company level.
+- Applied the dedupe to ticker universes in:
+  - SP growth collector (SP100/SP500 outputs)
+  - Options whales collector
+  - Stock whales collector
+
+### Canonical Preference
+- Alphabet: `GOOGL` preferred over `GOOG`
+- Fox: `FOXA` preferred over `FOX`
+- News Corp: `NWSA` preferred over `NWS`
+
+### Files Updated
+- `shared/ticker_utils.py`
+- `spgrowth/fetch_sp_growth.py`
+- `optionswhales/fetch_options_whales.py`
+- `stockwhales/fetch_stock_whales.py`
+
+---
+
 ## 2025-12-21: Consumer & Credit Inline README
 
 ### Summary

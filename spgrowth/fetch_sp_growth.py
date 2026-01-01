@@ -72,6 +72,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.sp100_universe import fetch_sp100_tickers
 from shared.spx_universe import fetch_spx_tickers
 from shared.sector_mapping import get_sector
+from shared.ticker_utils import dedupe_company_tickers
 
 
 # ============================================================================
@@ -2357,8 +2358,8 @@ def main():
     
     # Fetch universes
     print("[info] Fetching S&P universes...")
-    sp100_tickers = set(fetch_sp100_tickers())
-    sp500_tickers = fetch_spx_tickers(sec_compatible=True)  # Use SEC-compatible format
+    sp100_tickers = set(dedupe_company_tickers(fetch_sp100_tickers()))
+    sp500_tickers = dedupe_company_tickers(fetch_spx_tickers(sec_compatible=True))  # Use SEC-compatible format
     
     # Determine which tickers to process
     if args.sp100_only:
