@@ -231,9 +231,20 @@ def calculate_returns(prices: pd.Series) -> Dict[str, float]:
     # Make timezone-naive for comparison
     prices_index = prices.index.tz_localize(None) if hasattr(prices.index, 'tz') and prices.index.tz else prices.index
     ytd_prices = prices[prices_index >= year_start]
-    if len(ytd_prices) > 1:
-        ytd_return = ((current_price - ytd_prices.iloc[0]) / ytd_prices.iloc[0]) * 100
-        returns['year_to_date_percent'] = round(float(ytd_return), 2)
+    pre_year_prices = prices[prices_index < year_start]
+
+    ytd_base_price = None
+    if len(pre_year_prices) > 0:
+        # Standard YTD baseline is the last close of the prior year (last trading day).
+        ytd_base_price = pre_year_prices.iloc[-1]
+    elif len(ytd_prices) > 0:
+        # Fallback: if we don't have prior-year data, baseline to first in-year close.
+        ytd_base_price = ytd_prices.iloc[0]
+
+    if ytd_base_price is not None and pd.notna(ytd_base_price) and float(ytd_base_price) != 0:
+        ytd_return = ((current_price - ytd_base_price) / ytd_base_price) * 100
+        if pd.notna(ytd_return) and np.isfinite(ytd_return):
+            returns['year_to_date_percent'] = round(float(ytd_return), 2)
     
     # Period returns
     periods = {
@@ -574,7 +585,9 @@ def create_index_metadata(symbol: str, name: str, data_count: int,
         'market_status': get_market_hours_status(),
         'indices_count': indices_total,
         'data_source': 'Yahoo Finance (yfinance)',
-        'data_quality': calculate_data_quality(data_count, 252)
+        # For major index datasets, `data_count` is the number of indices successfully emitted.
+        # Measure completeness against `indices_total` (not trading days).
+        'data_quality': calculate_data_quality(data_count, indices_total)
     }
 
 

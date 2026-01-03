@@ -5,6 +5,19 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 ---
 
+## 2026-01-03: Major Indexes — Fix YTD Return Nulls + Metadata Data Quality
+
+### Summary
+Addressed two issues impacting `major-indexes/us_major_indices.json` consumers:
+- **YTD return could be missing/null** around year boundaries because `year_to_date_percent` was only emitted when there were 2+ in-year data points.
+- **`metadata.data_quality` was incorrectly marked stale** because index-count completeness was being measured against a hardcoded 252 expected points.
+
+### Changes
+- `majorindexes/utils.py` — `calculate_returns()` now computes YTD return using the **prior-year last close** as the baseline (with a first-in-year fallback), so `year_to_date_percent` is emitted reliably.
+- `majorindexes/utils.py` — `create_index_metadata()` now measures `data_quality` against `indices_total` (index coverage) instead of 252 trading days.
+- `majorindexes/fetch_us_major.py` — snapshot metadata is updated after fetch to reflect the **actual number of indices emitted**.
+
+
 ## 2025-12-31: Sector/Industry Enrichment Fallback (Schwab CSV)
 
 ### Summary

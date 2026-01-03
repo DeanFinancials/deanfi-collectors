@@ -353,6 +353,14 @@ def create_snapshot_json():
         "market_sentiment": determine_market_sentiment(indices_up, total_indices),
         "breadth_score": round((indices_up / total_indices) * 100, 1) if total_indices > 0 else 0
     }
+
+    # Update metadata now that we know how many indices we successfully emitted
+    snapshot_data['metadata'] = create_index_metadata(
+        symbol="US_MAJOR",
+        name="US Major Indices",
+        data_count=total_indices,
+        indices_total=len(INDICES)
+    )
     
     # Save
     output_path = os.path.join(SCRIPT_DIR, US_MAJOR_CONFIG['output_files']['snapshot'])
