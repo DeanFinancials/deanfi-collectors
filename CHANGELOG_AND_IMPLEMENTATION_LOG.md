@@ -5,6 +5,15 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 ---
 
+## 2026-02-02: Pause Daily News Scheduled Workflow
+
+### Summary
+Paused the scheduled cron triggers for the Daily News GitHub Actions workflow to stop automatic runs while keeping `workflow_dispatch` available for manual execution.
+
+### Files Updated
+- `.github/workflows/daily-news.yml`
+- `README.md`
+
 ## 2026-01-03: Major Indexes — Fix YTD Return Nulls + Metadata Data Quality
 
 ### Summary

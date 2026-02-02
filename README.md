@@ -12,7 +12,7 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 
 | Collector | Description | Update Frequency | Data Source |
 |-----------|-------------|------------------|-------------|
-| **Daily News** | Top market news + sector breakdowns | Twice daily (9:30am & 4pm ET) | Finnhub |
+| **Daily News** | Top market news + sector breakdowns | Manual (schedule paused) | Finnhub |
 | **Analyst Trends** | Recommendation changes (buy/hold/sell) | Nightly (11pm ET) | Finnhub |
 | **Earnings Calendar** | Upcoming earnings releases + estimates | Nightly (11pm ET) | Finnhub |
 | **Earnings Surprises** | Historical EPS vs estimates | Nightly (11pm ET) | Finnhub |
@@ -180,7 +180,7 @@ This repository uses GitHub Actions to automatically collect data and publish to
 - **Runtime:** ~3-4 min/run, ~90 hours/month
 
 **Twice Daily (Market open & close):**
-- Daily news (9:30am ET and 4:00pm ET)
+- Daily news (currently paused; manual runs only)
 - **Runtime:** ~2 min/run, ~1.5 hours/month
 
 **Weekly (Sunday 12:00pm ET):**
