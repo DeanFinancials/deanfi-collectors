@@ -5,6 +5,36 @@ This document tracks all implementations, changes, and updates to the DeanFi Col
 
 ---
 
+## 2026-02-07: ETF Fund Flows — Daily AUM Inputs + Monthly JSON + Aggregates
+
+### Summary
+Added a new collector to capture the daily inputs needed to estimate ETF fund flows for the tickers in `organized_etf_list.csv`.
+
+The collector runs after market close, fetches ETF **AUM + NAV** primarily via Yahoo Finance using `yfinance` (`Ticker.info`), fetches daily closes via yfinance (batched), and writes **monthly-partitioned JSON** outputs (per-ticker plus three aggregate groupings). Optional fallbacks can be enabled for cases where yfinance fundamentals are missing.
+
+### Outputs (committed to deanfi-data)
+- `etf-fund-flows/etf_fund_flows_YYYY-MM.json` (per-ticker monthly series)
+- `etf-fund-flows/etf_fund_flows_agg_asset_class_YYYY-MM.json`
+- `etf-fund-flows/etf_fund_flows_agg_category_YYYY-MM.json`
+- `etf-fund-flows/etf_fund_flows_agg_subcategory_YYYY-MM.json`
+
+### Notes
+- Default AUM/NAV provider order is yfinance-first, with optional fallback:
+  - Alpha Vantage `ETF_PROFILE` (`net_assets`, AUM-only) via `ALPHA_VANTAGE_API_KEY`
+- Removed FMP support from this collector because `stable/etf/info` returned `402 premium required` in real runs.
+- Computes flows on both bases:
+  - NAV basis: $flow = AUM_t - AUM_{t-1} \cdot (NAV_t/NAV_{t-1})$
+  - Close basis: $flow = AUM_t - AUM_{t-1} \cdot (Close_t/Close_{t-1})$
+- Includes guardrails to cap per-run Alpha Vantage calls to stay under typical free-tier limits.
+- yfinance close fetching is batched and hardened to handle single-ticker and multi-ticker response shapes.
+- Aggregate outputs emit `null` (not `0.0`) when AUM/flow inputs are unavailable for a group on a date.
+
+### Files Added
+- `etffundflows/README.md`
+- `etffundflows/config.yml`
+- `etffundflows/fetch_etf_fund_flows.py`
+- `.github/workflows/etf-fund-flows.yml`
+
 ## 2026-02-02: Pause Daily News Scheduled Workflow
 
 ### Summary

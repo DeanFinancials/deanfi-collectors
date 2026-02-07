@@ -1,0 +1,102 @@
+name: ETF Fund Flows (Daily)
+
+on:
+  schedule:
+    # Weeknights after US market close.
+    # 9:30pm EST ≈ 02:30 UTC (Tue-Sat)
+    - cron: '30 2 * * 2-6'
+    # EDT variant (uncomment during daylight saving time)
+    # - cron: '30 1 * * 2-6'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: false
+        default: 'test'
+        type: choice
+        options:
+          - test
+          - full
+      tickers:
+        description: 'Comma-separated tickers (optional override)'
+        required: false
+        default: 'SPY,VOO,XLV,XLE,TLT'
+
+env:
+  ALPHA_VANTAGE_API_KEY: "${{ secrets.ALPHA_VANTAGE_API_KEY }}"
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+
+jobs:
+  fetch-and-publish:
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: deanfi-data-repo
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v4
+
+      - name: Checkout data repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate ETF fund flows
+        run: |
+          cd etffundflows
+
+          # Manual runs default to test mode unless set to full
+          MODE="${{ github.event.inputs.mode }}"
+          TICKERS="${{ github.event.inputs.tickers }}"
+
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "Scheduled run: full universe"
+            python fetch_etf_fund_flows.py --config ./config.yml
+          else
+            if [ "$MODE" = "full" ]; then
+              echo "Manual full run"
+              python fetch_etf_fund_flows.py --config ./config.yml
+            else
+              echo "Manual test run: tickers=$TICKERS"
+              python fetch_etf_fund_flows.py --config ./config.yml --tickers "$TICKERS"
+            fi
+          fi
+
+      - name: Copy to data repo
+        run: |
+          mkdir -p data-cache/etf-fund-flows
+
+          # Copy all monthly outputs created/updated this run
+          cp etffundflows/output/*.json data-cache/etf-fund-flows/
+          echo "✅ ETF fund flows files copied to data repo"
+
+      - name: Commit and push
+        run: |
+          cd data-cache
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add etf-fund-flows/
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update ETF fund flows - $(date -u +"%Y-%m-%d")"
+            git pull --rebase origin main
+            git push
+            echo "✅ ETF fund flows pushed to repository"
+          fi

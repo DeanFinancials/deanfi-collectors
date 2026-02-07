@@ -1,0 +1,78 @@
+# ============================================================================
+# ETF Fund Flows Collector Configuration
+# ============================================================================
+
+universe:
+  # CSV maintained in repo root
+  csv_path: "../organized_etf_list.csv"
+
+  # Column names in the CSV
+  columns:
+    ticker: "Ticker"
+    asset_class: "Asset Class"
+    category: "Category"
+    subcategory: "Subcategory"
+    notes: "Notes"
+
+  # Optional: exclude tickers (e.g., delisted)
+  exclude_tickers: []
+
+  # Convenience list for safe testing
+  test_tickers:
+    - SPY
+    - VOO
+    - XLV
+    - XLE
+    - TLT
+
+# AUM/NAV sourcing for flow calculations.
+# Default is yfinance-first, with optional fallbacks.
+aum_nav:
+  # Order of attempts for AUM/NAV inputs.
+  # - yfinance: tries totalAssets (AUM) + navPrice (NAV)
+  # - alphavantage: ETF_PROFILE net_assets (AUM-only)
+  source_order:
+    - yfinance
+    - alphavantage
+
+  yfinance:
+    # yfinance info lookups are per-ticker; add a small sleep if you see throttling.
+    sleep_seconds_per_ticker: 0
+
+api:
+  alphavantage:
+    base_url: "https://www.alphavantage.co/query"
+    api_key_env: "ALPHA_VANTAGE_API_KEY"
+    timeout_seconds: 20
+    # Alpha Vantage free-tier caps are very low; keep this small.
+    max_calls_per_run: 25
+    # Alpha Vantage is rate-limited; throttle between calls.
+    sleep_seconds_between_calls: 15
+
+prices:
+  # We use yfinance for closes because it batches many tickers in one request.
+  source: "yfinance"
+
+  yfinance:
+    # We fetch a small window around the session date to be robust to holidays.
+    lookback_calendar_days: 10
+
+calc:
+  # Primary flow series uses NAV-to-NAV return factor.
+  primary_return_basis: "nav"  # nav | close
+
+  # Also compute the alternate flow series (close-to-close).
+  compute_secondary_close_based_series: true
+
+output:
+  directory: "./output"
+  indent: 2
+
+  # File naming (monthly partitions)
+  per_ticker_prefix: "etf_fund_flows"
+
+  aggregates:
+    enabled: true
+    asset_class_prefix: "etf_fund_flows_agg_asset_class"
+    category_prefix: "etf_fund_flows_agg_category"
+    subcategory_prefix: "etf_fund_flows_agg_subcategory"

@@ -17,6 +17,7 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 | **Earnings Calendar** | Upcoming earnings releases + estimates | Nightly (11pm ET) | Finnhub |
 | **Earnings Surprises** | Historical EPS vs estimates | Nightly (11pm ET) | Finnhub |
 | **SP100 Growth** | Revenue & EPS growth metrics for S&P 100 | Nightly (11:15pm ET) | SEC EDGAR + fallback¹ |
+| **ETF Fund Flows** | Daily AUM + implied flow inputs (NAV + close return bases) | Nightly (after close) | Yahoo Finance (yfinance) + optional fallbacks |
 | **Advance/Decline** | Market breadth indicators (with caching) | Every 10 min (market hours) | Yahoo Finance |
 | **Major Indexes** | S&P 500, Dow, Nasdaq tracking (with caching) | Every 10 min (market hours) | Yahoo Finance |
 | **Implied Volatility** | VIX and options volatility | Every 10 min (market hours) | Yahoo Finance |
@@ -161,6 +162,9 @@ deanfi-collectors/
 │   └── config.yml
 ├── sp100growth/            # S&P 100 revenue & EPS growth
 │   ├── fetch_sp100_growth.py
+│   └── config.yml
+├── etffundflows/           # ETF AUM + implied fund flows (monthly JSON)
+│   ├── fetch_etf_fund_flows.py
 │   └── config.yml
 ├── requirements.txt        # Python dependencies
 ├── .env.example           # Environment template
