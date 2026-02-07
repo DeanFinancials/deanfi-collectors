@@ -1,14 +1,12 @@
 name: Daily News Collection
 
 on:
-  # NOTE: Scheduled runs are currently paused.
-  # To re-enable, uncomment the schedule block below.
-  # schedule:
-  #   # Twice daily: Market open (9:30am ET) and market close (4:00pm ET)
-  #   # 9:30am ET = 14:30 UTC, 4:00pm ET = 21:00 UTC
-  #   # Note: Adjust for daylight saving time if needed (EDT vs EST)
-  #   - cron: '30 14 * * 1-5'  # 9:30am ET
-  #   - cron: '0 21 * * 1-5'   # 4:00pm ET
+  schedule:
+    # Twice daily: Market open (9:30am ET) and market close (4:00pm ET)
+    # 9:30am ET = 14:30 UTC, 4:00pm ET = 21:00 UTC
+    # Note: Adjust for daylight saving time if needed (EDT vs EST)
+    - cron: '30 14 * * 1-5'  # 9:30am ET
+    - cron: '0 21 * * 1-5'   # 4:00pm ET
   workflow_dispatch:  # Allow manual trigger
 
 env:
@@ -64,6 +62,11 @@ jobs:
           cp dailynews/top_news.json data-cache/daily-news/
           cp dailynews/sector_news.json data-cache/daily-news/
           echo "✅ Files copied to data repo"
+
+      - name: Update daily-news lookback files
+        run: |
+          python dailynews/update_news_lookback.py --data-repo-path data-cache --lookback-days 7
+          echo "✅ Lookback files updated"
       
       - name: Update metadata
         run: |

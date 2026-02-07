@@ -14,6 +14,22 @@ Paused the scheduled cron triggers for the Daily News GitHub Actions workflow to
 - `.github/workflows/daily-news.yml`
 - `README.md`
 
+## 2026-02-06: Market Pulse Week Wrap — Restore Daily News Schedule + Add Lookback Feeds
+
+### Summary
+Re-enabled the scheduled Daily News workflow and added rolling lookback JSON files so Market Pulse weekly wrap-ups can reference the most recent week of headlines.
+
+Added a compact advancing/declining volume lookback series so breadth lookback tables can include volume breadth without requiring heavy historical recomputation.
+
+### Files Added
+- `dailynews/update_news_lookback.py`
+- `advancedecline/fetch_volume_metrics_historical.py`
+
+### Files Updated
+- `.github/workflows/daily-news.yml`
+- `.github/workflows/market-data-10min.yml`
+- `advancedecline/config.yml`
+
 ## 2026-01-03: Major Indexes — Fix YTD Return Nulls + Metadata Data Quality
 
 ### Summary

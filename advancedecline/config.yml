@@ -32,3 +32,4 @@ output_files:
   ad_line_historical: "ad_line_historical.json"
   ma_percentage_historical: "ma_percentage_historical.json"
   highs_lows_historical: "highs_lows_historical.json"
+  volume_metrics_historical: "volume_metrics_historical.json"

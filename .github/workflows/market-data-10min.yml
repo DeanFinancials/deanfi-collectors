@@ -74,6 +74,12 @@ jobs:
           cd advancedecline
           python fetch_highs_lows_historical.py --cache-dir ../data-cache/cache
           echo "✅ Highs/lows historical fetched"
+
+      - name: Fetch volume metrics historical
+        run: |
+          cd advancedecline
+          python fetch_volume_metrics_historical.py --cache-dir ../data-cache/cache --sessions 60
+          echo "✅ Volume metrics historical fetched"
       
       # ==================== MAJOR INDEXES ====================
       - name: Fetch all index data
@@ -118,6 +124,7 @@ jobs:
           cp advancedecline/ad_line_historical.json data-cache/advance-decline/
           cp advancedecline/ma_percentage_historical.json data-cache/advance-decline/
           cp advancedecline/highs_lows_historical.json data-cache/advance-decline/
+          cp advancedecline/volume_metrics_historical.json data-cache/advance-decline/
           
           # Major Indexes
           mkdir -p data-cache/major-indexes
