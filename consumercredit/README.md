@@ -15,6 +15,7 @@ Daily FRED-based export of U.S. consumer sentiment, spending, saving, and credit
 - `TOTALSL` – Total consumer credit outstanding (SA)
 - `REVOLSL` – Revolving consumer credit (SA)
 - `NONREVSL` – Nonrevolving consumer credit (SA)
+- `BAMLH0A0HYM2` – ICE BofA US High Yield Index option-adjusted spread (Daily, credit stress proxy)
 
 ## Methodology
 

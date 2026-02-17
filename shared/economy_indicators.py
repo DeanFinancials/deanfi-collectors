@@ -396,6 +396,15 @@ CONSUMER_CREDIT_INDICATORS = [
         unit="Billions of Dollars",
         interpretation="neutral"
     ),
+    IndicatorDefinition(
+        series_id="BAMLH0A0HYM2",
+        name="ICE BofA US High Yield Index Option-Adjusted Spread",
+        description="Option-adjusted spread (OAS) for the ICE BofA US High Yield Index; a proxy for high-yield credit stress",
+        frequency="Daily",
+        seasonal_adjustment="NSA",
+        unit="Percent",
+        interpretation="lower_is_better"
+    ),
 ]
 
 

@@ -35,6 +35,19 @@ The collector runs after market close, fetches ETF **AUM + NAV** primarily via Y
 - `etffundflows/fetch_etf_fund_flows.py`
 - `.github/workflows/etf-fund-flows.yml`
 
+## 2026-02-17: Consumer & Credit — Add High-Yield Credit Spread (BAMLH0A0HYM2)
+
+### Summary
+Added the **ICE BofA US High Yield Index Option-Adjusted Spread** series (`BAMLH0A0HYM2`) to the Consumer & Credit dataset so the economy indicators workflow publishes a market-implied credit stress proxy alongside sentiment/spending/credit balances.
+
+### Change
+- `shared/economy_indicators.py` — appended `BAMLH0A0HYM2` to `CONSUMER_CREDIT_INDICATORS` with `frequency: Daily`, `unit: Percent`, and `interpretation: lower_is_better`.
+- `consumercredit/fetch_consumer_credit.py` — documented the new series in `_README.metrics_explained` and extended credit-risk notes to reference OAS.
+- `consumercredit/README.md` — added `BAMLH0A0HYM2` to the indicator list.
+
+### Notes
+- FRED API access was smoke-tested locally via the shared `FREDClient` and confirmed to return daily observations for `BAMLH0A0HYM2`.
+
 ## 2026-02-02: Pause Daily News Scheduled Workflow
 
 ### Summary

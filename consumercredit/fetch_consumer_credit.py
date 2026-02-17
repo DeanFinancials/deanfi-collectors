@@ -128,11 +128,15 @@ def export_consumer_credit_json(output_path: str, config_path: str = None, overr
             "NONREVSL": {
                 "description": "Nonrevolving consumer credit (installment/auto/student, SA).",
                 "interpretation": "Growth signals credit expansion; slowing or declines can reflect tighter lending or reduced demand."
+            },
+            "BAMLH0A0HYM2": {
+                "description": "ICE BofA US High Yield Index option-adjusted spread (OAS, daily).",
+                "interpretation": "Lower spreads indicate easier credit and lower risk premiums; sharp widening typically signals rising credit stress and risk-off conditions."
             }
         },
         "trading_applications": {
             "consumer_equities": "Pair sentiment and real sales trends with sector earnings to gauge demand sensitivity.",
-            "credit_risk": "Use revolving/nonrevolving growth vs saving rate as a quick leverage/stress pulse for consumer credit exposure."
+            "credit_risk": "Use revolving/nonrevolving growth vs saving rate as a quick leverage/stress pulse for consumer credit exposure; use high-yield OAS for market-implied credit stress confirmation."
         },
         "notes": {
             "history_window": "20-year history (7300 days) for percentile grading.",
