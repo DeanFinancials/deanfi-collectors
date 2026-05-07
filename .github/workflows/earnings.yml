@@ -18,7 +18,8 @@ env:
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
@@ -45,31 +46,60 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Fetch earnings calendar
+        continue-on-error: true
         run: |
           cd earningscalendar
           python fetch_earnings_calendar.py
           echo "✅ Earnings calendar fetched"
-      
+
       - name: Fetch earnings surprises
+        continue-on-error: true
         run: |
           cd earningssurprises
           python fetch_earnings_surprises.py
           echo "✅ Earnings surprises fetched"
-      
+
       - name: Copy to data repo
         run: |
           mkdir -p data-cache/earnings-calendar
           mkdir -p data-cache/earnings-surprises
-          cp earningscalendar/earnings_calendar.json data-cache/earnings-calendar/
-          cp earningssurprises/earnings_surprises.json data-cache/earnings-surprises/
-          echo "✅ Files copied to data repo"
-      
+          cp earningscalendar/earnings_calendar.json data-cache/earnings-calendar/ 2>/dev/null || true
+          cp earningssurprises/earnings_surprises.json data-cache/earnings-surprises/ 2>/dev/null || true
+          echo "✅ Files copied (missing outputs skipped)"
+
+      - name: Update data freshness
+        run: |
+          python3 << 'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+
+          section_sentinels = {
+              "earnings-calendar":  "earningscalendar/earnings_calendar.json",
+              "earnings-surprises": "earningssurprises/earnings_surprises.json",
+          }
+          for section, sentinel in section_sentinels.items():
+              if Path(sentinel).exists():
+                  data["sections"][section] = {"last_updated": now}
+                  print(f"  ✅ {section}: {now}")
+              else:
+                  existing = data.get("sections", {}).get(section, {}).get("last_updated", "never")
+                  print(f"  ⏭  {section}: no output, keeping {existing}")
+
+          fp.write_text(json.dumps(data, indent=2))
+          print("✅ data_freshness.json written")
+          EOF
+
       - name: Commit and push
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add earnings-calendar/ earnings-surprises/
+          git add earnings-calendar/ earnings-surprises/ data_freshness.json
           
           if git diff --staged --quiet; then
             echo "No changes to commit"

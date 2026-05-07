@@ -2,12 +2,8 @@ name: Economy Indicators Collection
 
 on:
   schedule:
-    # Every weekday at 8:00am ET (14:00 UTC during EST, 13:00 UTC during EDT)
-    - cron: '0 14 * * 1-5'
-    # - cron: '0 13 * * 1-5'  # EDT (Daylight Saving Time)
-    # Every weekday at 12:00pm ET (17:00 UTC during EST, 16:00 UTC during EDT)
-    - cron: '0 17 * * 1-5'
-    # - cron: '0 16 * * 1-5'  # EDT (Daylight Saving Time)
+    - cron: '0 14 * * 1-5'   # ~8am ET (9am EST / 10am EDT — acceptable drift)
+    - cron: '0 17 * * 1-5'   # ~noon ET (12pm EST / 1pm EDT — acceptable drift)
   workflow_dispatch:
 
 env:
@@ -18,7 +14,8 @@ env:
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
@@ -45,60 +42,94 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Fetch growth & output data
+        continue-on-error: true
         run: |
           cd growthoutput
           python fetch_growth_output.py
           echo "✅ Growth & output data fetched"
-      
+
       - name: Fetch inflation & prices data
+        continue-on-error: true
         run: |
           cd inflationprices
           python fetch_inflation_prices.py
           echo "✅ Inflation & prices data fetched"
-      
+
       - name: Fetch labor & employment data
+        continue-on-error: true
         run: |
           cd laboremployment
           python fetch_labor_employment.py
           echo "✅ Labor & employment data fetched"
-      
+
       - name: Fetch money markets data
+        continue-on-error: true
         run: |
           cd moneymarkets
           python fetch_money_markets.py
           echo "✅ Money markets data fetched"
 
       - name: Fetch consumer & credit data
+        continue-on-error: true
         run: |
           cd consumercredit
           python fetch_consumer_credit.py
           echo "✅ Consumer & credit data fetched"
 
       - name: Fetch housing & affordability data
+        continue-on-error: true
         run: |
           cd housingaffordability
           python fetch_housing_affordability.py
           echo "✅ Housing & affordability data fetched"
-      
+
       - name: Copy to data repo
         run: |
           mkdir -p data-cache/economy-breadth
           mkdir -p data-cache/consumer-credit
           mkdir -p data-cache/housing-affordability
-          cp growthoutput/growth_output.json data-cache/economy-breadth/
-          cp inflationprices/inflation_prices.json data-cache/economy-breadth/
-          cp laboremployment/labor_employment.json data-cache/economy-breadth/
-          cp moneymarkets/money_markets.json data-cache/economy-breadth/
-          cp consumercredit/consumer_credit.json data-cache/consumer-credit/
-          cp housingaffordability/housing_affordability.json data-cache/housing-affordability/
-          echo "✅ All economy files copied to data repo"
-      
+          cp growthoutput/growth_output.json data-cache/economy-breadth/ 2>/dev/null || true
+          cp inflationprices/inflation_prices.json data-cache/economy-breadth/ 2>/dev/null || true
+          cp laboremployment/labor_employment.json data-cache/economy-breadth/ 2>/dev/null || true
+          cp moneymarkets/money_markets.json data-cache/economy-breadth/ 2>/dev/null || true
+          cp consumercredit/consumer_credit.json data-cache/consumer-credit/ 2>/dev/null || true
+          cp housingaffordability/housing_affordability.json data-cache/housing-affordability/ 2>/dev/null || true
+          echo "✅ Files copied (missing outputs skipped)"
+
+      - name: Update data freshness
+        run: |
+          python3 << 'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+
+          section_sentinels = {
+              "economy-breadth":      "growthoutput/growth_output.json",
+              "consumer-credit":      "consumercredit/consumer_credit.json",
+              "housing-affordability":"housingaffordability/housing_affordability.json",
+          }
+          for section, sentinel in section_sentinels.items():
+              if Path(sentinel).exists():
+                  data["sections"][section] = {"last_updated": now}
+                  print(f"  ✅ {section}: {now}")
+              else:
+                  existing = data.get("sections", {}).get(section, {}).get("last_updated", "never")
+                  print(f"  ⏭  {section}: no output, keeping {existing}")
+
+          fp.write_text(json.dumps(data, indent=2))
+          print("✅ data_freshness.json written")
+          EOF
+
       - name: Commit and push
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add economy-breadth/ consumer-credit/ housing-affordability/
+          git add economy-breadth/ consumer-credit/ housing-affordability/ data_freshness.json
           
           if git diff --staged --quiet; then
             echo "No changes to commit"

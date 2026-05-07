@@ -2,16 +2,7 @@ name: Market Data Collection (10-min)
 
 on:
   schedule:
-    # Every 10 minutes during market hours (8:05am-4:55pm ET) with a 5-minute offset to avoid top-of-hour collisions
-    # SKIPS the noon hour (12:00-12:59 ET) to allow options-whales collector to run uninterrupted
-    # 
-    # EST (roughly Nov–Mar): 13:05-16:55 UTC (8am-12pm ET), then 18:05-21:55 UTC (1pm-5pm ET)
-    - cron: '5-55/10 13-16 * * 1-5'  # Morning session: 8am-12pm ET
-    - cron: '5-55/10 18-21 * * 1-5'  # Afternoon session: 1pm-5pm ET (skips 12pm-1pm for options whales)
-    # 
-    # EDT (roughly Mar–Nov): 12:05-15:55 UTC (8am-12pm ET), then 17:05-20:55 UTC (1pm-5pm ET)
-    # - cron: '5-55/10 12-15 * * 1-5'  # Morning session EDT
-    # - cron: '5-55/10 17-20 * * 1-5'  # Afternoon session EDT
+    - cron: '5-55/10 12-21 * * 1-5'  # 8am-5pm ET year-round (market-hours guard handles DST)
   workflow_dispatch:
 
 env:
@@ -21,7 +12,8 @@ env:
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
@@ -46,68 +38,112 @@ jobs:
       
       - name: Install dependencies
         run: pip install -r requirements.txt
-      
+
+      - name: Get date for cache key
+        id: cache_date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Restore price cache
+        uses: actions/cache@v4
+        with:
+          path: ./cache
+          key: market-data-cache-${{ steps.cache_date.outputs.date }}
+          restore-keys: |
+            market-data-cache-
+
+      - name: Check market hours
+        id: hours_check
+        run: |
+          python3 << 'EOF'
+          from datetime import datetime
+          import zoneinfo, os
+          et = datetime.now(zoneinfo.ZoneInfo('America/New_York'))
+          in_hours = 8 <= et.hour < 17
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'in_market_hours={str(in_hours).lower()}\n')
+          status = "OPEN" if in_hours else "CLOSED"
+          print(f"Market {status} — ET time: {et.strftime('%H:%M %Z')}")
+          EOF
+
       - name: Create cache directory
-        run: mkdir -p data-cache/cache
+        run: mkdir -p ./cache
       
       # ==================== MARKET BREADTH ====================
       - name: Fetch daily breadth
+        continue-on-error: true
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
           cd advancedecline
-          python fetch_daily_breadth.py --cache-dir ../data-cache/cache
+          python fetch_daily_breadth.py --cache-dir ../cache
           echo "✅ Daily breadth fetched"
-      
+
       - name: Fetch A/D line historical
+        continue-on-error: true
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
           cd advancedecline
-          python fetch_ad_line_historical.py --cache-dir ../data-cache/cache
+          python fetch_ad_line_historical.py --cache-dir ../cache
           echo "✅ A/D line historical fetched"
-      
+
       - name: Fetch MA percentage historical
+        continue-on-error: true
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
           cd advancedecline
-          python fetch_ma_percentage_historical.py --cache-dir ../data-cache/cache
+          python fetch_ma_percentage_historical.py --cache-dir ../cache
           echo "✅ MA percentage historical fetched"
-      
+
       - name: Fetch highs/lows historical
+        continue-on-error: true
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
           cd advancedecline
-          python fetch_highs_lows_historical.py --cache-dir ../data-cache/cache
+          python fetch_highs_lows_historical.py --cache-dir ../cache
           echo "✅ Highs/lows historical fetched"
 
       - name: Fetch volume metrics historical
+        continue-on-error: true
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
           cd advancedecline
-          python fetch_volume_metrics_historical.py --cache-dir ../data-cache/cache --sessions 60
+          python fetch_volume_metrics_historical.py --cache-dir ../cache --sessions 60
           echo "✅ Volume metrics historical fetched"
-      
+
       # ==================== MAJOR INDEXES ====================
       - name: Fetch all index data
+        continue-on-error: true
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
           cd majorindexes
-          python fetch_us_major.py --cache-dir ../data-cache/cache
-          python fetch_sectors.py --cache-dir ../data-cache/cache
-          python fetch_growth_value.py --cache-dir ../data-cache/cache
-          python fetch_international.py --cache-dir ../data-cache/cache
-          python fetch_bonds.py --cache-dir ../data-cache/cache
-          python fetch_commodities.py --cache-dir ../data-cache/cache
+          python fetch_us_major.py --cache-dir ../cache
+          python fetch_sectors.py --cache-dir ../cache
+          python fetch_growth_value.py --cache-dir ../cache
+          python fetch_international.py --cache-dir ../cache
+          python fetch_bonds.py --cache-dir ../cache
+          python fetch_commodities.py --cache-dir ../cache
           echo "✅ All index data fetched"
-      
+
       # ==================== MEAN REVERSION ====================
       - name: Fetch Price vs MA data
+        continue-on-error: true
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
           cd meanreversion
-          python fetch_price_vs_ma.py --cache-dir ../data-cache/cache
+          python fetch_price_vs_ma.py --cache-dir ../cache
           echo "✅ Price vs MA data fetched"
-      
+
       - name: Fetch MA Spreads data
+        continue-on-error: true
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
           cd meanreversion
-          python fetch_ma_spreads.py --cache-dir ../data-cache/cache
+          python fetch_ma_spreads.py --cache-dir ../cache
           echo "✅ MA spreads data fetched"
-      
+
       # ==================== IMPLIED VOLATILITY ====================
       - name: Fetch implied volatility data
+        continue-on-error: true
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
           cd impliedvol
           python fetch_vix_options.py || echo "VIX fetch failed, continuing..."
@@ -117,36 +153,64 @@ jobs:
       
       # ==================== COPY TO DATA REPO ====================
       - name: Copy all files to data repo
+        if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |
-          # Market Breadth
           mkdir -p data-cache/advance-decline
-          cp advancedecline/daily_breadth.json data-cache/advance-decline/
-          cp advancedecline/ad_line_historical.json data-cache/advance-decline/
-          cp advancedecline/ma_percentage_historical.json data-cache/advance-decline/
-          cp advancedecline/highs_lows_historical.json data-cache/advance-decline/
-          cp advancedecline/volume_metrics_historical.json data-cache/advance-decline/
-          
-          # Major Indexes
+          cp advancedecline/daily_breadth.json data-cache/advance-decline/ 2>/dev/null || true
+          cp advancedecline/ad_line_historical.json data-cache/advance-decline/ 2>/dev/null || true
+          cp advancedecline/ma_percentage_historical.json data-cache/advance-decline/ 2>/dev/null || true
+          cp advancedecline/highs_lows_historical.json data-cache/advance-decline/ 2>/dev/null || true
+          cp advancedecline/volume_metrics_historical.json data-cache/advance-decline/ 2>/dev/null || true
+
           mkdir -p data-cache/major-indexes
-          cp majorindexes/*.json data-cache/major-indexes/
-          
-          # Mean Reversion
+          cp majorindexes/*.json data-cache/major-indexes/ 2>/dev/null || true
+
           mkdir -p data-cache/meanreversion
-          cp meanreversion/*.json data-cache/meanreversion/
-          
-          # Implied Volatility
+          cp meanreversion/*.json data-cache/meanreversion/ 2>/dev/null || true
+
           mkdir -p data-cache/implied-volatility
-          cp impliedvol/*.json data-cache/implied-volatility/ 2>/dev/null || echo "No IV JSON files to copy"
-          
-          echo "✅ All files copied to data repo"
+          cp impliedvol/*.json data-cache/implied-volatility/ 2>/dev/null || true
+
+          echo "✅ Files copied (missing outputs skipped)"
       
+      # ==================== DATA FRESHNESS ====================
+      - name: Update data freshness
+        if: steps.hours_check.outputs.in_market_hours == 'true'
+        run: |
+          python3 << 'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+
+          section_sentinels = {
+              "advance-decline":    "advancedecline/daily_breadth.json",
+              "major-indexes":      "majorindexes/us_major_indices.json",
+              "meanreversion":      "meanreversion/price_vs_ma_snapshot.json",
+              "implied-volatility": "impliedvol/vix_options_snapshot.json",
+          }
+          for section, sentinel in section_sentinels.items():
+              if Path(sentinel).exists():
+                  data["sections"][section] = {"last_updated": now}
+                  print(f"  ✅ {section}: {now}")
+              else:
+                  existing = data.get("sections", {}).get(section, {}).get("last_updated", "never")
+                  print(f"  ⏭  {section}: no output, keeping {existing}")
+
+          fp.write_text(json.dumps(data, indent=2))
+          print("✅ data_freshness.json written")
+          EOF
+
       # ==================== COMMIT AND PUSH ====================
       - name: Commit and push
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add advance-decline/ major-indexes/ meanreversion/ implied-volatility/ cache/
+          git add advance-decline/ major-indexes/ meanreversion/ implied-volatility/ data_freshness.json
           
           if git diff --staged --quiet; then
             echo "No changes to commit"

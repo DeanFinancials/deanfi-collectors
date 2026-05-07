@@ -16,7 +16,8 @@ env:
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
@@ -43,30 +44,58 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Fetch recommendation trends
+        continue-on-error: true
         run: |
           cd analysttrends
           python fetch_recommendation_trends.py
           echo "✅ Recommendation trends fetched"
-      
+
       - name: Aggregate by sector
+        continue-on-error: true
         run: |
           cd analysttrends
           python aggregate_by_sector.py
           echo "✅ Sector aggregation complete"
-      
+
       - name: Copy to data repo
         run: |
           mkdir -p data-cache/analyst-trends
-          cp analysttrends/recommendation_trends.json data-cache/analyst-trends/
-          cp analysttrends/sector_recommendation_trends.json data-cache/analyst-trends/
-          echo "✅ Files copied to data repo"
-      
+          cp analysttrends/recommendation_trends.json data-cache/analyst-trends/ 2>/dev/null || true
+          cp analysttrends/sector_recommendation_trends.json data-cache/analyst-trends/ 2>/dev/null || true
+          echo "✅ Files copied (missing outputs skipped)"
+
+      - name: Update data freshness
+        run: |
+          python3 << 'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+
+          section_sentinels = {
+              "analyst-trends": "analysttrends/recommendation_trends.json",
+          }
+          for section, sentinel in section_sentinels.items():
+              if Path(sentinel).exists():
+                  data["sections"][section] = {"last_updated": now}
+                  print(f"  ✅ {section}: {now}")
+              else:
+                  existing = data.get("sections", {}).get(section, {}).get("last_updated", "never")
+                  print(f"  ⏭  {section}: no output, keeping {existing}")
+
+          fp.write_text(json.dumps(data, indent=2))
+          print("✅ data_freshness.json written")
+          EOF
+
       - name: Commit and push
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add analyst-trends/
+          git add analyst-trends/ data_freshness.json
           
           if git diff --staged --quiet; then
             echo "No changes to commit"

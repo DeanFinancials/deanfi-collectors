@@ -16,6 +16,7 @@ env:
 jobs:
   fetch-support-resistence:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
@@ -43,6 +44,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Fetch support / resistence levels
+        continue-on-error: true
         run: |
           cd supportresistence
           echo "📈 Starting support/resistence collection..."
@@ -52,16 +54,42 @@ jobs:
       - name: Copy output to data repo
         run: |
           mkdir -p data-cache/supportresistence
-          cp supportresistence/*.json data-cache/supportresistence/ 2>/dev/null || echo "No JSON files found in supportresistence/"
+          cp supportresistence/*.json data-cache/supportresistence/ 2>/dev/null || true
           echo "📦 Output files:"
           ls -la data-cache/supportresistence/
+
+      - name: Update data freshness
+        run: |
+          python3 << 'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+
+          section_sentinels = {
+              "support-resistance": "supportresistence/support_resistence.json",
+          }
+          for section, sentinel in section_sentinels.items():
+              if Path(sentinel).exists():
+                  data["sections"][section] = {"last_updated": now}
+                  print(f"  ✅ {section}: {now}")
+              else:
+                  existing = data.get("sections", {}).get(section, {}).get("last_updated", "never")
+                  print(f"  ⏭  {section}: no output, keeping {existing}")
+
+          fp.write_text(json.dumps(data, indent=2))
+          print("✅ data_freshness.json written")
+          EOF
 
       - name: Commit and push to data repo
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add supportresistence/
+          git add supportresistence/ data_freshness.json
 
           if git diff --staged --quiet; then
             echo "No changes to commit"

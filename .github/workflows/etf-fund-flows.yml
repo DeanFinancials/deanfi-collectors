@@ -30,6 +30,7 @@ env:
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     concurrency:
       group: deanfi-data-repo
@@ -56,6 +57,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Generate ETF fund flows
+        continue-on-error: true
         run: |
           cd etffundflows
 
@@ -79,10 +81,31 @@ jobs:
       - name: Copy to data repo
         run: |
           mkdir -p data-cache/etf-fund-flows
+          cp etffundflows/output/*.json data-cache/etf-fund-flows/ 2>/dev/null || true
+          echo "✅ ETF fund flows files copied (missing outputs skipped)"
 
-          # Copy all monthly outputs created/updated this run
-          cp etffundflows/output/*.json data-cache/etf-fund-flows/
-          echo "✅ ETF fund flows files copied to data repo"
+      - name: Update data freshness
+        run: |
+          python3 << 'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+
+          has_output = any(Path('etffundflows/output').glob('*.json')) if Path('etffundflows/output').exists() else False
+          if has_output:
+              data["sections"]["etf-fund-flows"] = {"last_updated": now}
+              print(f"  ✅ etf-fund-flows: {now}")
+          else:
+              existing = data.get("sections", {}).get("etf-fund-flows", {}).get("last_updated", "never")
+              print(f"  ⏭  etf-fund-flows: no output, keeping {existing}")
+
+          fp.write_text(json.dumps(data, indent=2))
+          print("✅ data_freshness.json written")
+          EOF
 
       - name: Commit and push
         run: |
@@ -90,7 +113,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add etf-fund-flows/
+          git add etf-fund-flows/ data_freshness.json
 
           if git diff --staged --quiet; then
             echo "No changes to commit"

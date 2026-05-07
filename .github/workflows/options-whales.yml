@@ -2,13 +2,8 @@ name: Options Whale Trades Collection
 
 on:
   schedule:
-    # Noon ET (mid-market) - EST: 17:00 UTC, EDT: 16:00 UTC
-    - cron: '0 17 * * 1-5'  # EST (Nov-Mar)
-    # - cron: '0 16 * * 1-5'  # EDT (Mar-Nov) - uncomment when observing daylight saving time
-    
-    # 9 PM ET (post-market) - EST: 02:00 UTC next day, EDT: 01:00 UTC next day
-    - cron: '0 2 * * 2-6'   # EST (Nov-Mar) - runs Tue-Sat for Mon-Fri market close
-    # - cron: '0 1 * * 2-6'   # EDT (Mar-Nov) - uncomment when observing daylight saving time
+    - cron: '0 17 * * 1-5'    # ~noon ET (12pm EST / 1pm EDT)
+    - cron: '0 2 * * 2-6'     # ~9pm ET (9pm EST / 10pm EDT)
   workflow_dispatch:
     inputs:
       test_mode:
@@ -31,7 +26,8 @@ env:
 jobs:
   fetch-options-whales:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 20
+
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
@@ -58,6 +54,7 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Fetch options whale trades
+        continue-on-error: true
         run: |
           cd optionswhales
           
@@ -81,16 +78,42 @@ jobs:
       - name: Copy output to data repo
         run: |
           mkdir -p data-cache/options-whales
-          cp optionswhales/*.json data-cache/options-whales/ 2>/dev/null || echo "No JSON files found in optionswhales/"
+          cp optionswhales/*.json data-cache/options-whales/ 2>/dev/null || true
           echo "📦 Output files:"
           ls -la data-cache/options-whales/
-      
+
+      - name: Update data freshness
+        run: |
+          python3 << 'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+
+          section_sentinels = {
+              "options-whales": "optionswhales/options_whale_summary.json",
+          }
+          for section, sentinel in section_sentinels.items():
+              if Path(sentinel).exists():
+                  data["sections"][section] = {"last_updated": now}
+                  print(f"  ✅ {section}: {now}")
+              else:
+                  existing = data.get("sections", {}).get(section, {}).get("last_updated", "never")
+                  print(f"  ⏭  {section}: no output, keeping {existing}")
+
+          fp.write_text(json.dumps(data, indent=2))
+          print("✅ data_freshness.json written")
+          EOF
+
       - name: Commit and push to data repo
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add options-whales/
+          git add options-whales/ data_freshness.json
           
           if git diff --staged --quiet; then
             echo "No changes to commit"

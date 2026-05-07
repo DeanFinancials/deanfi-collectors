@@ -2,13 +2,8 @@ name: Stock Whale Trades Collection
 
 on:
   schedule:
-    # 12:30 PM ET (mid-market, 30 min after options whales) - EST: 17:30 UTC, EDT: 16:30 UTC
-    - cron: '30 17 * * 1-5'  # EST (Nov-Mar)
-    # - cron: '30 16 * * 1-5'  # EDT (Mar-Nov) - uncomment when observing daylight saving time
-    
-    # 9:30 PM ET (post-market, 30 min after options whales) - EST: 02:30 UTC next day, EDT: 01:30 UTC next day
-    - cron: '30 2 * * 2-6'   # EST (Nov-Mar) - runs Tue-Sat for Mon-Fri market close
-    # - cron: '30 1 * * 2-6'   # EDT (Mar-Nov) - uncomment when observing daylight saving time
+    - cron: '30 17 * * 1-5'    # ~12:30pm ET (12:30pm EST / 1:30pm EDT)
+    - cron: '30 2 * * 2-6'     # ~9:30pm ET (9:30pm EST / 10:30pm EDT)
   workflow_dispatch:
     inputs:
       test_mode:
@@ -26,7 +21,8 @@ env:
 jobs:
   fetch-stock-whales:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 20
+
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
@@ -53,6 +49,7 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Fetch stock whale trades
+        continue-on-error: true
         run: |
           cd stockwhales
           
@@ -71,16 +68,42 @@ jobs:
       - name: Copy output to data repo
         run: |
           mkdir -p data-cache/stock-whales
-          cp stockwhales/*.json data-cache/stock-whales/ 2>/dev/null || echo "No JSON files found in stockwhales/"
+          cp stockwhales/*.json data-cache/stock-whales/ 2>/dev/null || true
           echo "📦 Output files:"
           ls -la data-cache/stock-whales/
-      
+
+      - name: Update data freshness
+        run: |
+          python3 << 'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+
+          section_sentinels = {
+              "stock-whales": "stockwhales/stock_whale_summary.json",
+          }
+          for section, sentinel in section_sentinels.items():
+              if Path(sentinel).exists():
+                  data["sections"][section] = {"last_updated": now}
+                  print(f"  ✅ {section}: {now}")
+              else:
+                  existing = data.get("sections", {}).get(section, {}).get("last_updated", "never")
+                  print(f"  ⏭  {section}: no output, keeping {existing}")
+
+          fp.write_text(json.dumps(data, indent=2))
+          print("✅ data_freshness.json written")
+          EOF
+
       - name: Commit and push to data repo
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add stock-whales/
+          git add stock-whales/ data_freshness.json
           
           if git diff --staged --quiet; then
             echo "No changes to commit"

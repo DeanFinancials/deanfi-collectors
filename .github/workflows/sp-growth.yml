@@ -28,7 +28,8 @@ env:
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 30
+
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
@@ -55,6 +56,7 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Fetch S&P growth metrics
+        continue-on-error: true
         run: |
           cd spgrowth
           
@@ -71,29 +73,53 @@ jobs:
       
       - name: Copy to data repo
         run: |
-          # Create directories if they don't exist
           mkdir -p data-cache/sp100growth
           mkdir -p data-cache/sp500growth
-          
-          # Copy files if they were generated
+
           if [ -f spgrowth/output/sp100growth.json ]; then
-            cp spgrowth/output/sp100growth.json data-cache/sp100growth/
+            cp spgrowth/output/sp100growth.json data-cache/sp100growth/ || true
             echo "✅ SP100 growth file copied"
           fi
-          
+
           if [ -f spgrowth/output/sp500growth.json ]; then
-            cp spgrowth/output/sp500growth.json data-cache/sp500growth/
+            cp spgrowth/output/sp500growth.json data-cache/sp500growth/ || true
             echo "✅ SP500 growth file copied"
           fi
-      
+
+      - name: Update data freshness
+        run: |
+          python3 << 'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+
+          section_sentinels = {
+              "sp100growth": "spgrowth/output/sp100growth.json",
+              "sp500growth": "spgrowth/output/sp500growth.json",
+          }
+          for section, sentinel in section_sentinels.items():
+              if Path(sentinel).exists():
+                  data["sections"][section] = {"last_updated": now}
+                  print(f"  ✅ {section}: {now}")
+              else:
+                  existing = data.get("sections", {}).get(section, {}).get("last_updated", "never")
+                  print(f"  ⏭  {section}: no output, keeping {existing}")
+
+          fp.write_text(json.dumps(data, indent=2))
+          print("✅ data_freshness.json written")
+          EOF
+
       - name: Commit and push
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Stage both directories
-          git add sp100growth/ sp500growth/
+
+          git add sp100growth/ sp500growth/ data_freshness.json
           
           if git diff --staged --quiet; then
             echo "No changes to commit"

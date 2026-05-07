@@ -12,7 +12,7 @@ Python-based data collectors that fetch earnings, news, analyst trends, and mark
 
 | Collector | Description | Update Frequency | Data Source |
 |-----------|-------------|------------------|-------------|
-| **Daily News** | Top market news + sector breakdowns | Manual (schedule paused) | Finnhub |
+| **Daily News** | Top market news + sector breakdowns | Manual only | Finnhub |
 | **Analyst Trends** | Recommendation changes (buy/hold/sell) | Nightly (11pm ET) | Finnhub |
 | **Earnings Calendar** | Upcoming earnings releases + estimates | Nightly (11pm ET) | Finnhub |
 | **Earnings Surprises** | Historical EPS vs estimates | Nightly (11pm ET) | Finnhub |

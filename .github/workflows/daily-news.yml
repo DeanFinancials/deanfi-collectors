@@ -1,13 +1,7 @@
 name: Daily News Collection
 
 on:
-  schedule:
-    # Twice daily: Market open (9:30am ET) and market close (4:00pm ET)
-    # 9:30am ET = 14:30 UTC, 4:00pm ET = 21:00 UTC
-    # Note: Adjust for daylight saving time if needed (EDT vs EST)
-    - cron: '30 14 * * 1-5'  # 9:30am ET
-    - cron: '0 21 * * 1-5'   # 4:00pm ET
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:  # Manual only — schedule intentionally removed (paused)
 
 env:
   FINNHUB_API_KEY: "${{ secrets.FINNHUB_API_KEY }}"

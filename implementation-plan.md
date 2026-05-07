@@ -30,8 +30,8 @@ entire run and nothing gets committed.
 - cron: '5-55/10 12-21 * * 1-5'  # 8am-5pm ET year-round (market-hours guard handles DST)
 ```
 
-- [ ] Replace the four cron lines (two active, two commented) with the single line above
-- [ ] Delete the EDT comment block — the guard in step 1.2 makes it obsolete
+- [x] Replace the four cron lines (two active, two commented) with the single line above
+- [x] Delete the EDT comment block — the guard in step 1.2 makes it obsolete
 
 ### 1.2 — Add market-hours guard step
 
@@ -54,7 +54,7 @@ collection. It sets a `GITHUB_OUTPUT` variable that gates all collection steps.
     EOF
 ```
 
-- [ ] Add the step above immediately after "Install dependencies"
+- [x] Add the step above immediately after "Install dependencies"
 
 ### 1.3 — Add job-level timeout
 
@@ -65,7 +65,7 @@ jobs:
     timeout-minutes: 10          # ← add this line
 ```
 
-- [ ] Add `timeout-minutes: 10` to the `fetch-and-publish` job
+- [x] Add `timeout-minutes: 10` to the `fetch-and-publish` job
 
 ### 1.3b — No in-script retry logic needed
 
@@ -89,15 +89,15 @@ step. Pattern to apply:
 
 Apply to these steps (exact names from the file):
 
-- [ ] `Fetch daily breadth`
-- [ ] `Fetch A/D line historical`
-- [ ] `Fetch MA percentage historical`
-- [ ] `Fetch highs/lows historical`
-- [ ] `Fetch volume metrics historical`
-- [ ] `Fetch all index data`
-- [ ] `Fetch Price vs MA data`
-- [ ] `Fetch MA Spreads data`
-- [ ] `Fetch implied volatility data` (already has `|| echo` fallbacks; also add `continue-on-error: true` and the `if` condition for consistency)
+- [x] `Fetch daily breadth`
+- [x] `Fetch A/D line historical`
+- [x] `Fetch MA percentage historical`
+- [x] `Fetch highs/lows historical`
+- [x] `Fetch volume metrics historical`
+- [x] `Fetch all index data`
+- [x] `Fetch Price vs MA data`
+- [x] `Fetch MA Spreads data`
+- [x] `Fetch implied volatility data` (already has `|| echo` fallbacks; also add `continue-on-error: true` and the `if` condition for consistency)
 
 ### 1.5 — Make the copy step resilient
 
@@ -127,7 +127,7 @@ and didn't produce its `.json`). Add `2>/dev/null || true` to every `cp` line.
     echo "✅ Files copied (missing outputs skipped)"
 ```
 
-- [ ] Replace the existing "Copy all files to data repo" step with the version above
+- [x] Replace the existing "Copy all files to data repo" step with the version above
 
 ### 1.6 — Add data freshness heartbeat step
 
@@ -172,9 +172,9 @@ sections that produced output files this run.
 > deploying. Run each script locally and check what `.json` files it produces.
 > Common candidates: `us_major_snapshot.json`, `price_vs_ma_snapshot.json`.
 
-- [ ] Verify sentinel filenames by checking output of each script
-- [ ] Add the "Update data freshness" step between copy and commit
-- [ ] Add `data_freshness.json` to the `git add` line in the commit step:
+- [x] Verify sentinel filenames by checking output of each script
+- [x] Add the "Update data freshness" step between copy and commit
+- [x] Add `data_freshness.json` to the `git add` line in the commit step:
   ```yaml
   git add advance-decline/ major-indexes/ meanreversion/ implied-volatility/ cache/ data_freshness.json
   ```
@@ -191,84 +191,84 @@ resilient `cp`, and appropriate job timeout.
 This is the highest-risk nightly workflow: 6 sequential FRED collectors, one
 failure currently blocks all 5 others and the commit.
 
-- [ ] Add `timeout-minutes: 10` to the job
-- [ ] Add `continue-on-error: true` to each of these steps:
+- [x] Add `timeout-minutes: 10` to the job
+- [x] Add `continue-on-error: true` to each of these steps:
   - `Fetch growth & output data`
   - `Fetch inflation & prices data`
   - `Fetch labor & employment data`
   - `Fetch money markets data`
   - `Fetch consumer & credit data`
   - `Fetch housing & affordability data`
-- [ ] Make copy step resilient — replace each `cp` with `cp ... 2>/dev/null || true`
-- [ ] Add "Update data freshness" step (sections: `economy-breadth`, `consumer-credit`, `housing-affordability`)
-- [ ] Add `data_freshness.json` to `git add` in commit step
+- [x] Make copy step resilient — replace each `cp` with `cp ... 2>/dev/null || true`
+- [x] Add "Update data freshness" step (sections: `economy-breadth`, `consumer-credit`, `housing-affordability`)
+- [x] Add `data_freshness.json` to `git add` in commit step
 
 ### 2.2 — `earnings.yml`
 
-- [ ] Add `timeout-minutes: 10` to the job
-- [ ] Add `continue-on-error: true` to:
+- [x] Add `timeout-minutes: 10` to the job
+- [x] Add `continue-on-error: true` to:
   - `Fetch earnings calendar`
   - `Fetch earnings surprises`
-- [ ] Make copy step resilient (`cp ... 2>/dev/null || true` on both lines)
-- [ ] Add "Update data freshness" step (sections: `earnings-calendar`, `earnings-surprises`)
-- [ ] Add `data_freshness.json` to `git add` in commit step
+- [x] Make copy step resilient (`cp ... 2>/dev/null || true` on both lines)
+- [x] Add "Update data freshness" step (sections: `earnings-calendar`, `earnings-surprises`)
+- [x] Add `data_freshness.json` to `git add` in commit step
 
 ### 2.3 — `analyst-trends.yml`
 
-- [ ] Add `timeout-minutes: 10` to the job
-- [ ] Add `continue-on-error: true` to:
+- [x] Add `timeout-minutes: 10` to the job
+- [x] Add `continue-on-error: true` to:
   - `Fetch recommendation trends`
   - `Aggregate by sector`
-- [ ] Make copy step resilient
-- [ ] Add "Update data freshness" step (section: `analyst-trends`)
-- [ ] Add `data_freshness.json` to `git add` in commit step
+- [x] Make copy step resilient
+- [x] Add "Update data freshness" step (section: `analyst-trends`)
+- [x] Add `data_freshness.json` to `git add` in commit step
 
 ### 2.4 — `sp-growth.yml`
 
 `sp-growth` hits SEC EDGAR + 3-source fallback for 500 tickers. It legitimately
 needs more time than the other nightly workflows.
 
-- [ ] Add `timeout-minutes: 30` to the job
-- [ ] Add `continue-on-error: true` to `Fetch S&P growth metrics`
-- [ ] Make copy step resilient (both `if` blocks already guard with `-f` checks; add `|| true` after the `cp` commands inside them)
-- [ ] Add "Update data freshness" step (sections: `sp100growth`, `sp500growth`)
-- [ ] Add `data_freshness.json` to `git add` in commit step
+- [x] Add `timeout-minutes: 30` to the job
+- [x] Add `continue-on-error: true` to `Fetch S&P growth metrics`
+- [x] Make copy step resilient (both `if` blocks already guard with `-f` checks; add `|| true` after the `cp` commands inside them)
+- [x] Add "Update data freshness" step (sections: `sp100growth`, `sp500growth`)
+- [x] Add `data_freshness.json` to `git add` in commit step
 
 ### 2.5 — `options-whales.yml`
 
-- [ ] Add `timeout-minutes: 20` to the job
-- [ ] Add `continue-on-error: true` to `Fetch options whale trades`
-- [ ] Make copy step resilient: `cp optionswhales/*.json data-cache/options-whales/ 2>/dev/null || true`
-- [ ] Add "Update data freshness" step (section: `options-whales`)
-- [ ] Add `data_freshness.json` to `git add` in commit step
+- [x] Add `timeout-minutes: 20` to the job
+- [x] Add `continue-on-error: true` to `Fetch options whale trades`
+- [x] Make copy step resilient: `cp optionswhales/*.json data-cache/options-whales/ 2>/dev/null || true`
+- [x] Add "Update data freshness" step (section: `options-whales`)
+- [x] Add `data_freshness.json` to `git add` in commit step
 
 ### 2.6 — `stock-whales.yml`
 
-- [ ] Add `timeout-minutes: 20` to the job
-- [ ] Add `continue-on-error: true` to `Fetch stock whale trades`
-- [ ] Make copy step resilient: `cp stockwhales/*.json data-cache/stock-whales/ 2>/dev/null || true`
-- [ ] Add "Update data freshness" step (section: `stock-whales`)
-- [ ] Add `data_freshness.json` to `git add` in commit step
+- [x] Add `timeout-minutes: 20` to the job
+- [x] Add `continue-on-error: true` to `Fetch stock whale trades`
+- [x] Make copy step resilient: `cp stockwhales/*.json data-cache/stock-whales/ 2>/dev/null || true`
+- [x] Add "Update data freshness" step (section: `stock-whales`)
+- [x] Add `data_freshness.json` to `git add` in commit step
 
 ### 2.7 — `etf-fund-flows.yml`
 
-- [ ] Add `timeout-minutes: 15` to the job
-- [ ] Add `continue-on-error: true` to `Generate ETF fund flows`
-- [ ] Make copy step resilient: `cp etffundflows/output/*.json data-cache/etf-fund-flows/ 2>/dev/null || true`
-- [ ] Add "Update data freshness" step (section: `etf-fund-flows`)
-- [ ] Add `data_freshness.json` to `git add` in commit step
+- [x] Add `timeout-minutes: 15` to the job
+- [x] Add `continue-on-error: true` to `Generate ETF fund flows`
+- [x] Make copy step resilient: `cp etffundflows/output/*.json data-cache/etf-fund-flows/ 2>/dev/null || true`
+- [x] Add "Update data freshness" step (section: `etf-fund-flows`)
+- [x] Add `data_freshness.json` to `git add` in commit step
 
 ### 2.8 — `support-resistence.yml` (was missing from original plan)
 
 Runs daily at 5am ET on Alpaca API. Same failure profile as the whale workflows —
 no timeout, no `continue-on-error`, has commented-out EDT cron variant.
 
-- [ ] Add `timeout-minutes: 15` to the job
-- [ ] Add `continue-on-error: true` to `Fetch support / resistence levels`
-- [ ] Copy step already has `2>/dev/null || echo "..."` — change `|| echo` to `|| true` for consistency
-- [ ] Add "Update data freshness" step (section: `support-resistance`)
-- [ ] Add `data_freshness.json` to `git add` in commit step
-- [ ] Add `"support-resistance"` to the `data_freshness.json` schema (Phase 4)
+- [x] Add `timeout-minutes: 15` to the job
+- [x] Add `continue-on-error: true` to `Fetch support / resistence levels`
+- [x] Copy step already has `2>/dev/null || echo "..."` — change `|| echo` to `|| true` for consistency
+- [x] Add "Update data freshness" step (section: `support-resistance`)
+- [x] Add `data_freshness.json` to `git add` in commit step
+- [x] Add `"support-resistance"` to the `data_freshness.json` schema — implemented in 2.8 freshness step; `data-freshness.ts` types define it as a `KnownSection`
 
 ### 2.9 — `daily-news.yml` (paused — remove schedule)
 
@@ -276,8 +276,8 @@ The README says "currently paused; manual runs only." The workflow has two live
 cron lines that silently consume the `deanfi-data-repo` concurrency queue twice
 a day and block everything queued behind them if they hang.
 
-- [ ] Remove the entire `schedule:` block from `daily-news.yml`, leaving only `workflow_dispatch`
-- [ ] Update README table: change "Manual (schedule paused)" to "Manual only"
+- [x] Remove the entire `schedule:` block from `daily-news.yml`, leaving only `workflow_dispatch`
+- [x] Update README table: change "Manual (schedule paused)" to "Manual only"
 
 ---
 
@@ -303,8 +303,8 @@ on:
     ...
 ```
 
-- [ ] Replace the 4-line EST+commented-EDT schedule in `options-whales.yml` with the 2-line version above
-- [ ] Same treatment for `stock-whales.yml` (crons: `30 17 * * 1-5` and `30 2 * * 2-6`)
+- [x] Replace the 4-line EST+commented-EDT schedule in `options-whales.yml` with the 2-line version above
+- [x] Same treatment for `stock-whales.yml` (crons: `30 17 * * 1-5` and `30 2 * * 2-6`)
 
 ### 3.2 — `economy-indicators.yml`
 
@@ -318,7 +318,7 @@ on:
     - cron: '0 17 * * 1-5'   # ~noon ET (12pm EST / 1pm EDT — acceptable drift)
 ```
 
-- [ ] Replace the two active cron lines + two commented-out EDT cron lines with
+- [x] Replace the two active cron lines + two commented-out EDT cron lines with
   the two lines above (remove the comments entirely)
 
 ### 3.3 — `support-resistence.yml`
@@ -327,7 +327,7 @@ Currently `0 10 * * 1-5` (5am EST / 6am EDT) with a commented EDT variant. This
 runs before market open — 1-hour drift is harmless. No change needed unless it
 causes issues.
 
-- [ ] Review and confirm no change needed, or widen to `0 9,10 * * 1-5`
+- [x] Review and confirm no change needed — 1-hour DST drift before market open is harmless; keeping `0 10 * * 1-5`
 
 ---
 
@@ -357,16 +357,16 @@ Add these two steps: one **before** "Create cache directory" (to restore), and
       market-data-cache-
 ```
 
-- [ ] Add "Get date for cache key" step after "Install dependencies"
-- [ ] Add "Restore price cache" step immediately after
+- [x] Add "Get date for cache key" step after "Install dependencies"
+- [x] Add "Restore price cache" step immediately after
 
 ### 4.2 — Update cache directory path in collection steps
 
 The cache was previously at `data-cache/cache` (inside the data repo checkout).
 Move it to `./cache` in the workspace root.
 
-- [ ] Change "Create cache directory" step from `mkdir -p data-cache/cache` to `mkdir -p ./cache`
-- [ ] Update every `--cache-dir ../data-cache/cache` argument in collection steps to `--cache-dir ../cache`
+- [x] Change "Create cache directory" step from `mkdir -p data-cache/cache` to `mkdir -p ./cache`
+- [x] Update every `--cache-dir ../data-cache/cache` argument in collection steps to `--cache-dir ../cache`
   - `fetch_daily_breadth.py --cache-dir ../data-cache/cache` → `--cache-dir ../cache`
   - `fetch_ad_line_historical.py --cache-dir ../data-cache/cache` → `--cache-dir ../cache`
   - `fetch_ma_percentage_historical.py --cache-dir ../data-cache/cache` → `--cache-dir ../cache`
@@ -378,16 +378,10 @@ Move it to `./cache` in the workspace root.
 
 ### 4.3 — Remove cache from git operations
 
-- [ ] Remove `cache/` from the `git add` line in the commit step:
-  ```yaml
-  # Before:
-  git add advance-decline/ major-indexes/ meanreversion/ implied-volatility/ cache/
-  # After:
-  git add advance-decline/ major-indexes/ meanreversion/ implied-volatility/
-  ```
-- [ ] Add `cache/` to `.gitignore` in the `deanfi-data` repo to prevent accidental re-addition
-- [ ] If a `cache/` directory already exists in `deanfi-data`, remove it:
-  `git rm -r --cached cache/` in the data repo (one-time cleanup commit)
+- [x] Remove `cache/` from the `git add` line in the commit step (done in Phase 1.6 — now includes `data_freshness.json` instead)
+- [x] Add `cache/` to `.gitignore` in the `deanfi-data` repo to prevent accidental re-addition
+- [x] If a `cache/` directory already exists in `deanfi-data`, remove it:
+  `git rm -r --cached cache/` in the data repo (one-time cleanup commit) — 16 parquet/metadata files untracked; changes staged, ready to commit
 
 ---
 
@@ -424,8 +418,8 @@ merge on `git pull --rebase` handles non-overlapping JSON edits cleanly.
 }
 ```
 
-- [ ] Confirm section keys match the directory names used in deanfi-data
-- [ ] Confirm section keys match what deanfi-website expects (or coordinate the naming)
+- [x] Confirm section keys match the directory names used in deanfi-data — all match except `support-resistance` (directory is `supportresistence`; key is intentionally hyphenated)
+- [x] Confirm section keys match what deanfi-website expects — `src/types/data-freshness.ts` defines `KnownSection` as the canonical list; all collector keys use these names
 
 ---
 
@@ -433,18 +427,18 @@ merge on `git pull --rebase` handles non-overlapping JSON edits cleanly.
 
 The website fetches data from raw GitHub URLs. Add freshness awareness.
 
-- [ ] Fetch `data_freshness.json` on page load (or at the same interval as other data)
-- [ ] For each data section on the site, display "Updated X min ago" using the section's `last_updated`
-- [ ] Fetch `data_freshness.json` from `https://r2.deanfi.com/data_freshness.json`
+- [x] Fetch `data_freshness.json` on page load (or at the same interval as other data)
+- [x] For each data section on the site, display "Updated X min ago" using the section's `last_updated`
+- [x] Fetch `data_freshness.json` from `https://r2.deanfi.com/data_freshness.json`
   directly (same R2 bucket as all other dashboard data — no special proxy needed)
-- [ ] Show a "data may be delayed" banner if any high-frequency section has
+- [x] Show a "data may be delayed" banner if any high-frequency section has
   `last_updated` older than **55 minutes** — worst-case latency is ~16 min
   (10-min cycle + 1-min R2 sync + 5-min React Query), so 55 min gives a buffer
   before users hit the 60-minute wall
-- [ ] Show a "data may be delayed" banner for nightly sections if `last_updated` is
+- [x] Show a "data may be delayed" banner for nightly sections if `last_updated` is
   older than 26 hours (24h + 2h buffer)
-- [ ] Display "Updated X min ago" per section using each section's `last_updated`
-- [ ] Note: `data_freshness.json` is written to `deanfi-data` by each workflow
+- [x] Display "Updated X min ago" per section using each section's `last_updated`
+- [x] Note: `data_freshness.json` is written to `deanfi-data` by each workflow
   and automatically synced to R2 by `sync-to-r2.yml` — no extra wiring needed
 
 ---
@@ -458,7 +452,7 @@ collectors and the website. If it fails (expired Cloudflare API token, Wrangler
 version issue, R2 quota), data sits in GitHub but never reaches R2, and the website
 sees stale data even though all collectors ran perfectly.
 
-- [ ] **Add `continue-on-error: false` explicitly and a failure summary step** to
+- [x] **Add `continue-on-error: false` explicitly and a failure summary step** to
   `sync-to-r2.yml` so failed syncs are visible in the Actions tab
 - [ ] **Enable GitHub Actions failure email notifications** for the `deanfi-data`
   repo in GitHub account settings (Settings → Notifications → Actions). Free,
@@ -466,10 +460,10 @@ sees stale data even though all collectors ran perfectly.
 - [ ] **Check `sync-to-r2.yml` run history** to see if R2 sync failures are already
   happening silently — this may already be a source of the staleness the website
   experiences
-- [ ] **Consider adding `data_freshness.json` to the R2 sync watch** — `sync-to-r2.yml`
+- [x] **Consider adding `data_freshness.json` to the R2 sync watch** — `sync-to-r2.yml`
   already syncs all `*.json` files on push, so `data_freshness.json` will be
   included automatically once it exists in `deanfi-data`
-- [ ] **Verify R2 sync excludes `cache/` directory** — the existing filter
+- [x] **Verify R2 sync excludes `cache/` directory** — the existing filter
   `grep -v '^cache/'` in `sync-to-r2.yml` already handles this
 
 ## Phase 7b — `combine-daily-snapshots.yml` (deanfi-data repo)
@@ -478,8 +472,8 @@ Runs at 5:15pm ET daily. Combines all data into `market_snapshot.json` and
 uploads directly to R2. Low failure risk (reads local files, no external APIs)
 but has no timeout and a manual DST cron comment.
 
-- [ ] Add `timeout-minutes: 10` to the `combine-snapshots` job
-- [ ] Fix DST cron: replace `15 22 * * 1-5` with `15 21,22 * * 1-5` to cover
+- [x] Add `timeout-minutes: 10` to the `combine-snapshots` job
+- [x] Fix DST cron: replace `15 22 * * 1-5` with `15 21,22 * * 1-5` to cover
   both EST (22:15 UTC = 5:15pm) and EDT (21:15 UTC = 5:15pm) year-round
 
 ---
