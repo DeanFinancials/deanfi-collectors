@@ -1,90 +1,112 @@
 name: Daily News Collection
 
 on:
-  workflow_dispatch:  # Manual only — schedule intentionally removed (paused)
+  workflow_dispatch:
+    inputs:
+      weekly_override:
+        description: "Force weekly-wrap mode (5 catalysts required)"
+        required: false
+        default: "false"
+  schedule:
+    # Safely after the US market close in both EDT and EST.
+    - cron: '30 22 * * 1-5'
 
 env:
   FINNHUB_API_KEY: "${{ secrets.FINNHUB_API_KEY }}"
   DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
   DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+  MARKET_PULSE_WEEKLY_OVERRIDE: "${{ github.event.inputs.weekly_override || 'false' }}"
 
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 15
+
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
       cancel-in-progress: false
-    
+
     steps:
       - name: Checkout collectors repo
         uses: actions/checkout@v4
-      
+
       - name: Checkout data repo
         uses: actions/checkout@v4
         with:
           repository: ${{ env.DATA_REPO }}
           token: ${{ secrets.DATA_REPO_TOKEN }}
           path: data-cache
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-      
+
+      - name: Resolve market date (ET)
+        id: market_date
+        run: |
+          # Use America/New_York date so weekend triggers (rare) still resolve cleanly.
+          MARKET_DATE=$(TZ=America/New_York date +%Y-%m-%d)
+          echo "value=$MARKET_DATE" >> "$GITHUB_OUTPUT"
+          echo "Resolved market_date: $MARKET_DATE"
+
       - name: Fetch top news
         run: |
           cd dailynews
           python fetch_top_news.py
-          echo "✅ Top news fetched"
-      
+          echo "Top news fetched"
+
       - name: Fetch sector news
         run: |
           cd dailynews
           python fetch_sector_news.py
-          echo "✅ Sector news fetched"
-      
-      - name: Copy to data repo
+          echo "Sector news fetched"
+
+      - name: Copy news snapshots into data repo
         run: |
           mkdir -p data-cache/daily-news
           cp dailynews/top_news.json data-cache/daily-news/
           cp dailynews/sector_news.json data-cache/daily-news/
-          echo "✅ Files copied to data repo"
 
       - name: Update daily-news lookback files
         run: |
           python dailynews/update_news_lookback.py --data-repo-path data-cache --lookback-days 7
-          echo "✅ Lookback files updated"
-      
+
+      - name: Build market_catalysts.json
+        run: |
+          python dailynews/collect_catalysts.py \
+            --top-news data-cache/daily-news/top_news.json \
+            --sector-news data-cache/daily-news/sector_news.json \
+            --output data-cache/daily-news/market_catalysts.json \
+            --market-date "${{ steps.market_date.outputs.value }}"
+          echo "market_catalysts.json built"
+
       - name: Update metadata
         run: |
           cd data-cache
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          
-          # Update metadata.json with timestamp using simple sed
           if [ -f metadata.json ]; then
             sed -i "s/\"last_updated\": \".*\"/\"last_updated\": \"$TIMESTAMP\"/" metadata.json
-            echo "✅ Metadata updated"
           fi
-      
+
       - name: Commit and push to data repo
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add daily-news/ metadata.json
-          
+
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: update daily news - $(date -u +"%Y-%m-%d %H:%M UTC")"
+            git commit -m "chore: update daily news + market_catalysts - $(date -u +"%Y-%m-%d %H:%M UTC")"
             git pull --rebase origin main
             git push
-            echo "✅ Data pushed to deanfi-data repository"
+            echo "Data pushed to deanfi-data repository"
           fi
