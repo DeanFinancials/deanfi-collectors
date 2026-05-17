@@ -17,6 +17,24 @@ The maximum age of a data file before it is considered stale. **1 hour** for hig
 ### Heartbeat
 A `data_freshness.json` file written to the data repo by each workflow run, recording the `last_updated` timestamp per data section. The website reads this to display per-section freshness and optionally surface a "data may be delayed" banner.
 
+### Market Pulse Input
+A deterministic, writer-ready JSON package for one market date. It is built upstream from collected data, synced to R2, and consumed by the website's Market Pulse automation as the canonical market-data contract for AI drafting and validation. It should contain the numbers, source links, optional context statuses, and ranked catalysts needed to write the article without redoing heavy collection inside the website workflow. Editorial continuity summaries are owned by the website repo and merged later by the website workflow.
+
+### Market Pulse Core Dataset
+The required datapoints for automated Market Pulse generation: major index closes and daily changes, five-session index returns, breadth and five-session breadth lookback, moving-average participation, sector leaders and laggards, VIX and five-session VIX lookback, major ETF implied volatility, SPY technical levels and five-session SMA table, and ranked catalysts. Economy, earnings, fund flows, options whales, and stock whales are optional context modules unless a specific article run requires them.
+
+### Optional Context Module
+A non-blocking context block that may enrich a Market Pulse article when populated and relevant. Optional modules must declare whether they are included, omitted because stale, omitted because empty, or omitted because low relevance. The article may only cite optional modules marked included.
+
+### Market Catalyst
+A dated news, policy, earnings, macro, rates, commodity, or geopolitical item that plausibly explains the day's market behavior. Catalysts are collected and scored before article generation so the writing model receives a small ranked set instead of a raw news dump.
+
+### Catalyst Ranker
+An optional low-token AI classification step that ranks candidate Market Catalysts against the day's actual market moves. It does not write the article and does not invent facts; it only chooses which already-collected headlines best explain the session.
+
+### Catalyst Completeness
+The minimum catalyst quality bar for automated Market Pulse publishing. A normal daily article requires at least three ranked catalysts, while a Friday or weekly-wrap article requires at least five. If an official macro or policy release occurred that day, at least one ranked catalyst should come from an official source. Every ranked catalyst must include title, source, URL, publication time, category, relevance score, and a short explanation of why it matters.
+
 ### Market Hours Window
 8:00am–5:00pm Eastern Time, Monday–Friday. High-frequency collectors must guard against running outside this window. The guard lives in the workflow YAML (a bash step that checks the current UTC time and exits 0 if outside the window) so the cron schedule itself can be timezone-agnostic.
 
