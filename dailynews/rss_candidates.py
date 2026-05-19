@@ -18,21 +18,23 @@ OFFICIAL_FEEDS: tuple[dict, ...] = (
         "category": "monetary_policy",
         "url": "https://www.federalreserve.gov/feeds/press_all.xml",
     },
-    {
-        "name": "BLS",
-        "category": "labor_inflation",
-        "url": "https://www.bls.gov/feed/news_release/empsit.rss",
-    },
+    # BLS: all RSS endpoints return 403 regardless of User-Agent — use BLS Data API instead.
+    # {
+    #     "name": "BLS",
+    #     "category": "labor_inflation",
+    #     "url": "https://www.bls.gov/feed/news_release/empsit.rss",
+    # },
     {
         "name": "BEA",
         "category": "growth_output",
         "url": "https://apps.bea.gov/rss/rss.xml",
     },
-    {
-        "name": "Treasury",
-        "category": "fiscal_policy",
-        "url": "https://home.treasury.gov/news/press-releases/feed",
-    },
+    # Treasury: /news/press-releases/feed returns 404 — URL removed from Drupal migration.
+    # {
+    #     "name": "Treasury",
+    #     "category": "fiscal_policy",
+    #     "url": "https://home.treasury.gov/news/press-releases/feed",
+    # },
 )
 
 
@@ -42,7 +44,8 @@ Fetcher = Callable[..., str]
 def _default_fetcher(url: str, *, timeout: int = 15) -> str:  # pragma: no cover
     import requests
 
-    response = requests.get(url, timeout=timeout)
+    headers = {"User-Agent": "DeanFi-Collector/1.0 (https://github.com/DeanFinancials)"}
+    response = requests.get(url, timeout=timeout, headers=headers)
     response.raise_for_status()
     return response.text
 
