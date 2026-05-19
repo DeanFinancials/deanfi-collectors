@@ -166,6 +166,47 @@ def test_collect_catalysts_deduplicates_across_normalized_url_forms(tmp_path):
     assert payload["ranked"][0]["source"] == "Federal Reserve"
 
 
+def test_relative_urls_are_dropped(tmp_path):
+    """Candidates with relative URLs must be excluded from the output."""
+    top_news = tmp_path / "top_news.json"
+    top_news.write_text(json.dumps({
+        "articles": [
+            {
+                "headline": "Relative link article",
+                "source": "Reuters",
+                "url": "/markets/us/some-story-2026-05-18",
+                "datetime": "2026-05-18T20:00:00",
+            },
+            {
+                "headline": "Absolute link article",
+                "source": "Reuters",
+                "url": "https://reuters.com/markets/us/some-story-2026-05-18",
+                "datetime": "2026-05-18T20:00:00",
+            },
+        ]
+    }))
+    sector_news = tmp_path / "sector_news.json"
+    sector_news.write_text(json.dumps({"articles": []}))
+
+    output_path = tmp_path / "market_catalysts.json"
+    collect_catalysts.run(
+        top_news_path=top_news,
+        sector_news_path=sector_news,
+        output_path=output_path,
+        market_date="2026-05-18",
+        generated_at="2026-05-18T21:05:00Z",
+        weekly_mode=False,
+        fetcher=lambda url, *, timeout: (
+            "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel></channel></rss>"
+        ),
+    )
+
+    payload = json.loads(output_path.read_text())
+    urls = [c["url"] for c in payload["ranked"]]
+    assert "/markets/us/some-story-2026-05-18" not in urls
+    assert "https://reuters.com/markets/us/some-story-2026-05-18" in urls
+
+
 def test_collected_payload_validates_against_schema(tmp_path):
     import jsonschema
 

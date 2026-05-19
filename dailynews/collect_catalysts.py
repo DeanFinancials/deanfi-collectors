@@ -81,6 +81,8 @@ def _dedupe_by_url(candidates: List[dict]) -> List[dict]:
         url = (candidate.get("url") or "").strip()
         if not url:
             continue
+        if not url.lower().startswith(("http://", "https://")):
+            continue
         key = _normalize_url(url)
         if not key:
             continue
