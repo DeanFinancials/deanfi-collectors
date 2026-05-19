@@ -38,16 +38,16 @@ OFFICIAL_FEEDS: tuple[dict, ...] = (
 )
 
 
-Fetcher = Callable[..., str]
+Fetcher = Callable[..., bytes]
 
 
-def _default_fetcher(url: str, *, timeout: int = 15) -> str:  # pragma: no cover
+def _default_fetcher(url: str, *, timeout: int = 15) -> bytes:  # pragma: no cover
     import requests
 
     headers = {"User-Agent": "DeanFi-Collector/1.0 (https://github.com/DeanFinancials)"}
     response = requests.get(url, timeout=timeout, headers=headers)
     response.raise_for_status()
-    return response.text
+    return response.content
 
 
 def _text(elem: ET.Element | None) -> str | None:
@@ -69,10 +69,11 @@ def _to_iso(pub_date: str | None) -> str | None:
     return dt.isoformat()
 
 
-def parse_rss(xml_text: str, *, source: str, category: str) -> List[dict]:
+def parse_rss(xml_text: "str | bytes", *, source: str, category: str) -> List[dict]:
     """Parse an RSS 2.0 document into catalyst candidates.
 
     Skips items missing any of: ``title``, ``link``, ``pubDate``.
+    Accepts bytes so the XML parser handles encoding declarations and BOMs natively.
     """
     root = ET.fromstring(xml_text)
     candidates: List[dict] = []
