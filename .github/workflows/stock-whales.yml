@@ -13,6 +13,7 @@ on:
         type: boolean
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
   DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
   ALPACA_API_KEY: "${{ secrets.ALPACA_API_KEY }}"
@@ -30,17 +31,17 @@ jobs:
     
     steps:
       - name: Checkout collectors repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Checkout data repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.DATA_REPO }}
           token: ${{ secrets.DATA_REPO_TOKEN }}
           path: data-cache
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
