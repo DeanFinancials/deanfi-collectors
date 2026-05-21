@@ -94,6 +94,21 @@ class FakeProcessableTickerDF(FakePerTickerDF):
         return self
 
 
+class FakeTickerDFWithTrailingEmptyClose(FakeProcessableTickerDF):
+    """Frame where yfinance returned a trailing row with no Close value."""
+
+    def __init__(self, symbol: str, rows: int = 252):
+        super().__init__(symbol, rows=rows)
+        self.cleaned = False
+
+    def dropna(self, *, subset=None, **kwargs):
+        if subset == ["Close"]:
+            cleaned = FakeTickerDFWithTrailingEmptyClose(self.symbol, rows=self._rows - 1)
+            cleaned.cleaned = True
+            return cleaned
+        return self
+
+
 class FakeBatchDF:
     """Stand-in for the MultiIndex DataFrame returned by yf.download(group_by='ticker')."""
 
@@ -431,6 +446,36 @@ class TestAssertEnoughSucceededWiring:
         kwargs = guard.call_args.kwargs
         assert kwargs.get("total") == 6
         assert kwargs.get("successful") == 5
+
+
+class TestSnapshotNullCloseHandling:
+
+    def test_snapshot_uses_close_sanitized_frame_for_current_values(self, mod_and_fakes, monkeypatch):
+        """Trailing rows with no Close are removed before deriving snapshot values."""
+        mod, fakes = mod_and_fakes
+
+        per_ticker = {s: FakeTickerDFWithTrailingEmptyClose(s, rows=252) for s in SIX_SYMBOLS}
+        fakes["yf"].download.return_value = FakeBatchDF(per_ticker)
+
+        seen_cleaned_flags = []
+
+        def snapshot_from_df(df):
+            seen_cleaned_flags.append(getattr(df, "cleaned", False))
+            return {
+                "current_price": 105,
+                "daily_change": 4,
+                "daily_change_percent": 3.96,
+                "volume": 2000,
+                "day_high": 106,
+                "day_low": 100,
+                "day_open": 101,
+            }
+
+        monkeypatch.setattr(mod, "get_current_snapshot", snapshot_from_df, raising=False)
+
+        mod.create_snapshot_json()
+
+        assert seen_cleaned_flags == [True, True, True, True, True, True]
 
 
 # ---------------------------------------------------------------------------

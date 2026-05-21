@@ -232,6 +232,11 @@ def _batch_download_indices(symbols: List[str], period: str = "1y") -> Dict[str,
     return results
 
 
+def _drop_rows_without_close(df: pd.DataFrame) -> pd.DataFrame:
+    """Remove yfinance placeholder rows that do not have a Close value."""
+    return df.dropna(subset=["Close"])
+
+
 def create_snapshot_json():
     """
     Create daily snapshot JSON with current market data.
@@ -309,6 +314,11 @@ def create_snapshot_json():
 
             if df is None or getattr(df, "empty", False) or len(df) < 2:
                 print(f"    ⚠️  Insufficient data for {symbol}")
+                continue
+
+            df = _drop_rows_without_close(df)
+            if df is None or getattr(df, "empty", False) or len(df) < 2:
+                print(f"    ⚠️  Insufficient valid close data for {symbol}")
                 continue
 
             # Derive snapshot from the dataframe (no ticker.info call available
@@ -458,6 +468,11 @@ def create_historical_json():
 
             if df is None or getattr(df, "empty", False) or len(df) < 10:
                 print(f"    ⚠️  Insufficient data for {symbol}")
+                continue
+
+            df = _drop_rows_without_close(df)
+            if df is None or getattr(df, "empty", False) or len(df) < 10:
+                print(f"    ⚠️  Insufficient valid close data for {symbol}")
                 continue
 
             # Keep only the most recent HISTORICAL_DAYS rows.
