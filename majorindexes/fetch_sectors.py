@@ -21,6 +21,11 @@ from pathlib import Path
 # Add parent directory to path for shared modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.cache_manager import CachedDataFetcher
+from shared.fetch_guard import assert_enough_succeeded
+from shared.yf_session import make_session
+from shared.yf_retry import with_429_retry
+
+YF_SESSION = make_session()
 
 from utils import (
     calculate_pivot_points,
@@ -29,6 +34,7 @@ from utils import (
     calculate_52_week_metrics,
     calculate_statistics,
     dataframe_to_daily_records,
+    get_current_snapshot,
     get_current_snapshot_from_info,
     create_index_metadata,
     save_json,
@@ -62,11 +68,65 @@ def fetch_index_data(symbol: str, period: str = "1y", cache_dir: str = None) -> 
                 result = result.droplevel(0, axis=1)
             return result.tail(HISTORICAL_DAYS)
     
-    ticker = yf.Ticker(symbol)
-    df = ticker.history(period=period)
+    ticker = yf.Ticker(symbol, session=YF_SESSION)
+    df = with_429_retry(ticker.history, period=period)
     if len(df) < HISTORICAL_DAYS:
-        df = ticker.history(period="2y")
+        df = with_429_retry(ticker.history, period="2y")
     return df.tail(HISTORICAL_DAYS)
+
+
+def _batch_download_sectors(symbols, period: str = "1y"):
+    """Fetch OHLCV data for all sector ETF `symbols` in a single yf.download call.
+
+    Returns a dict mapping symbol -> per-ticker DataFrame (or None if missing/empty).
+    The yf.download call is wrapped in with_429_retry so transient Yahoo Finance
+    rate-limit failures are recovered.
+
+    The batched response is a MultiIndex DataFrame (top level = ticker, second
+    level = field). We split it per-symbol via df[symbol]. When only one ticker
+    is requested, yfinance returns a flat (non-MultiIndex) DataFrame; that case
+    is handled by returning the flat frame as the single per-ticker frame.
+    """
+    df = with_429_retry(
+        yf.download,
+        tickers=symbols,
+        period=period,
+        group_by="ticker",
+        auto_adjust=False,
+        progress=False,
+        threads=True,
+        session=YF_SESSION,
+    )
+
+    results = {}
+
+    if df is None or getattr(df, "empty", False):
+        return {s: None for s in symbols}
+
+    is_multi = isinstance(df.columns, pd.MultiIndex)
+
+    if not is_multi:
+        if len(symbols) == 1:
+            results[symbols[0]] = df
+            return results
+        return {s: None for s in symbols}
+
+    available = set(df.columns.get_level_values(0))
+    for symbol in symbols:
+        if symbol not in available:
+            results[symbol] = None
+            continue
+        try:
+            per_ticker = df[symbol]
+        except KeyError:
+            results[symbol] = None
+            continue
+        if per_ticker is None or getattr(per_ticker, "empty", False):
+            results[symbol] = None
+        else:
+            results[symbol] = per_ticker
+
+    return results
 
 
 def calculate_sector_summary(indices_data: dict, benchmark_return: float = None) -> dict:
@@ -193,8 +253,8 @@ def create_snapshot_json():
     # Fetch benchmark (S&P 500) for relative performance
     benchmark_return = None
     try:
-        sp500_ticker = yf.Ticker(BENCHMARK)
-        sp500_info = sp500_ticker.info
+        sp500_ticker = yf.Ticker(BENCHMARK, session=YF_SESSION)
+        sp500_info = with_429_retry(lambda: sp500_ticker.info)
         sp500_df = fetch_index_data(BENCHMARK, period="5d")
         if len(sp500_df) >= 2:
             sp500_snapshot = get_current_snapshot_from_info(sp500_info, sp500_df)
@@ -202,25 +262,32 @@ def create_snapshot_json():
     except Exception as e:
         print(f"  ⚠️  Could not fetch benchmark {BENCHMARK}: {e}")
     
-    # Fetch sector data
+    # Single batched yf.download for all 11 sector ETFs (was 11 separate calls).
+    symbols = [sector['symbol'] for sector in SECTORS]
+    per_ticker_data = _batch_download_sectors(symbols, period="1y")
+    successful_downloads = sum(
+        1 for df in per_ticker_data.values()
+        if df is not None and not getattr(df, "empty", False) and len(df) > 0
+    )
+
+    # Fetch sector data from the batched response
     for sector in SECTORS:
         symbol = sector['symbol']
-        print(f"  Fetching {symbol} ({sector['sector_name']})...")
-        
+        print(f"  Processing {symbol} ({sector['sector_name']})...")
+
         try:
-            # Fetch ticker info for accurate daily change (avoids holiday gap issues)
-            ticker = yf.Ticker(symbol)
-            ticker_info = ticker.info
-            
-            df = fetch_index_data(symbol, period="1y")
-            if len(df) < 2:
+            df = per_ticker_data.get(symbol)
+
+            if df is None or getattr(df, "empty", False) or len(df) < 2:
                 print(f"    ⚠️  Insufficient data for {symbol}")
                 continue
-            
-            snapshot = get_current_snapshot_from_info(ticker_info, df)
+
+            # Derive snapshot from the dataframe (no per-ticker .info call in
+            # the batched path — saves 11 Yahoo Finance requests).
+            snapshot = get_current_snapshot(df)
             returns = calculate_returns(df['Close'])
             week_52_metrics = calculate_52_week_metrics(df['Close'])
-            
+
             # Pivot points (previous day's H, L, C)
             if len(df) >= 2:
                 prev_day = df.iloc[-2]
@@ -231,7 +298,7 @@ def create_snapshot_json():
                 )
             else:
                 pivot_points = {}
-            
+
             # Calculate relative performance to S&P 500
             relative_perf_1d = None
             relative_perf_1m = None
@@ -239,7 +306,7 @@ def create_snapshot_json():
                 sector_return = snapshot.get('daily_change_percent')
                 if sector_return is not None:
                     relative_perf_1d = safe_round(sector_return - benchmark_return, 2)
-            
+
             sector_data = {
                 "name": sector['name'],
                 "symbol": symbol,
@@ -252,9 +319,9 @@ def create_snapshot_json():
                 "relative_to_sp500_1d": relative_perf_1d,
                 "pivot_points": pivot_points
             }
-            
+
             snapshot_data['sectors'][symbol] = sector_data
-            
+
         except Exception as e:
             print(f"    ❌ Error fetching {symbol}: {e}")
             continue
@@ -266,6 +333,11 @@ def create_snapshot_json():
     )
     
     output_path = os.path.join(SCRIPT_DIR, SECTOR_CONFIG['output_files']['snapshot'])
+    assert_enough_succeeded(
+        successful=successful_downloads,
+        total=len(SECTORS),
+        label="us_sector_indices snapshot",
+    )
     save_json(snapshot_data, output_path)
     print(f"✅ Saved snapshot to {output_path}")
     
@@ -293,23 +365,35 @@ def create_historical_json():
         "sectors": {}
     }
     
+    # Single batched yf.download for all 11 sector ETFs (was 11 separate calls).
+    symbols = [sector['symbol'] for sector in SECTORS]
+    per_ticker_data = _batch_download_sectors(symbols, period="1y")
+    successful_downloads = sum(
+        1 for df in per_ticker_data.values()
+        if df is not None and not getattr(df, "empty", False) and len(df) > 0
+    )
+
     for sector in SECTORS:
         symbol = sector['symbol']
         print(f"  Processing {symbol}...")
-        
+
         try:
-            df = fetch_index_data(symbol, period="1y")
-            if len(df) < 10:
+            df = per_ticker_data.get(symbol)
+
+            if df is None or getattr(df, "empty", False) or len(df) < 10:
                 print(f"    ⚠️  Insufficient data for {symbol}")
                 continue
-            
+
+            # Keep only the most recent HISTORICAL_DAYS rows.
+            df = df.tail(HISTORICAL_DAYS)
+
             daily_data = dataframe_to_daily_records(df)
             tech_indicators = calculate_all_technical_indicators(df['Close'])
             stats = calculate_statistics(df['Close'])
-            
+
             if 'Volume' in df.columns:
                 stats['average_daily_volume'] = int(df['Volume'].mean()) if not pd.isna(df['Volume'].mean()) else None
-            
+
             sector_data = {
                 "name": sector['name'],
                 "symbol": symbol,
@@ -319,15 +403,20 @@ def create_historical_json():
                 "technical_indicators": tech_indicators,
                 "statistics": stats
             }
-            
+
             historical_data['sectors'][symbol] = sector_data
             print(f"    ✓ {len(daily_data)} days processed")
-            
+
         except Exception as e:
             print(f"    ❌ Error processing {symbol}: {e}")
             continue
-    
+
     output_path = os.path.join(SCRIPT_DIR, SECTOR_CONFIG['output_files']['historical'])
+    assert_enough_succeeded(
+        successful=successful_downloads,
+        total=len(SECTORS),
+        label="us_sector_indices historical",
+    )
     save_json(historical_data, output_path)
     print(f"✅ Saved historical data to {output_path}")
     

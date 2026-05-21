@@ -13,6 +13,7 @@ Outputs:
 - us_growth_value_indices_historical.json (252-day history)
 """
 
+import time
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
@@ -25,6 +26,11 @@ from pathlib import Path
 # Add parent directory to path for shared modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.cache_manager import CachedDataFetcher
+from shared.fetch_guard import assert_enough_succeeded
+from shared.yf_session import make_session
+from shared.yf_retry import with_429_retry
+
+YF_SESSION = make_session()
 
 from utils import (
     calculate_pivot_points,
@@ -64,10 +70,10 @@ def fetch_index_data(symbol: str, period: str = "1y", cache_dir: str = None) -> 
                 result = result.droplevel(0, axis=1)
             return result.tail(HISTORICAL_DAYS)
     
-    ticker = yf.Ticker(symbol)
-    df = ticker.history(period=period)
+    ticker = yf.Ticker(symbol, session=YF_SESSION)
+    df = with_429_retry(ticker.history, period=period)
     if len(df) < HISTORICAL_DAYS:
-        df = ticker.history(period="2y")
+        df = with_429_retry(ticker.history, period="2y")
     return df.tail(HISTORICAL_DAYS)
 
 
@@ -174,9 +180,9 @@ def create_snapshot_json():
         
         try:
             # Fetch ticker info for accurate daily change (avoids holiday gap issues)
-            ticker = yf.Ticker(symbol)
-            ticker_info = ticker.info
-            
+            ticker = yf.Ticker(symbol, session=YF_SESSION)
+            ticker_info = with_429_retry(lambda: ticker.info)
+
             df = fetch_index_data(symbol, period="1y")
             if len(df) < 2:
                 print(f"    ⚠️  Insufficient data for {symbol}")
@@ -213,7 +219,10 @@ def create_snapshot_json():
                 index_data['constituent_count'] = idx_config['constituent_count']
             
             snapshot_data['indices'][symbol] = index_data
-            
+
+            # Defensive pacing to reduce Yahoo Finance rate-limit hits
+            time.sleep(0.3)
+
         except Exception as e:
             print(f"    ❌ Error fetching {symbol}: {e}")
             continue
@@ -222,6 +231,11 @@ def create_snapshot_json():
     snapshot_data['style_analysis'] = analyze_style_performance(snapshot_data['indices'])
     
     output_path = os.path.join(SCRIPT_DIR, GROWTH_VALUE_CONFIG['output_files']['snapshot'])
+    assert_enough_succeeded(
+        successful=len(snapshot_data['indices']),
+        total=len(INDICES),
+        label="growth_value snapshot",
+    )
     save_json(snapshot_data, output_path)
     print(f"✅ Saved snapshot to {output_path}")
     
@@ -279,12 +293,20 @@ def create_historical_json():
             
             historical_data['indices'][symbol] = index_data
             print(f"    ✓ {len(daily_data)} days processed")
-            
+
+            # Defensive pacing to reduce Yahoo Finance rate-limit hits
+            time.sleep(0.3)
+
         except Exception as e:
             print(f"    ❌ Error processing {symbol}: {e}")
             continue
     
     output_path = os.path.join(SCRIPT_DIR, GROWTH_VALUE_CONFIG['output_files']['historical'])
+    assert_enough_succeeded(
+        successful=len(historical_data['indices']),
+        total=len(INDICES),
+        label="growth_value historical",
+    )
     save_json(historical_data, output_path)
     print(f"✅ Saved historical data to {output_path}")
     

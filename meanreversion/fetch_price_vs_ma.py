@@ -19,6 +19,7 @@ Data source: Yahoo Finance (yfinance)
 Author: DeanFinancials
 """
 
+import time
 import yfinance as yf
 import pandas as pd
 import sys
@@ -30,6 +31,11 @@ from datetime import datetime
 # Add parent directory to path for shared modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.cache_manager import CachedDataFetcher
+from shared.fetch_guard import assert_enough_succeeded
+from shared.yf_session import make_session
+from shared.yf_retry import with_429_retry
+
+YF_SESSION = make_session()
 
 from utils import (
     calculate_sma,
@@ -98,8 +104,8 @@ def fetch_index_data(symbol: str, period: str = "5y", cache_dir: str = None) -> 
             return result.tail(FETCH_DAYS)
     
     # Fallback to direct yfinance
-    ticker = yf.Ticker(symbol)
-    df = ticker.history(period=period)
+    ticker = yf.Ticker(symbol, session=YF_SESSION)
+    df = with_429_retry(ticker.history, period=period)
     
     # Ensure we have enough days for z-score calculation
     if len(df) < FETCH_DAYS:
@@ -389,7 +395,10 @@ def main():
                       f"Distance: {metrics['distance_percent']:.2f}% | "
                       f"Z-score: {metrics['zscore']:.2f} | "
                       f"Signal: {metrics['signal']}", file=sys.stderr)
-            
+
+            # Defensive pacing to reduce Yahoo Finance rate-limit hits
+            time.sleep(0.3)
+
         except Exception as e:
             print(f"  ERROR: {e}", file=sys.stderr)
             continue
@@ -400,9 +409,19 @@ def main():
     historical_file = output_dir / config['output_files']['price_vs_ma']['historical']
     
     print(f"\nSaving snapshot to {snapshot_file}...", file=sys.stderr)
+    assert_enough_succeeded(
+        successful=len(snapshot_data['indices']),
+        total=len(INDICES),
+        label="price_vs_ma snapshot",
+    )
     save_json(snapshot_data, str(snapshot_file))
-    
+
     print(f"Saving historical data to {historical_file}...", file=sys.stderr)
+    assert_enough_succeeded(
+        successful=len(historical_data['indices']),
+        total=len(INDICES),
+        label="price_vs_ma historical",
+    )
     save_json(historical_data, str(historical_file))
     
     print("\n" + "=" * 80, file=sys.stderr)

@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,6 +29,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from shared.cache_manager import CachedDataFetcher
 from shared.spx_universe import fetch_spx_tickers
+from shared.yf_retry import with_429_retry
+
+_CHUNK_SIZE = 100
+_SLEEP_SECONDS = 7
 
 
 def load_config() -> dict:
@@ -48,14 +53,51 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _download_chunked(
+    tickers: list[str],
+    *,
+    period: str,
+    chunk_size: int = _CHUNK_SIZE,
+    sleep_seconds: float = _SLEEP_SECONDS,
+    download_fn=None,
+    sleep_fn=None,
+) -> pd.DataFrame:
+    """Download tickers in chunks to avoid exhausting Yahoo's rate-limit bucket.
+
+    Splits *tickers* into slices of at most *chunk_size*, sleeps *sleep_seconds*
+    between each slice (not after the last one), and wraps each chunk's download
+    call with ``with_429_retry``. Returns the concatenated result.
+    """
+    if download_fn is None:
+        import yfinance as yf
+        download_fn = yf.download
+    if sleep_fn is None:
+        sleep_fn = time.sleep
+
+    chunks = [tickers[i:i + chunk_size] for i in range(0, len(tickers), chunk_size)]
+    chunk_dfs = []
+    for idx, chunk in enumerate(chunks):
+        if idx > 0:
+            sleep_fn(sleep_seconds)
+        df = with_429_retry(
+            download_fn,
+            chunk,
+            period=period,
+            progress=False,
+            auto_adjust=True,
+            threads=True,
+        )
+        chunk_dfs.append(df)
+
+    return pd.concat(chunk_dfs, axis=1)
+
+
 def download_market_data(tickers: list[str], *, period: str, cache_dir: str | None) -> pd.DataFrame:
     if cache_dir:
         fetcher = CachedDataFetcher(cache_dir=cache_dir)
         return fetcher.fetch_prices(tickers=tickers, period=period, cache_name="spx_volume_breadth")
 
-    import yfinance as yf
-
-    return yf.download(tickers, period=period, progress=False, auto_adjust=True, threads=True)
+    return _download_chunked(tickers, period=period)
 
 
 def build_volume_metrics_series(data: pd.DataFrame, *, sessions: int) -> list[dict]:

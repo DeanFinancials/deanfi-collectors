@@ -10,6 +10,8 @@ Outputs:
 """
 
 import json
+import sys
+import time
 import yaml
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -18,6 +20,14 @@ import pandas as pd
 
 # Use Eastern Time for market data timestamps
 ET = ZoneInfo('America/New_York')
+
+# Add parent directory to path for shared modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from shared.fetch_guard import assert_enough_succeeded
+from shared.yf_session import make_session
+from shared.yf_retry import with_429_retry
+
+YF_SESSION = make_session()
 
 from utils import (
     get_option_snapshot,
@@ -56,8 +66,11 @@ def fetch_major_indices_snapshot():
     
     for symbol, info in MAJOR_INDICES.items():
         print(f"Fetching {symbol} ({info['index']})...", end=' ')
-        
-        snapshot = get_option_snapshot(
+
+        # Wrap with 429 retry — yfinance calls inside get_option_snapshot can be
+        # rate-limited by Yahoo Finance during high-traffic periods.
+        snapshot = with_429_retry(
+            get_option_snapshot,
             symbol,
             min_dte=OPTIONS_CRITERIA['min_dte'],
             max_dte=OPTIONS_CRITERIA['max_dte'],
@@ -90,6 +103,9 @@ def fetch_major_indices_snapshot():
             results[symbol] = snapshot
             success_count += 1
             print(f"✅ IV: {snapshot['average_iv_formatted']}")
+
+            # Defensive pacing to reduce Yahoo Finance rate-limit hits
+            time.sleep(0.3)
         else:
             print("❌ Failed")
     
@@ -159,6 +175,11 @@ def main():
     
     # Save snapshot
     snapshot_path = Path(__file__).parent / OUTPUT_CONFIG['snapshot']
+    assert_enough_succeeded(
+        successful=len(snapshot_data['data']),
+        total=len(MAJOR_INDICES),
+        label="major_indices_iv snapshot",
+    )
     with open(snapshot_path, 'w') as f:
         json.dump(snapshot_data, f, indent=2, default=serialize_for_json)
     print(f"\n✅ Snapshot saved: {snapshot_path}")

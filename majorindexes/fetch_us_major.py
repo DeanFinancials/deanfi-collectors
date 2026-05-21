@@ -26,7 +26,11 @@ from typing import Dict, List, Optional
 
 # Add parent directory to path for shared modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from shared.cache_manager import CachedDataFetcher
+from shared.fetch_guard import assert_enough_succeeded
+from shared.yf_session import make_session
+from shared.yf_retry import with_429_retry
+
+YF_SESSION = make_session()
 
 from utils import (
     calculate_all_technical_indicators,
@@ -35,7 +39,7 @@ from utils import (
     calculate_statistics,
     calculate_pivot_points,
     dataframe_to_daily_records,
-    get_current_snapshot_from_info,
+    get_current_snapshot,
     create_index_metadata,
     save_json,
     determine_market_sentiment,
@@ -80,7 +84,8 @@ def fetch_latest_etf_prices(tickers: List[str]) -> Dict[str, Dict[str, Optional[
         return {}
 
     # Use 5m bars for reliability and lower load; updated often enough for a 10-min cadence.
-    df = yf.download(
+    df = with_429_retry(
+        yf.download,
         tickers=tickers,
         period="2d",
         interval="5m",
@@ -88,6 +93,7 @@ def fetch_latest_etf_prices(tickers: List[str]) -> Dict[str, Dict[str, Optional[
         auto_adjust=False,
         progress=False,
         threads=True,
+        session=YF_SESSION,
     )
 
     if df is None or df.empty:
@@ -163,55 +169,67 @@ def create_us_major_etf_prices_json():
     }
 
     output_path = os.path.join(SCRIPT_DIR, ETF_PRICES_OUTPUT_FILE)
+    # not guarded: bulk download, separate concern
     save_json(output, output_path)
     print(f"✅ Saved ETF prices snapshot to {output_path}")
     return output
 
 
-def fetch_index_data(symbol: str, period: str = "1y", cache_dir: str = None) -> pd.DataFrame:
+def _batch_download_indices(symbols: List[str], period: str = "1y") -> Dict[str, Optional[pd.DataFrame]]:
+    """Fetch OHLCV data for all `symbols` in a single yf.download call.
+
+    Returns a dict mapping symbol -> per-ticker DataFrame (or None if missing/empty).
+    The yf.download call is wrapped in with_429_retry so transient Yahoo Finance
+    rate-limit failures are recovered.
+
+    The batched response is a MultiIndex DataFrame (top level = ticker, second
+    level = field). We split it per-symbol via df[symbol]. When only one ticker
+    is requested, yfinance returns a flat (non-MultiIndex) DataFrame; that case
+    is handled by returning the flat frame as the single per-ticker frame.
     """
-    Fetch historical data for an index with optional caching.
-    
-    Args:
-        symbol: Index symbol
-        period: Data period (default: "1y" for ~252 trading days)
-        cache_dir: Optional cache directory for parquet files
-    
-    Returns:
-        DataFrame with OHLCV data
-    """
-    # Use caching if cache_dir provided
-    if cache_dir:
-        cache_dir_path = Path(cache_dir)
-        cache_dir_path.mkdir(parents=True, exist_ok=True)
-        
-        fetcher = CachedDataFetcher(cache_dir=str(cache_dir_path))
-        df = fetcher.fetch_prices(
-            tickers=[symbol],
-            period=period,
-            cache_name=f"majorindexes_us_major"
-        )
-        
-        if symbol in df.columns:
-            result = df[symbol].to_frame()
-            result.columns = pd.MultiIndex.from_product([[symbol], ['Close']])
-            # For indices, yfinance returns simple dataframe, flatten it
-            if len(result.columns.levels) > 1:
-                result = result.droplevel(0, axis=1)
-            return result.tail(HISTORICAL_DAYS)
-    
-    # Fallback to direct yfinance
-    ticker = yf.Ticker(symbol)
-    df = ticker.history(period=period)
-    
-    # Ensure we have at least 252 days, fetch more if needed
-    if len(df) < HISTORICAL_DAYS:
-        df = ticker.history(period="2y")
-    
-    # Keep only the most recent 252 days (or whatever we have)
-    df = df.tail(HISTORICAL_DAYS)
-    
-    return df
+    df = with_429_retry(
+        yf.download,
+        tickers=symbols,
+        period=period,
+        group_by="ticker",
+        auto_adjust=False,
+        progress=False,
+        threads=True,
+        session=YF_SESSION,
+    )
+
+    results: Dict[str, Optional[pd.DataFrame]] = {}
+
+    if df is None or getattr(df, "empty", False):
+        return {s: None for s in symbols}
+
+    is_multi = isinstance(df.columns, pd.MultiIndex)
+
+    if not is_multi:
+        # Single-ticker response: yfinance returns a flat DataFrame whose
+        # columns are OHLCV fields. There is only one symbol here.
+        if len(symbols) == 1:
+            results[symbols[0]] = df
+            return results
+        # Defensive: shouldn't happen for >1 symbol, but fall through to None
+        return {s: None for s in symbols}
+
+    available = set(df.columns.get_level_values(0))
+    for symbol in symbols:
+        if symbol not in available:
+            results[symbol] = None
+            continue
+        try:
+            per_ticker = df[symbol]
+        except KeyError:
+            results[symbol] = None
+            continue
+        if per_ticker is None or getattr(per_ticker, "empty", False):
+            results[symbol] = None
+        else:
+            results[symbol] = per_ticker
+
+    return results
 
 
 def create_snapshot_json():
@@ -273,32 +291,36 @@ def create_snapshot_json():
     
     indices_up = 0
     daily_returns = []
-    
+
+    # Single batched yf.download for all 6 core indices (was 6 separate calls).
+    symbols = [idx['symbol'] for idx in INDICES]
+    per_ticker_data = _batch_download_indices(symbols, period="1y")
+    successful_downloads = sum(
+        1 for df in per_ticker_data.values()
+        if df is not None and not getattr(df, "empty", False) and len(df) > 0
+    )
+
     for idx_config in INDICES:
         symbol = idx_config['symbol']
-        print(f"  Fetching {symbol}...")
-        
+        print(f"  Processing {symbol}...")
+
         try:
-            # Fetch ticker info for accurate daily change (avoids holiday gap issues)
-            ticker = yf.Ticker(symbol)
-            ticker_info = ticker.info
-            
-            # Fetch data
-            df = fetch_index_data(symbol, period="1y")
-            
-            if len(df) < 2:
+            df = per_ticker_data.get(symbol)
+
+            if df is None or getattr(df, "empty", False) or len(df) < 2:
                 print(f"    ⚠️  Insufficient data for {symbol}")
                 continue
-            
-            # Current snapshot using ticker.info for accurate daily change
-            snapshot = get_current_snapshot_from_info(ticker_info, df)
-            
+
+            # Derive snapshot from the dataframe (no ticker.info call available
+            # in the batched path).
+            snapshot = get_current_snapshot(df)
+
             # Returns
             returns = calculate_returns(df['Close'])
-            
+
             # 52-week metrics
             week_52_metrics = calculate_52_week_metrics(df['Close'])
-            
+
             # Pivot points (previous day's H, L, C)
             if len(df) >= 2:
                 prev_day = df.iloc[-2]
@@ -309,7 +331,7 @@ def create_snapshot_json():
                 )
             else:
                 pivot_points = {}
-            
+
             # Combine all data
             index_data = {
                 "name": idx_config['name'],
@@ -322,21 +344,21 @@ def create_snapshot_json():
                 **returns,
                 "pivot_points": pivot_points
             }
-            
+
             # Add special notes for VIX
             if symbol == "^VIX":
                 index_data["special_notes"] = idx_config.get('special_notes')
-            
+
             snapshot_data['indices'][symbol] = index_data
-            
+
             # Track for summary
             if snapshot.get('daily_change_percent') and snapshot['daily_change_percent'] > 0:
                 indices_up += 1
             if snapshot.get('daily_change_percent') is not None:
                 daily_returns.append(snapshot['daily_change_percent'])
-            
+
         except Exception as e:
-            print(f"    ❌ Error fetching {symbol}: {e}")
+            print(f"    ❌ Error processing {symbol}: {e}")
             continue
     
     # Market summary
@@ -364,9 +386,14 @@ def create_snapshot_json():
     
     # Save
     output_path = os.path.join(SCRIPT_DIR, US_MAJOR_CONFIG['output_files']['snapshot'])
+    assert_enough_succeeded(
+        successful=successful_downloads,
+        total=len(INDICES),
+        label="us_major_indices snapshot",
+    )
     save_json(snapshot_data, output_path)
     print(f"✅ Saved snapshot to {output_path}")
-    
+
     return snapshot_data
 
 
@@ -414,32 +441,42 @@ def create_historical_json():
         "indices": {}
     }
     
+    # Single batched yf.download for all 6 core indices (was 6 separate calls).
+    symbols = [idx['symbol'] for idx in INDICES]
+    per_ticker_data = _batch_download_indices(symbols, period="1y")
+    successful_downloads = sum(
+        1 for df in per_ticker_data.values()
+        if df is not None and not getattr(df, "empty", False) and len(df) > 0
+    )
+
     for idx_config in INDICES:
         symbol = idx_config['symbol']
         print(f"  Processing {symbol}...")
-        
+
         try:
-            # Fetch data
-            df = fetch_index_data(symbol, period="1y")
-            
-            if len(df) < 10:
+            df = per_ticker_data.get(symbol)
+
+            if df is None or getattr(df, "empty", False) or len(df) < 10:
                 print(f"    ⚠️  Insufficient data for {symbol}")
                 continue
-            
+
+            # Keep only the most recent HISTORICAL_DAYS rows.
+            df = df.tail(HISTORICAL_DAYS)
+
             # Convert to daily records
             daily_data = dataframe_to_daily_records(df)
-            
+
             # Calculate technical indicators
             tech_indicators = calculate_all_technical_indicators(df['Close'])
-            
+
             # Calculate statistics
             stats = calculate_statistics(df['Close'])
-            
+
             # Add average volume if available
             if 'Volume' in df.columns:
                 avg_volume = df['Volume'].mean()
                 stats['average_daily_volume'] = int(avg_volume) if not pd.isna(avg_volume) else None
-            
+
             # Compile index data
             index_data = {
                 "name": idx_config['name'],
@@ -449,16 +486,21 @@ def create_historical_json():
                 "technical_indicators": tech_indicators,
                 "statistics": stats
             }
-            
+
             historical_data['indices'][symbol] = index_data
             print(f"    ✓ {len(daily_data)} days processed")
-            
+
         except Exception as e:
             print(f"    ❌ Error processing {symbol}: {e}")
             continue
-    
+
     # Save
     output_path = os.path.join(SCRIPT_DIR, US_MAJOR_CONFIG['output_files']['historical'])
+    assert_enough_succeeded(
+        successful=successful_downloads,
+        total=len(INDICES),
+        label="us_major_indices historical",
+    )
     save_json(historical_data, output_path)
     print(f"✅ Saved historical data to {output_path}")
     

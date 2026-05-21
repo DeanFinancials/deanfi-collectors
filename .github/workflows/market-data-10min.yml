@@ -205,6 +205,13 @@ jobs:
           print("✅ data_freshness.json written")
           EOF
 
+      # ==================== VALIDATE BEFORE COMMIT ====================
+      - name: Validate snapshots (refuse empty overwrite)
+        if: steps.hours_check.outputs.in_market_hours == 'true'
+        run: |
+          cd data-cache
+          python ../scripts/validate_snapshots.py
+
       # ==================== COMMIT AND PUSH ====================
       - name: Commit and push
         run: |
