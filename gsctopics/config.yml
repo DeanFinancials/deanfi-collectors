@@ -1,0 +1,19 @@
+# GSC topics collector configuration
+#
+# site_url: Google Search Console property identifier (domain property format)
+# window_days: days of Search Analytics history to pull
+# max_topics: cap on GSC-derived topics carried into output
+# min_impressions: minimum impressions to include a query (filters noise)
+# excluded_page_prefixes: path prefixes already served → excluded before ranking
+# seed_topics: manually curated entries (source: "wes") merged after GSC-derived topics;
+#              GSC entry wins on slug collision. Add entries here to force a topic
+#              even when GSC signal is absent.
+
+site_url: "sc-domain:deanfi.com"
+window_days: 90
+max_topics: 50
+min_impressions: 5
+excluded_page_prefixes:
+  - "/insights/"
+
+seed_topics: []

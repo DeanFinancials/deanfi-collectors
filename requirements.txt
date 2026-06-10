@@ -15,5 +15,8 @@ pandas_market_calendars>=4.4.0
 # JSON Schema validation (used in tests and optional downstream validation)
 jsonschema>=4.0.0
 
+# Google OAuth 2.0 for GSC topics collector
+google-auth>=2.0.0
+
 # Testing
 pytest>=7.0
