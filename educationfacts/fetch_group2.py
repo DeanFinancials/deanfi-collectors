@@ -196,7 +196,11 @@ _FRED_SERIES: list[dict] = [
         "unit": "%",
         "source_name": "Federal Reserve / Board of Governors",
         "source_url": "https://www.federalreserve.gov/releases/chargeoff/",
-        "max_age_days": 100,
+        # Quarterly series. With the quarter-start as_of convention, the newest
+        # point legitimately ages ~1 quarter (~91d) + publication lag before the
+        # next release supersedes it (~210-260d observed). 270d covers that worst
+        # case + grace while still tripping Signal 3 if a quarter is fully missed.
+        "max_age_days": 270,
     },
     {
         "series_id": "USSTHPI",
@@ -206,7 +210,8 @@ _FRED_SERIES: list[dict] = [
         "unit": "ratio",
         "source_name": "Federal Housing Finance Agency",
         "source_url": "https://www.fhfa.gov/data/hpi",
-        "max_age_days": 100,
+        # Quarterly (see fred-mortgage-delinquency note) → 270d budget.
+        "max_age_days": 270,
     },
 ]
 
@@ -341,7 +346,7 @@ def fetch_bea_gdp(api_key: str) -> Optional[dict]:
         time_period = latest.get("TimePeriod", "")
         # TimePeriod format: "2026Q1" → as_of "2026-01-01"
         year_str = time_period[:4] if len(time_period) >= 4 else ""
-        quarter = time_period[5:] if len(time_period) >= 6 else "Q1"
+        quarter = time_period[4:] if len(time_period) >= 6 else "Q1"
         month_map = {"Q1": "01", "Q2": "04", "Q3": "07", "Q4": "10"}
         as_of = f"{year_str}-{month_map.get(quarter, '01')}-01" if year_str else ""
 
@@ -354,7 +359,8 @@ def fetch_bea_gdp(api_key: str) -> Optional[dict]:
             "source_name": "Bureau of Economic Analysis",
             "source_url": "https://www.bea.gov/data/gdp/gross-domestic-product",
             "as_of": as_of,
-            "max_age_days": 100,
+            # Quarterly (see fred-mortgage-delinquency note) → 270d budget.
+            "max_age_days": 270,
         }
 
     except (KeyError, IndexError, ValueError, TypeError) as exc:
