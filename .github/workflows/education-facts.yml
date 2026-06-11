@@ -1,0 +1,84 @@
+name: Education Facts Collection
+
+# Lane 1 (data collection) for the Educational Article Automation pipeline.
+# Runs the C1a education-facts collector and publishes education/facts.json to the
+# deanfi-data repo, which sync-to-r2.yml then mirrors to https://r2.deanfi.com/education/facts.json.
+# deanfi-website's weekend publish workflow consumes that artifact from R2.
+#
+# FAIL-CLOSED: run_education_facts exits non-zero and writes nothing if any source
+# group fails or zero valid records remain (C1a-AC2/AC3). This workflow intentionally
+# does NOT use continue-on-error, so such a failure fails the job (→ GitHub failure
+# notification / Signal 1) and leaves the last-good facts.json in deanfi-data untouched.
+
+on:
+  schedule:
+    # Weekly, Thursday 04:00 UTC. Source figures (Treasury/BLS/FRED/BEA + annual seeds)
+    # change monthly at most, so weekly stays well inside the C10b freshness threshold
+    # (monthly sources ≤35d). Thursday gives a 2-day buffer + a daily-probe window before
+    # the Saturday 10:00 UTC education publish slot in deanfi-website.
+    - cron: '0 4 * * 4'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  BLS_API_KEY: "${{ secrets.BLS_API_KEY }}"
+  FRED_API_KEY: "${{ secrets.FRED_API_KEY }}"
+  BEA_API_KEY: "${{ secrets.BEA_API_KEY }}"   # optional — collector skips BEA gracefully if unset
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+
+jobs:
+  fetch-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Serialize with the other collectors that write to deanfi-data to avoid push races.
+    concurrency:
+      group: deanfi-data-repo
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v5
+
+      - name: Checkout data repo
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Collect education facts
+        # No continue-on-error: a non-zero exit (source failure / no valid records) must
+        # fail the job so the publish + commit steps are skipped and last-good is preserved.
+        run: python -m educationfacts.run_education_facts --output ./educationfacts/facts.json
+
+      - name: Publish to data repo
+        run: |
+          mkdir -p data-cache/education
+          cp ./educationfacts/facts.json data-cache/education/facts.json
+          echo "✅ facts.json staged to data-cache/education/"
+
+      - name: Commit and push
+        run: |
+          cd data-cache
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add education/facts.json
+          if git diff --staged --quiet; then
+            echo "No changes to facts.json — nothing to commit"
+          else
+            git commit -m "chore: update education facts - $(date -u +"%Y-%m-%d")"
+            git pull --rebase origin main
+            git push
+            echo "✅ education/facts.json pushed to deanfi-data"
+          fi

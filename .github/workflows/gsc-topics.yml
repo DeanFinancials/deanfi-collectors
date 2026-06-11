@@ -1,0 +1,86 @@
+name: GSC Topics Collection
+
+# Lane 1 (data collection) for the Educational Article Automation pipeline.
+# Runs the C2a GSC-topics collector and publishes education/topics.json to the
+# deanfi-data repo, which sync-to-r2.yml then mirrors to https://r2.deanfi.com/education/topics.json.
+# deanfi-website's weekend publish workflow consumes that artifact from R2.
+#
+# FAIL-CLOSED: run_gsc_topics exits non-zero and writes nothing on GSC auth/transport
+# failure, on any unset GSC secret, or if no valid entries are produced (C2a-AC4). This
+# workflow intentionally does NOT use continue-on-error, so such a failure fails the job
+# (→ GitHub failure notification / Signal 1) and leaves last-good topics.json untouched.
+# Auth uses OAuth 2.0 (client id + secret + refresh token); see deanfi-website
+# docs/adr/0004-gsc-oauth-over-service-account.md.
+
+on:
+  schedule:
+    # Twice weekly, Monday + Thursday 04:15 UTC. The topics freshness threshold (Signal 4,
+    # newest non-consumed added_at ≤14d) is tighter than facts, so two runs/week keep a
+    # single failed run well clear of the threshold. GSC has a ~2–3 day data-processing lag.
+    # The 15-min offset from education-facts avoids contending for the deanfi-data lock.
+    - cron: '15 4 * * 1,4'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  GSC_CLIENT_ID: "${{ secrets.GSC_CLIENT_ID }}"
+  GSC_CLIENT_SECRET: "${{ secrets.GSC_CLIENT_SECRET }}"
+  GSC_REFRESH_TOKEN: "${{ secrets.GSC_REFRESH_TOKEN }}"
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+
+jobs:
+  fetch-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Serialize with the other collectors that write to deanfi-data to avoid push races.
+    concurrency:
+      group: deanfi-data-repo
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v5
+
+      - name: Checkout data repo
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Collect GSC topics
+        # No continue-on-error: a non-zero exit (auth failure / unset secret / no entries)
+        # must fail the job so the publish + commit steps are skipped and last-good is kept.
+        run: python -m gsctopics.run_gsc_topics ./gsctopics/topics.json
+
+      - name: Publish to data repo
+        run: |
+          mkdir -p data-cache/education
+          cp ./gsctopics/topics.json data-cache/education/topics.json
+          echo "✅ topics.json staged to data-cache/education/"
+
+      - name: Commit and push
+        run: |
+          cd data-cache
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add education/topics.json
+          if git diff --staged --quiet; then
+            echo "No changes to topics.json — nothing to commit"
+          else
+            git commit -m "chore: update GSC topics - $(date -u +"%Y-%m-%d")"
+            git pull --rebase origin main
+            git push
+            echo "✅ education/topics.json pushed to deanfi-data"
+          fi
