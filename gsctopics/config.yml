@@ -5,9 +5,28 @@
 # max_topics: cap on GSC-derived topics carried into output
 # min_impressions: minimum impressions to include a query (filters noise)
 # excluded_page_prefixes: path prefixes already served → excluded before ranking
-# seed_topics: manually curated entries (source: "wes") merged after GSC-derived topics;
-#              GSC entry wins on slug collision. Add entries here to force a topic
-#              even when GSC signal is absent.
+# seed_topics: manually curated evergreen entries merged after GSC-derived topics.
+#              GSC entry wins on slug collision. These are the steady-state content
+#              backbone: the weekend run always has solid, groundable topics even
+#              when GSC signal is thin or noisy. load_seed_topics() stamps
+#              source="wes", status="suggested", gsc_evidence=null, and a fresh
+#              added_at on every run, so only the content fields are needed below.
+#
+#   Field guide (per seed):
+#     slug                  kebab-case; becomes the article slug + dedup key
+#     title_working         working title (the renderer owns the final H1)
+#     category              one of: market-education | retirement | debt | financial-tips
+#     vertical              optional tool vertical hint (null = none)
+#     target_keyword        primary SEO phrase the article targets
+#     secondary_keywords    supporting phrases
+#     internal_link_targets real promotable routes the article can link (must exist
+#                           under src/pages/**; the website allowlist is authoritative)
+#     facts_refs            real fact ids from education/facts.json to ground figures
+#
+#   Selection note: seeds carry no GSC score, so the website selector rotates them
+#   in via the staleness backstop (category by category) and, within a category, in
+#   the order listed here — so put the strongest topic first in each block. As each
+#   publishes, its slug dedups out and the next one is picked.
 
 site_url: "sc-domain:deanfi.com"
 window_days: 90
@@ -16,4 +35,498 @@ min_impressions: 5
 excluded_page_prefixes:
   - "/insights/"
 
-seed_topics: []
+seed_topics:
+  # ── Market Education ────────────────────────────────────────────────────────
+  # These double as on-ramps to the live Economy/Markets dashboards: each cites a
+  # government fact AND links to the matching live tool.
+  - slug: how-the-yield-curve-predicts-recessions
+    title_working: How the Yield Curve Predicts Recessions
+    category: market-education
+    vertical: null
+    target_keyword: how the yield curve predicts recessions
+    secondary_keywords:
+      - inverted yield curve meaning
+      - 10 year 2 year treasury spread
+    internal_link_targets:
+      - /markets/snapshot/
+      - /economy/growth-output/
+      - /economy/money-markets/
+    facts_refs:
+      - fred-10yr-treasury-yield
+      - fred-2yr-treasury-yield
+
+  - slug: what-the-federal-funds-rate-means-for-your-money
+    title_working: What the Federal Funds Rate Means for Your Money
+    category: market-education
+    vertical: null
+    target_keyword: what the federal funds rate means for your money
+    secondary_keywords:
+      - how the fed funds rate affects savings
+      - federal funds rate explained
+    internal_link_targets:
+      - /economy/money-markets/
+      - /markets/snapshot/
+      - /investment/cd-calculator/
+    facts_refs:
+      - fred-fed-funds-rate
+
+  - slug: how-inflation-is-measured-cpi-explained
+    title_working: How Inflation Is Measured (CPI Explained)
+    category: market-education
+    vertical: null
+    target_keyword: how inflation is measured cpi explained
+    secondary_keywords:
+      - what is the consumer price index
+      - how cpi affects your wallet
+    internal_link_targets:
+      - /economy/inflation-prices/
+      - /economy/money-markets/
+    facts_refs:
+      - bls-cpi-all-urban-index
+
+  - slug: what-treasury-yields-tell-you-about-the-economy
+    title_working: What Treasury Yields Tell You About the Economy
+    category: market-education
+    vertical: null
+    target_keyword: what treasury yields tell you about the economy
+    secondary_keywords:
+      - 10 year treasury yield explained
+      - why bond yields matter
+    internal_link_targets:
+      - /economy/money-markets/
+      - /markets/snapshot/
+    facts_refs:
+      - fred-10yr-treasury-yield
+      - fred-2yr-treasury-yield
+
+  - slug: dollar-cost-averaging-vs-lump-sum-investing
+    title_working: Dollar-Cost Averaging vs Lump-Sum Investing
+    category: market-education
+    vertical: null
+    target_keyword: dollar cost averaging vs lump sum investing
+    secondary_keywords:
+      - is dollar cost averaging worth it
+      - how to invest a windfall
+    internal_link_targets:
+      - /investment/compound-interest/
+      - /fire/savings-rate/
+      - /markets/snapshot/
+    facts_refs: []
+
+  - slug: index-funds-vs-individual-stocks-for-beginners
+    title_working: Index Funds vs Individual Stocks for Beginners
+    category: market-education
+    vertical: null
+    target_keyword: index funds vs individual stocks for beginners
+    secondary_keywords:
+      - why index funds beat stock picking
+      - how to start investing in index funds
+    internal_link_targets:
+      - /stocks/sp500-index/
+      - /investment/net-worth/
+      - /investment/dividend-income/
+    facts_refs: []
+
+  - slug: how-to-read-stock-market-breadth
+    title_working: How to Read Stock Market Breadth
+    category: market-education
+    vertical: null
+    target_keyword: how to read stock market breadth
+    secondary_keywords:
+      - advance decline line explained
+      - what is market breadth
+    internal_link_targets:
+      - /markets/breadth/
+      - /markets/snapshot/
+      - /stocks/sp500-index/
+    facts_refs: []
+
+  - slug: what-a-soft-landing-means-for-the-economy
+    title_working: What a Soft Landing Means for the Economy
+    category: market-education
+    vertical: null
+    target_keyword: what a soft landing means for the economy
+    secondary_keywords:
+      - soft landing vs recession
+      - how the fed engineers a soft landing
+    internal_link_targets:
+      - /economy/growth-output/
+      - /economy/labor-employment/
+    facts_refs:
+      - bea-gdp-growth-pct
+      - bls-unemployment-rate
+
+  # ── Retirement Planning ─────────────────────────────────────────────────────
+  - slug: 401k-vs-ira-which-to-fund-first
+    title_working: 401(k) vs IRA — Which Should You Fund First?
+    category: retirement
+    vertical: null
+    target_keyword: 401k vs ira which to fund first
+    secondary_keywords:
+      - should i max my 401k or ira
+      - employer match priority
+    internal_link_targets:
+      - /retirement/401k-vs-ira/
+      - /retirement/retirement-planner/
+      - /investment/compound-interest/
+    facts_refs:
+      - irs-401k-employee-limit-2026
+      - irs-ira-contribution-limit-2026
+
+  - slug: 2026-401k-and-ira-contribution-limits-explained
+    title_working: 2026 401(k) and IRA Contribution Limits Explained
+    category: retirement
+    vertical: null
+    target_keyword: 2026 401k and ira contribution limits explained
+    secondary_keywords:
+      - how much can i contribute to my 401k in 2026
+      - ira contribution limit 2026
+    internal_link_targets:
+      - /retirement/401k-vs-ira/
+      - /retirement/retirement-planner/
+    facts_refs:
+      - irs-401k-employee-limit-2026
+      - irs-ira-contribution-limit-2026
+
+  - slug: catch-up-contributions-after-50-explained
+    title_working: Catch-Up Contributions After 50 Explained
+    category: retirement
+    vertical: null
+    target_keyword: catch up contributions after 50 explained
+    secondary_keywords:
+      - 401k catch up contribution 2026
+      - super catch up ages 60 to 63
+    internal_link_targets:
+      - /retirement/retirement-planner/
+      - /retirement/401k-vs-ira/
+      - /investment/compound-interest/
+    facts_refs:
+      - irs-401k-employee-limit-2026
+      - irs-ira-contribution-limit-2026
+
+  - slug: how-social-security-cola-works
+    title_working: How the Social Security COLA Works
+    category: retirement
+    vertical: null
+    target_keyword: how social security cola works
+    secondary_keywords:
+      - social security cost of living adjustment 2026
+      - how is the cola calculated
+    internal_link_targets:
+      - /retirement/social-security/
+      - /retirement/retirement-planner/
+    facts_refs:
+      - ssa-cola-pct-2026
+
+  - slug: when-to-claim-social-security
+    title_working: When to Claim Social Security
+    category: retirement
+    vertical: null
+    target_keyword: when to claim social security
+    secondary_keywords:
+      - full retirement age explained
+      - social security earnings test
+    internal_link_targets:
+      - /retirement/social-security/
+      - /retirement/withdrawal-strategy/
+    facts_refs:
+      - ssa-full-retirement-age-note
+      - ssa-earnings-test-under-fra-2026
+
+  - slug: required-minimum-distributions-explained
+    title_working: Required Minimum Distributions Explained
+    category: retirement
+    vertical: null
+    target_keyword: required minimum distributions explained
+    secondary_keywords:
+      - what age do rmds start
+      - how to calculate your rmd
+    internal_link_targets:
+      - /retirement/rmd-calculator/
+      - /retirement/withdrawal-strategy/
+    facts_refs: []
+
+  - slug: roth-ira-conversion-ladder-explained
+    title_working: The Roth IRA Conversion Ladder Explained
+    category: retirement
+    vertical: null
+    target_keyword: roth ira conversion ladder explained
+    secondary_keywords:
+      - how a roth conversion ladder works
+      - roth conversion early retirement
+    internal_link_targets:
+      - /investment/roth-conversion/
+      - /retirement/withdrawal-strategy/
+      - /retirement/401k-vs-ira/
+    facts_refs:
+      - irs-ira-contribution-limit-2026
+
+  - slug: how-coast-fire-works
+    title_working: How Coast FIRE Works
+    category: retirement
+    vertical: null
+    target_keyword: how coast fire works
+    secondary_keywords:
+      - what is coast fire
+      - coast fire vs regular fire
+    internal_link_targets:
+      - /fire/coast-fire/
+      - /fire/fire-calculator/
+      - /fire/savings-rate/
+    facts_refs: []
+
+  - slug: how-to-catch-up-on-retirement-savings
+    title_working: How to Catch Up on Retirement Savings
+    category: retirement
+    vertical: null
+    target_keyword: how to catch up on retirement savings
+    secondary_keywords:
+      - behind on retirement savings what to do
+      - retirement savings by age
+    internal_link_targets:
+      - /retirement/retirement-planner/
+      - /investment/compound-interest/
+      - /fire/savings-rate/
+    facts_refs:
+      - irs-401k-employee-limit-2026
+      - ssa-cola-pct-2026
+
+  # ── Debt Management ──────────────────────────────────────────────────────────
+  - slug: how-mortgage-rates-are-set
+    title_working: How Mortgage Rates Are Set
+    category: debt
+    vertical: null
+    target_keyword: how mortgage rates are set
+    secondary_keywords:
+      - why are mortgage rates so high
+      - mortgage rates vs treasury yields
+    internal_link_targets:
+      - /debt/mortgage-calculator/
+      - /economy/housing-affordability/
+      - /economy/money-markets/
+    facts_refs:
+      - fred-30yr-mortgage-pmms
+      - fred-10yr-treasury-yield
+
+  - slug: debt-snowball-vs-avalanche
+    title_working: Debt Snowball vs Avalanche — Which Pays Off Faster?
+    category: debt
+    vertical: null
+    target_keyword: debt snowball vs avalanche
+    secondary_keywords:
+      - best debt payoff method
+      - debt avalanche explained
+    internal_link_targets:
+      - /debt/debt-payoff/
+      - /debt/credit-card-payoff/
+      - /debt/loan-calculator/
+    facts_refs: []
+
+  - slug: should-you-refinance-your-mortgage
+    title_working: Should You Refinance Your Mortgage?
+    category: debt
+    vertical: null
+    target_keyword: should you refinance your mortgage
+    secondary_keywords:
+      - when does refinancing make sense
+      - break even point refinance
+    internal_link_targets:
+      - /debt/mortgage-calculator/
+      - /debt/loan-calculator/
+      - /economy/housing-affordability/
+    facts_refs:
+      - fred-30yr-mortgage-pmms
+
+  - slug: what-is-the-conforming-loan-limit
+    title_working: What Is the Conforming Loan Limit?
+    category: debt
+    vertical: null
+    target_keyword: what is the conforming loan limit
+    secondary_keywords:
+      - conforming vs jumbo loan
+      - 2026 conforming loan limit
+    internal_link_targets:
+      - /debt/mortgage-calculator/
+      - /budget/home-affordability/
+      - /economy/housing-affordability/
+    facts_refs:
+      - fhfa-conforming-loan-limit-2026
+
+  - slug: understanding-your-debt-to-income-ratio
+    title_working: Understanding Your Debt-to-Income Ratio
+    category: debt
+    vertical: null
+    target_keyword: understanding your debt to income ratio
+    secondary_keywords:
+      - what is a good debt to income ratio
+      - how lenders use dti
+    internal_link_targets:
+      - /debt/debt-to-income-ratio/
+      - /budget/home-affordability/
+      - /debt/mortgage-calculator/
+    facts_refs: []
+
+  - slug: how-much-house-can-you-afford
+    title_working: How Much House Can You Afford?
+    category: debt
+    vertical: null
+    target_keyword: how much house can you afford
+    secondary_keywords:
+      - home affordability rule of thumb
+      - how much mortgage can i qualify for
+    internal_link_targets:
+      - /budget/home-affordability/
+      - /debt/mortgage-calculator/
+      - /economy/housing-affordability/
+    facts_refs:
+      - fred-30yr-mortgage-pmms
+      - fhfa-conforming-loan-limit-2026
+
+  - slug: how-credit-card-interest-works
+    title_working: How Credit Card Interest Really Works
+    category: debt
+    vertical: null
+    target_keyword: how credit card interest works
+    secondary_keywords:
+      - what is apr on a credit card
+      - how to pay off credit card debt faster
+    internal_link_targets:
+      - /debt/credit-card-payoff/
+      - /debt/debt-payoff/
+      - /economy/consumer-credit/
+    facts_refs: []
+
+  - slug: fixed-vs-adjustable-rate-mortgage
+    title_working: Fixed vs Adjustable-Rate Mortgage
+    category: debt
+    vertical: null
+    target_keyword: fixed vs adjustable rate mortgage
+    secondary_keywords:
+      - is an arm a good idea
+      - fixed vs variable mortgage
+    internal_link_targets:
+      - /debt/mortgage-calculator/
+      - /debt/loan-calculator/
+      - /economy/housing-affordability/
+    facts_refs:
+      - fred-30yr-mortgage-pmms
+
+  # ── Financial Tips ───────────────────────────────────────────────────────────
+  - slug: how-to-build-an-emergency-fund
+    title_working: How to Build an Emergency Fund
+    category: financial-tips
+    vertical: null
+    target_keyword: how to build an emergency fund
+    secondary_keywords:
+      - how many months of expenses to save
+      - where to keep your emergency fund
+    internal_link_targets:
+      - /budget/emergency-fund/
+      - /budget/savings-goal/
+      - /budget/fifty-thirty-twenty/
+    facts_refs: []
+
+  - slug: hsa-triple-tax-advantage-explained
+    title_working: The HSA Triple Tax Advantage Explained
+    category: financial-tips
+    vertical: null
+    target_keyword: hsa triple tax advantage explained
+    secondary_keywords:
+      - hsa contribution limit 2026
+      - how to use an hsa for retirement
+    internal_link_targets:
+      - /budget/savings-goal/
+      - /investment/compound-interest/
+      - /investment/net-worth/
+    facts_refs:
+      - irs-hsa-individual-limit-2026
+      - irs-hsa-family-limit-2026
+
+  - slug: fifty-thirty-twenty-budget-explained
+    title_working: The 50/30/20 Budget Explained
+    category: financial-tips
+    vertical: null
+    target_keyword: fifty thirty twenty budget explained
+    secondary_keywords:
+      - how to use the 50 30 20 rule
+      - simple budgeting method
+    internal_link_targets:
+      - /budget/fifty-thirty-twenty/
+      - /budget/paycheck-calculator/
+      - /budget/savings-goal/
+    facts_refs: []
+
+  - slug: standard-deduction-2026-explained
+    title_working: The 2026 Standard Deduction Explained
+    category: financial-tips
+    vertical: null
+    target_keyword: standard deduction 2026 explained
+    secondary_keywords:
+      - standard deduction vs itemizing
+      - 2026 standard deduction amounts
+    internal_link_targets:
+      - /budget/paycheck-calculator/
+      - /investment/net-worth/
+    facts_refs:
+      - irs-std-deduction-single-2026
+      - irs-std-deduction-mfj-2026
+
+  - slug: federal-student-loan-interest-rates-explained
+    title_working: Federal Student Loan Interest Rates Explained
+    category: financial-tips
+    vertical: null
+    target_keyword: federal student loan interest rates explained
+    secondary_keywords:
+      - student loan interest rate 2025 2026
+      - subsidized vs unsubsidized loans
+    internal_link_targets:
+      - /debt/loan-calculator/
+      - /debt/debt-payoff/
+    facts_refs:
+      - fsa-direct-subsidized-rate-2025-26
+      - fsa-direct-unsubsidized-undergrad-rate-2025-26
+      - fsa-direct-unsubsidized-grad-rate-2025-26
+      - fsa-direct-plus-rate-2025-26
+
+  - slug: high-yield-savings-vs-cds
+    title_working: High-Yield Savings vs CDs
+    category: financial-tips
+    vertical: null
+    target_keyword: high yield savings vs cds
+    secondary_keywords:
+      - where to park your cash
+      - are cds worth it
+    internal_link_targets:
+      - /investment/cd-calculator/
+      - /economy/money-markets/
+      - /budget/savings-goal/
+    facts_refs:
+      - fred-fed-funds-rate
+
+  - slug: how-to-read-your-paycheck-withholding
+    title_working: How to Read Your Paycheck and Withholding
+    category: financial-tips
+    vertical: null
+    target_keyword: how to read your paycheck withholding
+    secondary_keywords:
+      - what is tax withholding
+      - how to adjust your w4
+    internal_link_targets:
+      - /budget/paycheck-calculator/
+      - /budget/fifty-thirty-twenty/
+    facts_refs:
+      - irs-std-deduction-single-2026
+
+  - slug: how-to-calculate-your-net-worth
+    title_working: How to Calculate Your Net Worth
+    category: financial-tips
+    vertical: null
+    target_keyword: how to calculate your net worth
+    secondary_keywords:
+      - what should my net worth be
+      - assets minus liabilities
+    internal_link_targets:
+      - /investment/net-worth/
+      - /budget/savings-goal/
+      - /fire/financial-goals/
+    facts_refs: []

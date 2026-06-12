@@ -18,10 +18,12 @@ from gsctopics.fetch_gsc import (
     authenticate_gsc,
     fetch_gsc_topics,
     fetch_search_analytics,
+    load_seed_topics,
 )
 from gsctopics.gsc_topics_utils import (
     SourceFetchError,
     assign_category,
+    is_quality_query,
     opportunity_score,
     slugify,
     validate_topics,
@@ -262,6 +264,51 @@ class TestFetchGSCTopics:
         assert "low-signal" not in slugs
 
 
+# ── TestLoadSeedTopics ────────────────────────────────────────────────────────
+
+class TestLoadSeedTopics:
+    def test_applies_defaults_for_terse_seeds(self):
+        import datetime
+        cfg = {"seed_topics": [{
+            "slug": "how-to-build-an-emergency-fund",
+            "category": "financial-tips",
+            "target_keyword": "how to build an emergency fund",
+        }]}
+
+        seeds = load_seed_topics(cfg)
+
+        assert len(seeds) == 1
+        e = seeds[0]
+        assert e["source"] == "wes"
+        assert e["status"] == "suggested"
+        assert e["gsc_evidence"] is None
+        assert e["added_at"] == datetime.date.today().isoformat()
+
+    def test_explicit_values_win_over_defaults(self):
+        cfg = {"seed_topics": [{
+            "slug": "x", "category": "retirement", "target_keyword": "y",
+            "status": "consumed", "added_at": "2020-01-01", "source": "manual",
+        }]}
+
+        e = load_seed_topics(cfg)[0]
+
+        assert e["status"] == "consumed"
+        assert e["added_at"] == "2020-01-01"
+        assert e["source"] == "manual"
+
+    def test_terse_seeds_pass_schema_validation(self):
+        cfg = {"seed_topics": [{
+            "slug": "how-to-calculate-your-net-worth",
+            "category": "financial-tips",
+            "target_keyword": "how to calculate your net worth",
+        }]}
+
+        accepted, rejected = validate_topics(load_seed_topics(cfg))
+
+        assert len(accepted) == 1
+        assert len(rejected) == 0
+
+
 # ── TestOpportunityScore ──────────────────────────────────────────────────────
 
 class TestOpportunityScore:
@@ -270,6 +317,45 @@ class TestOpportunityScore:
 
     def test_position_floor_prevents_division_by_zero(self):
         assert opportunity_score(50.0, 0.0) == 50.0
+
+
+# ── TestIsQualityQuery ────────────────────────────────────────────────────────
+
+class TestIsQualityQuery:
+    @pytest.mark.parametrize("query", [
+        "retirement planning basics",
+        "401k contribution limits",
+        "roth ira limits",
+        "coast fire calculator",
+        "how to invest",
+    ])
+    def test_keeps_article_worthy_queries(self, query):
+        assert is_quality_query(query) is True
+
+    @pytest.mark.parametrize("query", [
+        '"rsxfs" "2025-01" before:2025-12-28',   # operator + date + quotes + gibberish
+        '"exhoslusm495s" "2025-02-01" before april 2025',  # date + quotes
+        '"born in 1960 or later" "rmd age 75"',  # quoted exact-match noise
+        "rsxfs",                                  # single vowel-less gibberish token
+        "site:deanfi.com",                        # search operator
+        "",                                       # empty
+        "   ",                                    # whitespace only
+    ])
+    def test_drops_export_noise(self, query):
+        assert is_quality_query(query) is False
+
+
+# ── TestAssignCategory ────────────────────────────────────────────────────────
+
+class TestAssignCategory:
+    def test_matches_despite_surrounding_quotes(self):
+        # Quoted exact-match queries must still resolve to the right category
+        # rather than silently falling back to the market-education default.
+        assert assign_category('"rmd age 75"') == "retirement"
+        assert assign_category('"mortgage refinance rates"') == "debt"
+
+    def test_unmatched_defaults_to_market_education(self):
+        assert assign_category("stock market breadth explained") == "market-education"
 
 
 # ── TestValidateTopics ────────────────────────────────────────────────────────

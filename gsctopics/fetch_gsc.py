@@ -21,6 +21,7 @@ from google.oauth2.credentials import Credentials
 from .gsc_topics_utils import (
     SourceFetchError,
     assign_category,
+    is_quality_query,
     opportunity_score,
     slugify,
 )
@@ -143,6 +144,7 @@ def fetch_search_analytics(
     rows = data.get("rows", [])  # absent "rows" key = no impressions, not an error
     today_str = today.isoformat()
     entries = []
+    dropped_noise = 0
 
     for row in rows:
         keys = row.get("keys", [])
@@ -150,6 +152,12 @@ def fetch_search_analytics(
             continue
         query_text = keys[0]
         page_url = keys[1]
+
+        # Drop raw-GSC-export noise (operator/quoted/date-stamped/gibberish queries)
+        # before it can become a topic the website would have to defend against.
+        if not is_quality_query(query_text):
+            dropped_noise += 1
+            continue
 
         # AC2: exclude queries already served at an /insights/* page
         path = urllib.parse.urlparse(page_url).path
@@ -180,6 +188,9 @@ def fetch_search_analytics(
             "added_at": today_str,
         })
 
+    if dropped_noise:
+        logger.info("Dropped %d low-quality GSC queries (operator/quoted/date/gibberish)", dropped_noise)
+
     entries.sort(
         key=lambda e: opportunity_score(
             e["gsc_evidence"]["impressions"], e["gsc_evidence"]["avg_position"]
@@ -190,9 +201,20 @@ def fetch_search_analytics(
 
 
 def load_seed_topics(config: dict) -> list:
+    """
+    Materialize curated seed topics, applying defaults so the config can stay terse.
+
+    `added_at` is stamped with today's date on every run so curated seeds never age
+    out of the freshness probe during a GSC drought; `source`/`status`/`gsc_evidence`
+    get their seed defaults when omitted. Values already present in the config win.
+    """
+    today = datetime.date.today().isoformat()
     seeds = []
     for seed in config.get("seed_topics", []):
         entry = dict(seed)
+        entry.setdefault("source", "wes")
+        entry.setdefault("status", "suggested")
+        entry.setdefault("added_at", today)
         if "gsc_evidence" not in entry:
             entry["gsc_evidence"] = None
         seeds.append(entry)

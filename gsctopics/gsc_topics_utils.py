@@ -43,12 +43,51 @@ class SourceFetchError(RuntimeError):
     pass
 
 
+# Raw-GSC-export noise signals — queries carrying these are search-operator dumps
+# or data artifacts, never article-worthy topics.
+_GSC_OPERATOR_RE = re.compile(
+    r"\b(?:before|after|site|inurl|intitle|intext|allintitle|allinurl|cache|filetype|related|url|insource):",
+    re.IGNORECASE,
+)
+_ISO_DATE_RE = re.compile(r"\d{4}-\d{2}")
+_VOWEL_RE = re.compile(r"[aeiou]")
+
+
 def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower().strip()).strip("-")
 
 
+def is_quality_query(query: str) -> bool:
+    """
+    True when a GSC query is article-worthy; False for raw-export noise.
+
+    Drops the junk that was reaching the website selector unfiltered: search
+    operators (``before:``/``site:``…), quoted exact-match strings, date-stamped
+    queries (``2025-02-01``), and gibberish/vowel-less tokens (``rsxfs``). A real
+    topic must carry at least two "real words" — alphabetic, length >= 3, with a
+    vowel — and none of the noise signals.
+    """
+    if not query or not query.strip():
+        return False
+    if '"' in query or "'" in query:
+        return False
+    if _GSC_OPERATOR_RE.search(query):
+        return False
+    if _ISO_DATE_RE.search(query):
+        return False
+    real_words = [
+        token
+        for token in re.split(r"[^a-z]+", query.lower())
+        if len(token) >= 3 and _VOWEL_RE.search(token)
+    ]
+    return len(real_words) >= 2
+
+
 def assign_category(keyword: str) -> str:
-    padded = f" {keyword.lower()} "
+    # Normalize punctuation to spaces first, so quoted/exact-match queries
+    # (e.g. '"rmd age 75"') still match the space-padded patterns like " rmd ".
+    normalized = re.sub(r"[^a-z0-9]+", " ", keyword.lower()).strip()
+    padded = f" {normalized} "
     for category, patterns in _CATEGORY_KEYWORDS.items():
         if any(p in padded for p in patterns):
             return category
