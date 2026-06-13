@@ -156,6 +156,34 @@ seed_topics:
       - bea-gdp-growth-pct
       - bls-unemployment-rate
 
+  - slug: what-the-vix-actually-measures
+    title_working: What the VIX Actually Measures
+    category: market-education
+    vertical: null
+    target_keyword: what the vix actually measures
+    secondary_keywords:
+      - what does the vix mean
+      - fear index explained
+    internal_link_targets:
+      - /markets/volatility/
+      - /markets/snapshot/
+      - /markets/mean-reversion/
+    facts_refs: []
+
+  - slug: how-support-and-resistance-levels-work
+    title_working: How Support and Resistance Levels Work
+    category: market-education
+    vertical: null
+    target_keyword: how support and resistance levels work
+    secondary_keywords:
+      - support and resistance explained
+      - how to find support and resistance
+    internal_link_targets:
+      - /markets/support-resistance/
+      - /markets/mean-reversion/
+      - /markets/volatility/
+    facts_refs: []
+
   # ── Retirement Planning ─────────────────────────────────────────────────────
   - slug: 401k-vs-ira-which-to-fund-first
     title_working: 401(k) vs IRA — Which Should You Fund First?
@@ -291,6 +319,20 @@ seed_topics:
       - irs-401k-employee-limit-2026
       - ssa-cola-pct-2026
 
+  - slug: sequence-of-returns-risk-explained
+    title_working: Sequence of Returns Risk Explained
+    category: retirement
+    vertical: null
+    target_keyword: sequence of returns risk explained
+    secondary_keywords:
+      - what is sequence of returns risk
+      - sequence risk retirement
+    internal_link_targets:
+      - /retirement/withdrawal-strategy/
+      - /fire/safe-withdrawal-rate/
+      - /retirement/retirement-planner/
+    facts_refs: []
+
   # ── Debt Management ──────────────────────────────────────────────────────────
   - slug: how-mortgage-rates-are-set
     title_working: How Mortgage Rates Are Set
@@ -408,6 +450,21 @@ seed_topics:
       - /debt/mortgage-calculator/
       - /debt/loan-calculator/
       - /economy/housing-affordability/
+    facts_refs:
+      - fred-30yr-mortgage-pmms
+
+  - slug: pay-off-mortgage-early-or-invest
+    title_working: Pay Off Your Mortgage Early or Invest?
+    category: debt
+    vertical: null
+    target_keyword: pay off mortgage early or invest
+    secondary_keywords:
+      - should i pay off my mortgage or invest
+      - extra mortgage payments vs investing
+    internal_link_targets:
+      - /debt/mortgage-calculator/
+      - /investment/compound-interest/
+      - /budget/home-affordability/
     facts_refs:
       - fred-30yr-mortgage-pmms
 
@@ -529,4 +586,33 @@ seed_topics:
       - /investment/net-worth/
       - /budget/savings-goal/
       - /fire/financial-goals/
+    facts_refs: []
+
+  - slug: how-a-cd-ladder-works
+    title_working: How a CD Ladder Works
+    category: financial-tips
+    vertical: null
+    target_keyword: how a cd ladder works
+    secondary_keywords:
+      - cd ladder strategy
+      - 5 year cd ladder
+    internal_link_targets:
+      - /investment/cd-calculator/
+      - /economy/money-markets/
+      - /budget/savings-goal/
+    facts_refs:
+      - fred-fed-funds-rate
+
+  - slug: what-credit-utilization-means-for-your-score
+    title_working: What Credit Utilization Means for Your Score
+    category: financial-tips
+    vertical: null
+    target_keyword: what credit utilization means for your score
+    secondary_keywords:
+      - ideal credit utilization ratio
+      - how to lower credit utilization
+    internal_link_targets:
+      - /debt/credit-card-payoff/
+      - /debt/debt-to-income-ratio/
+      - /budget/paycheck-calculator/
     facts_refs: []
