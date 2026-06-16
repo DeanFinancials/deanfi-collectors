@@ -1,13 +1,12 @@
-name: Earnings Collection
+name: Earnings Calendar Collection
 
 on:
   schedule:
-    # Weeknights at 10:45pm Eastern (03:45 UTC Tue-Sat) to capture next-day earnings
+    # Weeknights at 10:45pm Eastern (03:45 UTC Tue-Sat) to capture the next session's calendar
     # GitHub Actions cron uses UTC; 03:45 UTC maps to:
-    #   • 10:45pm EST (standard time roughly Nov–Mar)
-    #   • 11:45pm EDT (daylight saving time roughly Mar–Nov)
+    #   - 10:45pm EST (standard time roughly Nov-Mar)
+    #   - 11:45pm EDT (daylight saving time roughly Mar-Nov)
     - cron: '45 3 * * 2-6'
-    # - cron: '0 3 * * 2-6'  # Optional: run at 11:00pm EDT instead of midnight EDT
   workflow_dispatch:
 
 env:
@@ -19,80 +18,57 @@ env:
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
 
-    # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
       cancel-in-progress: false
-    
+
     steps:
       - name: Checkout collectors repo
         uses: actions/checkout@v5
-      
+
       - name: Checkout data repo
         uses: actions/checkout@v5
         with:
           repository: ${{ env.DATA_REPO }}
           token: ${{ secrets.DATA_REPO_TOKEN }}
           path: data-cache
-      
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-      
+
       - name: Fetch earnings calendar
-        continue-on-error: true
         run: |
           cd earningscalendar
           python fetch_earnings_calendar.py
           echo "✅ Earnings calendar fetched"
 
-      - name: Fetch earnings surprises
-        continue-on-error: true
-        run: |
-          cd earningssurprises
-          python fetch_earnings_surprises.py
-          echo "✅ Earnings surprises fetched"
-
       - name: Copy to data repo
         run: |
           mkdir -p data-cache/earnings-calendar
-          mkdir -p data-cache/earnings-surprises
-          cp earningscalendar/earnings_calendar.json data-cache/earnings-calendar/ 2>/dev/null || true
-          cp earningssurprises/earnings_surprises.json data-cache/earnings-surprises/ 2>/dev/null || true
-          echo "✅ Files copied (missing outputs skipped)"
+          cp earningscalendar/earnings_calendar.json data-cache/earnings-calendar/
+          echo "✅ Earnings calendar copied"
 
       - name: Update data freshness
         run: |
           python3 << 'EOF'
-          import json, os
+          import json
           from datetime import datetime, timezone
           from pathlib import Path
 
           now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
           fp = Path('data-cache/data_freshness.json')
           data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
-
-          section_sentinels = {
-              "earnings-calendar":  "earningscalendar/earnings_calendar.json",
-              "earnings-surprises": "earningssurprises/earnings_surprises.json",
-          }
-          for section, sentinel in section_sentinels.items():
-              if Path(sentinel).exists():
-                  data["sections"][section] = {"last_updated": now}
-                  print(f"  ✅ {section}: {now}")
-              else:
-                  existing = data.get("sections", {}).get(section, {}).get("last_updated", "never")
-                  print(f"  ⏭  {section}: no output, keeping {existing}")
-
+          data.setdefault("sections", {})["earnings-calendar"] = {"last_updated": now}
           fp.write_text(json.dumps(data, indent=2))
-          print("✅ data_freshness.json written")
+          print(f"✅ earnings-calendar freshness updated: {now}")
           EOF
 
       - name: Commit and push
@@ -100,12 +76,12 @@ jobs:
           cd data-cache
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add earnings-calendar/ earnings-surprises/ data_freshness.json
-          
+          git add earnings-calendar/ data_freshness.json
+
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: update earnings data - $(date -u +"%Y-%m-%d")"
+            git commit -m "chore: update earnings calendar - $(date -u +"%Y-%m-%d")"
             git pull --rebase origin main
             git push
             echo "✅ Data pushed to repository"

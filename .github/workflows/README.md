@@ -8,11 +8,12 @@ This directory contains automated workflows for collecting market data and publi
 |----------|----------|----------|---------|---------------|
 | `market-data-10min.yml` | Every 10 min (8:05am–4:55pm ET) | Breadth, major indexes, implied vol, mean reversion | ~4 min | ~90h |
 | `daily-news.yml` | Twice daily (9:30am & 4pm ET) | Daily news, Sector news | ~2 min | ~1.5h |
-| `analyst-trends.yml` | Weeknights 11:00pm ET (Tue–Sat UTC) | Recommendations, sector trends | ~5 min | ~2h |
-| `earnings.yml` | Weeknights 11:00pm ET (Tue–Sat UTC) | Calendar, surprises | ~5 min | ~2h |
+| `analyst-trends.yml` | Weeknights 10:00pm ET (Tue–Sat UTC) | Recommendations, sector trends | ~10 min | ~4h |
+| `earnings-calendar.yml` | Weeknights 10:45pm ET (Tue–Sat UTC) | Earnings calendar | ~20 min | ~7h |
+| `earnings-surprises.yml` | Weeknights 11:05pm ET (Tue–Sat UTC) | Earnings surprises | ~20 min | ~7h |
 | `sp100-growth.yml` | Weeknights 11:15pm ET (Tue–Sat UTC) | SP100 revenue & EPS growth | ~8 min | ~3h |
 | `economy-indicators.yml` | Weekdays 8:00am & 12:00pm ET | Growth, inflation, labor, money markets | ~6 min | ~11h |
-| **TOTAL** | - | **6 workflows** | - | **~109 hours** |
+| **TOTAL** | - | **7 workflows** | - | **~125 hours** |
 
 ## 🔒 Required Secrets
 
@@ -20,7 +21,7 @@ Set these up in: **Settings → Secrets and variables → Actions**
 
 ### FINNHUB_API_KEY
 - **Get it:** [https://finnhub.io/register](https://finnhub.io/register)
-- **Used by:** `daily-news.yml`, `analyst-trends.yml`, `earnings.yml`
+- **Used by:** `daily-news.yml`, `analyst-trends.yml`, `earnings-calendar.yml`, `earnings-surprises.yml`
 - **Rate limits:** 60 calls/minute on free tier
 
 ### FRED_API_KEY
@@ -84,15 +85,21 @@ cron: '0 21 * * 1-5'
 - **Days per month:** ~22 trading days
 - **Total runs:** ~44/month
 
-### Weeknights (11:00pm ET / 04:00 UTC Tue–Sat)
+### Weeknights (Nightly Finnhub Collectors)
 ```yaml
-# Runs: 11:00pm Eastern (04:00 UTC Tue–Sat). Optional 03:00 UTC line for EDT swaps.
-cron: '0 4 * * 2-6'
-# cron: '0 3 * * 2-6'
+# Analyst trends: 10:00pm ET (03:00 UTC Tue-Sat)
+cron: '0 3 * * 2-6'
+
+# Earnings calendar: 10:45pm ET (03:45 UTC Tue-Sat)
+cron: '45 3 * * 2-6'
+
+# Earnings surprises: 11:05pm ET (04:05 UTC Tue-Sat)
+cron: '5 4 * * 2-6'
 ```
-- **Workflows:** `analyst-trends.yml`, `earnings.yml`
-- **Runs per week:** 5 (Sunday–Thursday evenings, executed Tue–Sat UTC)
-- **Total runs:** ~20/month per workflow (~40 total)
+- **Workflows:** `analyst-trends.yml`, `earnings-calendar.yml`, `earnings-surprises.yml`
+- **Runs per week:** 5 per workflow (Sunday–Thursday evenings, executed Tue–Sat UTC)
+- **Total runs:** ~20/month per workflow (~60 total)
+- **Operational note:** The earnings pipeline is split into two nightly workflows so a long-running calendar fetch cannot block earnings surprises publication, and each dataset updates its own `data_freshness.json` section independently.
 
 ### Weekday Economy Windows (8:00am & 12:00pm ET)
 ```yaml
@@ -238,7 +245,7 @@ Market breadth and major indexes workflows use intelligent data caching:
 All workflows use concurrency groups to prevent conflicts:
 ```yaml
 concurrency:
-  group: deanfi-data-write
+  group: deanfi-data-repo
   cancel-in-progress: false
 ```
 This ensures only one workflow can push to deanfi-data at a time, preventing git conflicts.

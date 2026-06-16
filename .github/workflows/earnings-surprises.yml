@@ -1,0 +1,88 @@
+name: Earnings Surprises Collection
+
+on:
+  schedule:
+    # Stagger after earnings-calendar.yml so the shared deanfi-data writer queue is less contended.
+    # GitHub Actions cron uses UTC; 04:05 UTC maps to:
+    #   - 11:05pm EST (standard time roughly Nov-Mar)
+    #   - 12:05am EDT (daylight saving time roughly Mar-Nov)
+    - cron: '5 4 * * 2-6'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  FINNHUB_API_KEY: "${{ secrets.FINNHUB_API_KEY }}"
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+
+jobs:
+  fetch-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    concurrency:
+      group: deanfi-data-repo
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v5
+
+      - name: Checkout data repo
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch earnings surprises
+        run: |
+          cd earningssurprises
+          python fetch_earnings_surprises.py
+          echo "✅ Earnings surprises fetched"
+
+      - name: Copy to data repo
+        run: |
+          mkdir -p data-cache/earnings-surprises
+          cp earningssurprises/earnings_surprises.json data-cache/earnings-surprises/
+          echo "✅ Earnings surprises copied"
+
+      - name: Update data freshness
+        run: |
+          python3 << 'EOF'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
+          data.setdefault("sections", {})["earnings-surprises"] = {"last_updated": now}
+          fp.write_text(json.dumps(data, indent=2))
+          print(f"✅ earnings-surprises freshness updated: {now}")
+          EOF
+
+      - name: Commit and push
+        run: |
+          cd data-cache
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add earnings-surprises/ data_freshness.json
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update earnings surprises - $(date -u +"%Y-%m-%d")"
+            git pull --rebase origin main
+            git push
+            echo "✅ Data pushed to repository"
+          fi
