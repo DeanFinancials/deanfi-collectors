@@ -27,7 +27,9 @@ env:
 jobs:
   fetch-options-whales:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Recent successful runs have been completing just under 20 minutes; keep
+    # headroom so normal runtime drift does not cancel the fetch before publish.
+    timeout-minutes: 30
 
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
