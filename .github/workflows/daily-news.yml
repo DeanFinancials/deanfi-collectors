@@ -26,6 +26,7 @@ jobs:
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
       group: deanfi-data-repo
+      queue: max
       cancel-in-progress: false
 
     steps:

@@ -37,6 +37,7 @@ jobs:
     # Serialize with the other collectors that write to deanfi-data to avoid push races.
     concurrency:
       group: deanfi-data-repo
+      queue: max
       cancel-in-progress: false
 
     steps:

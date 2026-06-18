@@ -39,7 +39,7 @@ The minimum catalyst quality bar for automated Market Pulse publishing. A normal
 8:00am–5:00pm Eastern Time, Monday–Friday. High-frequency collectors must guard against running outside this window. The guard lives in the workflow YAML (a bash step that checks the current UTC time and exits 0 if outside the window) so the cron schedule itself can be timezone-agnostic.
 
 ### Concurrency Group
-All workflows that write to `deanfi-data` share the group `deanfi-data-repo` with `cancel-in-progress: false`. This serialises pushes. A hung workflow blocks the entire queue — hence per-workflow timeouts are required.
+All workflows that write to `deanfi-data` share the group `deanfi-data-repo` with `queue: max` and `cancel-in-progress: false`. This serialises pushes and allows multiple pending collector runs to wait instead of replacing older pending runs. A hung workflow blocks the entire queue — hence per-workflow timeouts are required.
 
 ---
 

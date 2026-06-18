@@ -49,9 +49,10 @@ deanfi-data/          (not in this repo — the sibling data repo on GitHub)
 
 ## Workflow Architecture
 
-- All workflows share concurrency group `deanfi-data-repo` with
-  `cancel-in-progress: false`. This serialises pushes to `deanfi-data` and
-  prevents git conflicts.
+- All workflows share concurrency group `deanfi-data-repo` with `queue: max`
+  and `cancel-in-progress: false`. This serialises pushes to `deanfi-data`
+  and keeps multiple pending collectors queued instead of replacing older
+  pending runs.
 - The commit pattern is: collect → `git add` → `git commit` → `git pull --rebase`
   → `git push`. The rebase step handles any external pushes that happened during
   the run.

@@ -246,9 +246,10 @@ All workflows use concurrency groups to prevent conflicts:
 ```yaml
 concurrency:
   group: deanfi-data-repo
+  queue: max
   cancel-in-progress: false
 ```
-This ensures only one workflow can push to deanfi-data at a time, preventing git conflicts.
+This ensures only one workflow can push to deanfi-data at a time, preventing git conflicts. `queue: max` is required because GitHub's default concurrency queue keeps only one pending run; without it, a newer collector can cancel an older pending collector before it gets a chance to publish.
 
 ### Parallel Execution
 Multiple data fetchers run in sequence within each workflow, but different workflows run in parallel. This maximizes throughput while respecting API rate limits.
