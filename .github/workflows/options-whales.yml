@@ -2,7 +2,7 @@ name: Options Whale Trades Collection
 
 on:
   schedule:
-    - cron: '0 17 * * 1-5'    # ~noon ET (12pm EST / 1pm EDT)
+    - cron: '30 16 * * 1-5'    # ~noon ET (11:30am EST / 12:30pm EDT)
     - cron: '0 2 * * 2-6'     # ~9pm ET (9pm EST / 10pm EDT)
   workflow_dispatch:
     inputs:
