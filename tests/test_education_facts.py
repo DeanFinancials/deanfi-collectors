@@ -109,6 +109,22 @@ class TestFetchWithRetry:
 
         assert "503" in " ".join(caplog.messages)
 
+    def test_recovered_transport_error_is_not_logged_as_warning(self, caplog):
+        """A transient transport error that succeeds on retry stays below warning level."""
+        import requests as req_lib
+        from educationfacts.education_facts_utils import fetch_with_retry
+
+        mock_resp = _mock_http_response(200, {"data": []})
+        with patch(
+            "educationfacts.education_facts_utils.requests.get",
+            side_effect=[req_lib.ConnectionError("reset"), mock_resp],
+        ), patch("educationfacts.education_facts_utils.time.sleep"), \
+             caplog.at_level(logging.WARNING, logger="educationfacts.education_facts_utils"):
+            result = fetch_with_retry("https://api.example.com", max_retries=3, base_delay=0.0)
+
+        assert result == {"data": []}
+        assert caplog.messages == []
+
 
 # ---------------------------------------------------------------------------
 # Slice 2 — validate_records (AC3)
@@ -260,6 +276,25 @@ class TestGroup1TreasuryFetch:
             result = fetch_group1(config)
 
         assert result == []
+
+    def test_treasury_fetch_uses_current_fiscal_data_v2_endpoint(self):
+        """Treasury fetch uses the live Fiscal Data v2 route and filters security_desc values."""
+        from educationfacts.fetch_group1 import fetch_treasury_rates
+
+        treasury_data = {
+            "data": [
+                {"record_date": "2026-05-31", "security_desc": "Treasury Notes",
+                 "avg_interest_rate_amt": "3.248"},
+                {"record_date": "2026-05-31", "security_desc": "Treasury Bonds",
+                 "avg_interest_rate_amt": "3.413"},
+            ]
+        }
+        with patch("educationfacts.fetch_group1.fetch_with_retry", return_value=treasury_data) as mock_fetch:
+            fetch_treasury_rates()
+
+        requested_url = mock_fetch.call_args.args[0]
+        assert "/services/api/fiscal_service/v2/accounting/od/avg_interest_rates" in requested_url
+        assert "filter=security_desc:in:(Treasury%20Notes,Treasury%20Bonds)" in requested_url
 
 
 # ---------------------------------------------------------------------------

@@ -53,6 +53,7 @@ def fetch_with_retry(
     Logs HTTP status codes on failure — never logs credential values.
     """
     for attempt in range(max_retries):
+        final_attempt = attempt == max_retries - 1
         try:
             if method.upper() == "POST":
                 resp = requests.post(url, headers=headers, json=json_body, timeout=30)
@@ -62,13 +63,15 @@ def fetch_with_retry(
             if resp.status_code == 200:
                 return resp.json()
 
-            logger.warning(
+            logger.log(
+                logging.WARNING if final_attempt else logging.INFO,
                 "HTTP %d from %s (attempt %d/%d)",
                 resp.status_code, url, attempt + 1, max_retries,
             )
 
         except requests.RequestException as exc:
-            logger.warning(
+            logger.log(
+                logging.WARNING if final_attempt else logging.INFO,
                 "Transport error from %s (attempt %d/%d): %s",
                 url, attempt + 1, max_retries, type(exc).__name__,
             )

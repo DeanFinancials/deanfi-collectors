@@ -15,9 +15,9 @@ from .education_facts_utils import SourceFetchError, fetch_with_retry, load_conf
 logger = logging.getLogger(__name__)
 
 _TREASURY_API = (
-    "https://api.fiscaldata.treasury.gov/services/api/v1/accounting/od/avg_interest_rates"
+    "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/avg_interest_rates"
     "?fields=record_date,security_desc,avg_interest_rate_amt"
-    "&filter=security_type_desc:in:(Treasury Notes,Treasury Bonds)"
+    "&filter=security_desc:in:(Treasury%20Notes,Treasury%20Bonds)"
     "&sort=-record_date"
     "&page%5Bsize%5D=20"
 )
@@ -30,7 +30,7 @@ _SECURITY_META: dict[str, dict] = {
         "claim": "Average interest rate on outstanding US Treasury Notes",
         "unit": "%",
         "source_name": "US Treasury Fiscal Data",
-        "source_url": "https://fiscaldata.treasury.gov/datasets/average-interest-rates-us-treasury-securities/",
+        "source_url": "https://fiscaldata.treasury.gov/datasets/average-interest-rates-treasury-securities/",
         "max_age_days": 45,
     },
     "Treasury Bonds": {
@@ -39,7 +39,7 @@ _SECURITY_META: dict[str, dict] = {
         "claim": "Average interest rate on outstanding US Treasury Bonds",
         "unit": "%",
         "source_name": "US Treasury Fiscal Data",
-        "source_url": "https://fiscaldata.treasury.gov/datasets/average-interest-rates-us-treasury-securities/",
+        "source_url": "https://fiscaldata.treasury.gov/datasets/average-interest-rates-treasury-securities/",
         "max_age_days": 45,
     },
 }
