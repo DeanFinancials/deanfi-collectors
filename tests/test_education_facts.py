@@ -316,6 +316,32 @@ class TestGroup2BLSFetch:
             with pytest.raises(SourceFetchError):
                 fetch_bls_series(["LNS14000000"], api_key="key", max_retries=3, base_delay=0.0)
 
+    def test_bls_monthly_facts_use_release_calendar_aware_freshness_windows(self):
+        """BLS monthly facts use period-start as_of, so budgets must cover publication lag."""
+        from educationfacts.fetch_group2 import fetch_bls_series
+
+        bls_payload = {
+            "Results": {
+                "series": [
+                    {
+                        "seriesID": "LNS14000000",
+                        "data": [{"year": "2026", "period": "M05", "periodName": "May", "value": "4.3"}],
+                    },
+                    {
+                        "seriesID": "CUUR0000SA0",
+                        "data": [{"year": "2026", "period": "M05", "periodName": "May", "value": "335.123"}],
+                    },
+                ]
+            }
+        }
+        with patch("educationfacts.fetch_group2.requests.post",
+                   return_value=_mock_http_response(200, bls_payload)):
+            records = fetch_bls_series(["LNS14000000", "CUUR0000SA0"], api_key="FAKE_KEY_NOT_REAL")
+
+        by_id = {record["id"]: record for record in records}
+        assert by_id["bls-unemployment-rate"]["max_age_days"] == 70
+        assert by_id["bls-cpi-all-urban-index"]["max_age_days"] == 80
+
 
 # ---------------------------------------------------------------------------
 # Slice 6 — Group 2 FRED fetch (AC1, mocked)
@@ -360,6 +386,13 @@ class TestGroup2FREDFetch:
                     source_url="https://www.federalreserve.gov/releases/h15/",
                     max_age_days=45,
                 )
+
+    def test_fed_funds_monthly_average_uses_period_start_aware_freshness_window(self):
+        """FEDFUNDS is a monthly average with first-of-month observations."""
+        from educationfacts.fetch_group2 import _FRED_SERIES
+
+        fed_funds = next(series for series in _FRED_SERIES if series["series_id"] == "FEDFUNDS")
+        assert fed_funds["max_age_days"] == 70
 
 
 # ---------------------------------------------------------------------------

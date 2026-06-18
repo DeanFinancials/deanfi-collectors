@@ -36,7 +36,10 @@ _BLS_SERIES: dict[str, dict] = {
         "unit": "%",
         "source_name": "Bureau of Labor Statistics",
         "source_url": "https://data.bls.gov/timeseries/LNS14000000",
-        "max_age_days": 45,
+        # Monthly series with first-of-reference-month as_of. Employment
+        # Situation can publish the next month 5+ weeks later, so 45d trips
+        # before the next official release is available.
+        "max_age_days": 70,
     },
     "CUUR0000SA0": {
         "id": "bls-cpi-all-urban-index",
@@ -45,7 +48,10 @@ _BLS_SERIES: dict[str, dict] = {
         "unit": "ratio",
         "source_name": "Bureau of Labor Statistics",
         "source_url": "https://data.bls.gov/timeseries/CUUR0000SA0",
-        "max_age_days": 45,
+        # CPI has a longer publication lag than Employment Situation. With the
+        # first-of-month as_of convention, a valid observation can age into the
+        # mid-70s before the next month's release replaces it.
+        "max_age_days": 80,
     },
 }
 
@@ -154,7 +160,9 @@ _FRED_SERIES: list[dict] = [
         "unit": "%",
         "source_name": "Federal Reserve",
         "source_url": "https://www.federalreserve.gov/releases/h15/",
-        "max_age_days": 45,
+        # Monthly average of daily figures, dated to the first day of the
+        # observation month. Allow the full next-month publication cycle.
+        "max_age_days": 70,
     },
     {
         "series_id": "DGS10",
