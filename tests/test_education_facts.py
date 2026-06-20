@@ -212,8 +212,8 @@ class TestGroup3SeedFacts:
         assert "retirement" in categories, "Must have retirement seeds (IRS/SSA data)"
         assert "financial-tips" in categories, "Must have financial-tips seeds (FSA/IRS data)"
 
-    def test_annual_seed_facts_are_within_400_day_staleness_threshold(self):
-        """Every seed fact with max_age_days==400 has as_of within 400 days of today."""
+    def test_non_current_tax_year_annual_seed_facts_are_within_400_day_staleness_threshold(self):
+        """Annual seed facts outside the current tax year stay within the source-age budget."""
         from datetime import date, datetime
         from educationfacts.fetch_group3 import load_seed_facts
         from educationfacts.education_facts_utils import load_config
@@ -223,11 +223,39 @@ class TestGroup3SeedFacts:
         today = date.today()
 
         for rec in seeds:
-            if rec.get("max_age_days") == 400:
+            if rec.get("max_age_days") == 400 and rec.get("tax_year") != today.year:
                 as_of = datetime.strptime(rec["as_of"], "%Y-%m-%d").date()
                 age_days = (today - as_of).days
                 assert age_days <= 400, \
                     f"Seed id={rec['id']} is {age_days} days old, exceeds max_age_days=400"
+
+    def test_current_tax_year_seed_can_exceed_400_day_source_age(self):
+        import datetime
+        import educationfacts.fetch_group3 as group3
+
+        class FixedDate(datetime.date):
+            @classmethod
+            def today(cls):
+                return cls(2026, 6, 20)
+
+        config = {
+            "seed_facts": [
+                _valid_record(
+                    id="irs-hsa-individual-limit-2026",
+                    category="financial-tips",
+                    value=4400,
+                    unit="USD",
+                    as_of="2025-05-15",
+                    max_age_days=400,
+                    tax_year=2026,
+                )
+            ]
+        }
+
+        with patch("educationfacts.fetch_group3.date", FixedDate):
+            seeds = group3.load_seed_facts(config)
+
+        assert [record["id"] for record in seeds] == ["irs-hsa-individual-limit-2026"]
 
 
 # ---------------------------------------------------------------------------

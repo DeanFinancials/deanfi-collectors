@@ -117,6 +117,36 @@ class TestFactsFreshness:
         stale = check_facts_freshness(facts, today=today)
         assert "stale-fact" in stale
 
+    def test_current_tax_year_record_can_exceed_source_age_budget(self):
+        today = datetime.date(2026, 6, 20)
+        facts = [
+            _valid_fact({
+                "id": "irs-hsa-individual-limit-2026",
+                "as_of": "2025-05-15",
+                "max_age_days": 400,
+                "tax_year": 2026,
+            })
+        ]
+
+        stale = check_facts_freshness(facts, today=today)
+
+        assert stale == []
+
+    def test_prior_tax_year_record_still_fails_when_source_age_exceeds_budget(self):
+        today = datetime.date(2026, 6, 20)
+        facts = [
+            _valid_fact({
+                "id": "irs-hsa-individual-limit-2025",
+                "as_of": "2025-05-15",
+                "max_age_days": 400,
+                "tax_year": 2025,
+            })
+        ]
+
+        stale = check_facts_freshness(facts, today=today)
+
+        assert stale == ["irs-hsa-individual-limit-2025"]
+
     def test_stale_list_nonempty_would_cause_exit_nonzero(self):
         """Confirms the CI contract: len(stale) > 0 means the check fails."""
         today = datetime.date(2026, 6, 10)

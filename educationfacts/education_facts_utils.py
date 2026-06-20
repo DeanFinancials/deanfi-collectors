@@ -144,7 +144,8 @@ def check_facts_freshness(
     Return a list of fact IDs whose data is stale (age > max_age_days).
 
     Used by the CI schema-contract step and the daily freshness probe (issue 22).
-    A fact is stale when (today - as_of).days > max_age_days.
+    A fact is stale when (today - as_of).days > max_age_days, except current
+    tax-year statutory facts remain valid through their stated tax year.
     """
     if today is None:
         today = datetime.date.today()
@@ -153,8 +154,16 @@ def check_facts_freshness(
         try:
             as_of = datetime.date.fromisoformat(f["as_of"])
             max_age = int(f["max_age_days"])
-            if (today - as_of).days > max_age:
+            if (today - as_of).days > max_age and not is_current_tax_year_fact(f, today):
                 stale.append(f.get("id", "?"))
         except (KeyError, ValueError, TypeError):
             pass
     return stale
+
+
+def is_current_tax_year_fact(fact: dict, today: datetime.date) -> bool:
+    """Return True when a statutory fact belongs to the current tax year."""
+    try:
+        return int(fact.get("tax_year")) == today.year
+    except (TypeError, ValueError):
+        return False

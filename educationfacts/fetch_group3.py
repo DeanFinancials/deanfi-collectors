@@ -16,7 +16,7 @@ failure" that keeps last-good).
 import logging
 from datetime import date, datetime
 
-from .education_facts_utils import REQUIRED_FIELDS, SourceFetchError
+from .education_facts_utils import REQUIRED_FIELDS, SourceFetchError, is_current_tax_year_fact
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def load_seed_facts(config: dict) -> list[dict]:
             continue
 
         age_days = (today - as_of_date).days
-        if age_days > max_age:
+        if age_days > max_age and not is_current_tax_year_fact(rec, today):
             logger.error(
                 "Seed id=%s is %d days old, exceeds max_age_days=%d — update config.yml",
                 rec.get("id"), age_days, max_age,
