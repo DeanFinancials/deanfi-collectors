@@ -27,9 +27,9 @@ env:
 jobs:
   fetch-options-whales:
     runs-on: ubuntu-latest
-    # Recent successful runs have been completing just under 20 minutes; keep
-    # headroom so normal runtime drift does not cancel the fetch before publish.
-    timeout-minutes: 30
+    # Full S&P 500 option sweeps can drift when Alpaca responses are slow.
+    # Keep enough headroom for collection plus checkout/publish steps.
+    timeout-minutes: 45
 
     # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
@@ -58,7 +58,6 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Fetch options whale trades
-        continue-on-error: true
         run: |
           cd optionswhales
           

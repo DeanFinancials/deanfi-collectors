@@ -83,7 +83,15 @@ class AlpacaOptionsClient:
     
     BASE_URL = "https://data.alpaca.markets"
     
-    def __init__(self, api_key: str, api_secret: str, rate_limiter: RateLimiter):
+    def __init__(
+        self,
+        api_key: str,
+        api_secret: str,
+        rate_limiter: RateLimiter,
+        request_timeout_seconds: int = 15,
+        retry_attempts: int = 3,
+        retry_wait_seconds: int = 5,
+    ):
         """
         Initialize Alpaca client.
         
@@ -91,10 +99,16 @@ class AlpacaOptionsClient:
             api_key: Alpaca API Key ID
             api_secret: Alpaca API Secret Key
             rate_limiter: RateLimiter instance for rate limiting
+            request_timeout_seconds: HTTP request timeout in seconds
+            retry_attempts: Number of retry attempts for 429 responses
+            retry_wait_seconds: Delay between 429 retry attempts
         """
         self.api_key = api_key
         self.api_secret = api_secret
         self.rate_limiter = rate_limiter
+        self.request_timeout_seconds = request_timeout_seconds
+        self.retry_attempts = retry_attempts
+        self.retry_wait_seconds = retry_wait_seconds
         self.headers = {
             'APCA-API-KEY-ID': api_key,
             'APCA-API-SECRET-KEY': api_secret
@@ -111,27 +125,40 @@ class AlpacaOptionsClient:
         Returns:
             Response JSON or None on error
         """
-        self.rate_limiter.wait_if_needed()
-        
         url = f"{self.BASE_URL}{endpoint}"
         
-        try:
-            response = requests.get(url, headers=self.headers, params=params, timeout=30)
-            
-            if response.status_code == 200:
-                return response.json()
-            elif response.status_code == 429:
-                # Rate limited - wait and retry
-                print(f"Rate limited, waiting 5s...")
-                time.sleep(5)
-                return self._request(endpoint, params)
-            else:
+        for attempt in range(self.retry_attempts + 1):
+            self.rate_limiter.wait_if_needed()
+
+            try:
+                response = requests.get(
+                    url,
+                    headers=self.headers,
+                    params=params,
+                    timeout=self.request_timeout_seconds,
+                )
+
+                if response.status_code == 200:
+                    return response.json()
+                if response.status_code == 429 and attempt < self.retry_attempts:
+                    print(
+                        f"Rate limited, waiting {self.retry_wait_seconds}s "
+                        f"(retry {attempt + 1}/{self.retry_attempts})..."
+                    )
+                    time.sleep(self.retry_wait_seconds)
+                    continue
+
                 print(f"API error {response.status_code}: {response.text[:200]}")
                 return None
-                
-        except requests.exceptions.RequestException as e:
-            print(f"Request error: {e}")
-            return None
+
+            except requests.exceptions.Timeout:
+                print(f"Request timeout after {self.request_timeout_seconds}s: {endpoint}")
+                return None
+            except requests.exceptions.RequestException as e:
+                print(f"Request error: {e}")
+                return None
+
+        return None
     
     def get_option_chain(self, underlying: str, limit: int = 500) -> Dict:
         """
@@ -759,7 +786,14 @@ def collect_options_whales(tickers: List[str], config: Dict,
     )
     
     # Initialize API client
-    client = AlpacaOptionsClient(api_key, api_secret, rate_limiter)
+    client = AlpacaOptionsClient(
+        api_key,
+        api_secret,
+        rate_limiter,
+        request_timeout_seconds=config['rate_limiting'].get('request_timeout_seconds', 15),
+        retry_attempts=config['rate_limiting'].get('retry_attempts', 3),
+        retry_wait_seconds=config['rate_limiting'].get('retry_wait_seconds', 5),
+    )
     
     # Calculate lookback period
     trading_days = config['collection']['lookback_trading_days']
@@ -783,6 +817,8 @@ def collect_options_whales(tickers: List[str], config: Dict,
     total_whale_trades = 0
     skipped_tickers = 0
     
+    collection_started_at = time.time()
+
     for i, ticker in enumerate(tickers, 1):
         # Convert ticker to Alpaca format
         alpaca_ticker = convert_ticker_for_alpaca(ticker)
@@ -795,7 +831,15 @@ def collect_options_whales(tickers: List[str], config: Dict,
         
         # Use original ticker for display, alpaca ticker for API
         display_ticker = ticker
-        print(f"[{i}/{len(tickers)}] Scanning {display_ticker}...", end=" ", flush=True)
+        elapsed = time.time() - collection_started_at
+        avg_seconds = elapsed / max(i - 1, 1)
+        remaining = max(len(tickers) - i + 1, 0) * avg_seconds
+        print(
+            f"[{i}/{len(tickers)}] Scanning {display_ticker} "
+            f"(elapsed {elapsed / 60:.1f}m, ETA {remaining / 60:.1f}m)...",
+            end=" ",
+            flush=True
+        )
         
         try:
             # Get OTM and ATM trades (use alpaca_ticker for API call)
@@ -892,19 +936,32 @@ def save_json(data: Dict, filepath: Path):
 # MAIN ENTRY POINT
 # =============================================================================
 
-def main():
-    """Main entry point."""
+def build_arg_parser() -> argparse.ArgumentParser:
+    """Build the command line parser."""
     parser = argparse.ArgumentParser(description='Options Whale Collector')
     parser.add_argument('--test', action='store_true', 
                        help='Test mode with 5 sample tickers')
     parser.add_argument('--tickers', type=str, 
                        help='Comma-separated list of tickers to scan')
+    parser.add_argument('--lookback', type=int,
+                       help='Number of trading days to look back')
     parser.add_argument('--output-dir', type=str, 
                        help='Output directory for JSON files')
+    return parser
+
+
+def main():
+    """Main entry point."""
+    parser = build_arg_parser()
     args = parser.parse_args()
     
     # Load configuration
     config = load_config()
+
+    if args.lookback is not None:
+        if args.lookback < 1:
+            parser.error("--lookback must be at least 1")
+        config['collection']['lookback_trading_days'] = args.lookback
     
     # Get API keys from environment
     api_key = os.environ.get(config['api_keys']['api_key_env'])

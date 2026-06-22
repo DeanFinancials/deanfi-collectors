@@ -98,6 +98,10 @@ sweeps:
 rate_limiting:
   # Maximum requests per minute (set to 180 to have buffer)
   max_requests_per_minute: 180
+
+  # Per-request timeout in seconds. Keep below the GitHub Actions job timeout so
+  # a few slow Alpaca responses do not consume the entire collector budget.
+  request_timeout_seconds: 15
   
   # Delay between ticker API calls (in seconds)
   # 0.35s = ~171 requests/min max, leaving headroom
