@@ -46,6 +46,27 @@ def test_build_market_catalysts_writes_required_metadata_and_empty_ranked_list_w
     assert output["ranked"] == []
 
 
+def test_build_market_catalysts_fills_missing_why_it_matters_from_title():
+    candidate = {
+        "title": "Tech leads markets higher",
+        "source": "CNBC",
+        "url": "https://www.cnbc.com/2026/05/15/x.html",
+        "published_at": "2026-05-15T20:10:00Z",
+        "category": "market_news",
+        "relevance_score": 0.0,
+        "why_it_matters": "",
+    }
+
+    output = build_catalysts.build_market_catalysts(
+        candidates=[candidate],
+        market_date="2026-05-15",
+        generated_at="2026-05-15T21:05:00Z",
+        weekly_mode=False,
+    )
+
+    assert output["ranked"][0]["why_it_matters"] == "Tech leads markets higher"
+
+
 def test_build_market_catalysts_expects_five_when_weekly_mode_is_on():
     output = build_catalysts.build_market_catalysts(
         candidates=[],

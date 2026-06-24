@@ -145,6 +145,13 @@ def classify_source_tier(candidate: dict) -> str:
     return "standard"
 
 
+def _non_empty_or_fallback(value: object, fallback: object) -> str:
+    text = str(value or "").strip()
+    if text:
+        return text
+    return str(fallback or "").strip()
+
+
 def build_market_catalysts(
     *,
     candidates: Iterable[dict],
@@ -162,6 +169,10 @@ def build_market_catalysts(
     scored = []
     for candidate in candidates:
         tagged = dict(candidate)
+        tagged["why_it_matters"] = _non_empty_or_fallback(
+            tagged.get("why_it_matters"),
+            tagged.get("title"),
+        )
         tagged["source_tier"] = tagged.get("source_tier") or classify_source_tier(tagged)
         tagged["relevance_score"] = compute_relevance_score(tagged, now=now, topics=topics)
         scored.append(tagged)
