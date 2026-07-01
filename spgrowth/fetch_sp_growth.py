@@ -2276,6 +2276,28 @@ def build_readme_section(universe: str, config: Config) -> dict:
     }
 
 
+def is_publishable_company(data: CompanyData) -> bool:
+    """Whether a company record has enough to publish.
+
+    Structurally-empty records are dropped so junk rows never reach the JSON:
+      - no resolved SEC CIK (e.g. a stale/mismatched S&P 500 constituent whose
+        ticker is not in SEC's ticker->CIK map), or
+      - a resolved CIK but no usable financials at all (no annual data, no
+        quarterly data, and no TTM).
+
+    Such records serialise with ``"ttm": null``. Downstream dashboards read
+    ``growth.ttm.*`` directly, so a single null-ttm row blanks the page.
+    Records that went through extraction and carry *some* data (even with
+    partial errors) are kept.
+    """
+    if not data.cik:
+        return False
+    has_annual = bool(data.annual_data)
+    has_quarterly = bool(data.quarterly_data)
+    has_ttm = data.growth is not None and data.growth.ttm is not None
+    return has_annual or has_quarterly or has_ttm
+
+
 def save_growth_output(
     results: List[CompanyData],
     ticker_filter: Optional[Set[str]],
@@ -2298,7 +2320,17 @@ def save_growth_output(
         filtered_results = [r for r in results if r.ticker in ticker_filter]
     else:
         filtered_results = results
-    
+
+    # Drop structurally-empty junk records (unresolved CIK / no usable data) so
+    # they never reach the published JSON. See is_publishable_company.
+    excluded = sorted(r.ticker for r in filtered_results if not is_publishable_company(r))
+    if excluded:
+        print(
+            f"[warn] {universe_name}: excluded {len(excluded)} unpublishable ticker(s) "
+            f"(no CIK or no usable data): {', '.join(excluded)}"
+        )
+    filtered_results = [r for r in filtered_results if is_publishable_company(r)]
+
     # Count successes
     success_count = sum(1 for r in filtered_results if r.annual_data)
     
