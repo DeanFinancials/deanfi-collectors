@@ -137,8 +137,8 @@ seed_facts:
     value: "67 years"
     unit: "text"
     source_name: "Social Security Administration"
-    source_url: "https://www.ssa.gov/benefits/retirement/planner/agereduction.html"
-    as_of: "2025-06-01"
+    source_url: "https://www.ssa.gov/benefits/retirement/planner/ageincrease.html"
+    as_of: "2026-07-09"
     max_age_days: 400
 
   - id: ssa-earnings-test-under-fra-2026
