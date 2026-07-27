@@ -75,6 +75,18 @@ def test_non_empty_new_data_passes(git_repo):
     assert result.returncode == 0, f"stdout={result.stdout} stderr={result.stderr}"
 
 
+def test_non_finite_number_fails(git_repo):
+    path = "major-indexes/international_major_indices.json"
+    _commit_file(git_repo, path, {"indices": {"^KS11": {"percent": 1.0}}})
+    (git_repo / path).write_text('{"indices":{"^KS11":{"percent":NaN}}}')
+
+    result = _run_validator(git_repo, [path])
+
+    assert result.returncode == 1
+    combined = result.stdout + result.stderr
+    assert "non-standard numeric constant NaN" in combined
+
+
 def test_head_was_already_empty_passes(git_repo):
     path = "major-indexes/us_major_indices.json"
     _commit_file(git_repo, path, {"indices": {}})

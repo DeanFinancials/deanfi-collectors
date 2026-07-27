@@ -38,6 +38,10 @@ DEFAULT_FILES = [
 BODY_KEYS = ("indices", "sectors", "data")
 
 
+def _reject_non_finite(value: str):
+    raise ValueError(f"non-standard numeric constant {value}")
+
+
 def _find_body_key(payload):
     if not isinstance(payload, dict):
         return None
@@ -72,10 +76,17 @@ def _validate_file(repo_dir: Path, rel_path: str) -> str | None:
         return None
 
     try:
-        new_payload = json.loads(disk_path.read_text())
+        new_payload = json.loads(
+            disk_path.read_text(),
+            parse_constant=_reject_non_finite,
+        )
     except (OSError, json.JSONDecodeError) as exc:
         print(f"⏭  {rel_path}: unreadable ({exc}), skipping")
         return None
+    except ValueError as exc:
+        msg = f"❌ {rel_path}: invalid JSON ({exc})"
+        print(msg, file=sys.stderr)
+        return msg
 
     body_key = _find_body_key(new_payload)
     if body_key is None:

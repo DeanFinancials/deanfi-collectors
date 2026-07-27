@@ -220,6 +220,7 @@ def calculate_returns(prices: pd.Series) -> Dict[str, float]:
     Returns:
         Dict with returns for different periods
     """
+    prices = prices[pd.notna(prices) & np.isfinite(prices)]
     if len(prices) < 2:
         return {}
     
@@ -273,6 +274,7 @@ def calculate_52_week_metrics(prices: pd.Series) -> Dict[str, float]:
     Returns:
         Dict with 52-week metrics
     """
+    prices = prices[pd.notna(prices) & np.isfinite(prices)]
     if len(prices) < 2:
         return {}
     
@@ -621,7 +623,7 @@ def save_json(data: Dict, filepath: str, indent: int = 2):
         indent: JSON indentation (default: 2)
     """
     with open(filepath, 'w') as f:
-        json.dump(data, f, indent=indent, cls=NumpyEncoder)
+        json.dump(data, f, indent=indent, cls=NumpyEncoder, allow_nan=False)
 
 
 def load_json(filepath: str) -> Dict:
