@@ -23,11 +23,11 @@ sane_bounds:
   # SSA benefit parameters ─ 2026
   ssa-cola-pct-2026:                [-2.0,     15.0]
   ssa-earnings-test-under-fra-2026: [5000,   200000]
-  # FSA federal loan rates 2025-26 (%)
-  fsa-direct-subsidized-rate-2025-26:          [1.0, 15.0]
-  fsa-direct-unsubsidized-undergrad-rate-2025-26: [1.0, 15.0]
-  fsa-direct-unsubsidized-grad-rate-2025-26:   [1.0, 20.0]
-  fsa-direct-plus-rate-2025-26:                [1.0, 25.0]
+  # FSA federal loan rates 2026-27 (%)
+  fsa-direct-subsidized-rate-2026-27:          [1.0, 15.0]
+  fsa-direct-unsubsidized-undergrad-rate-2026-27: [1.0, 15.0]
+  fsa-direct-unsubsidized-grad-rate-2026-27:   [1.0, 20.0]
+  fsa-direct-plus-rate-2026-27:                [1.0, 25.0]
   # FHFA conforming loan limit 2026 (USD)
   fhfa-conforming-loan-limit-2026:  [100000, 5000000]
   # FRED series bounds (live-fetched, Group 2)
@@ -151,45 +151,45 @@ seed_facts:
     as_of: "2025-10-10"
     max_age_days: 400
 
-  # ── Federal Student Aid 2025-26 ───────────────────────────────────────────
-  - id: fsa-direct-subsidized-rate-2025-26
+  # ── Federal Student Aid 2026-27 ───────────────────────────────────────────
+  - id: fsa-direct-subsidized-rate-2026-27
     category: financial-tips
-    claim: "2025-26 federal Direct Subsidized Loan interest rate (undergraduate)"
-    value: 6.53
+    claim: "2026-27 federal Direct Subsidized Loan interest rate (undergraduate)"
+    value: 6.52
     unit: "%"
-    source_name: "Federal Student Aid (studentaid.gov)"
-    source_url: "https://studentaid.gov/understand-aid/types/loans/interest-rates"
-    as_of: "2025-07-01"
+    source_name: "Federal Student Aid"
+    source_url: "https://fsapartners.ed.gov/knowledge-center/library/electronic-announcements/2026-06-04/interest-rates-federal-direct-loans-first-disbursed-between-july-1-2026-and-june-30-2027"
+    as_of: "2026-07-01"
     max_age_days: 400
 
-  - id: fsa-direct-unsubsidized-undergrad-rate-2025-26
+  - id: fsa-direct-unsubsidized-undergrad-rate-2026-27
     category: financial-tips
-    claim: "2025-26 federal Direct Unsubsidized Loan interest rate (undergraduate)"
-    value: 6.53
+    claim: "2026-27 federal Direct Unsubsidized Loan interest rate (undergraduate)"
+    value: 6.52
     unit: "%"
-    source_name: "Federal Student Aid (studentaid.gov)"
-    source_url: "https://studentaid.gov/understand-aid/types/loans/interest-rates"
-    as_of: "2025-07-01"
+    source_name: "Federal Student Aid"
+    source_url: "https://fsapartners.ed.gov/knowledge-center/library/electronic-announcements/2026-06-04/interest-rates-federal-direct-loans-first-disbursed-between-july-1-2026-and-june-30-2027"
+    as_of: "2026-07-01"
     max_age_days: 400
 
-  - id: fsa-direct-unsubsidized-grad-rate-2025-26
+  - id: fsa-direct-unsubsidized-grad-rate-2026-27
     category: financial-tips
-    claim: "2025-26 federal Direct Unsubsidized Loan interest rate (graduate/professional)"
-    value: 8.08
+    claim: "2026-27 federal Direct Unsubsidized Loan interest rate (graduate/professional)"
+    value: 8.07
     unit: "%"
-    source_name: "Federal Student Aid (studentaid.gov)"
-    source_url: "https://studentaid.gov/understand-aid/types/loans/interest-rates"
-    as_of: "2025-07-01"
+    source_name: "Federal Student Aid"
+    source_url: "https://fsapartners.ed.gov/knowledge-center/library/electronic-announcements/2026-06-04/interest-rates-federal-direct-loans-first-disbursed-between-july-1-2026-and-june-30-2027"
+    as_of: "2026-07-01"
     max_age_days: 400
 
-  - id: fsa-direct-plus-rate-2025-26
+  - id: fsa-direct-plus-rate-2026-27
     category: financial-tips
-    claim: "2025-26 federal Direct PLUS Loan interest rate (grad/professional and parents)"
-    value: 9.08
+    claim: "2026-27 federal Direct PLUS Loan interest rate (grad/professional and parents)"
+    value: 9.07
     unit: "%"
-    source_name: "Federal Student Aid (studentaid.gov)"
-    source_url: "https://studentaid.gov/understand-aid/types/loans/interest-rates"
-    as_of: "2025-07-01"
+    source_name: "Federal Student Aid"
+    source_url: "https://fsapartners.ed.gov/knowledge-center/library/electronic-announcements/2026-06-04/interest-rates-federal-direct-loans-first-disbursed-between-july-1-2026-and-june-30-2027"
+    as_of: "2026-07-01"
     max_age_days: 400
 
   # ── FHFA 2026 ─────────────────────────────────────────────────────────────

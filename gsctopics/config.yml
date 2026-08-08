@@ -534,16 +534,16 @@ seed_topics:
     vertical: null
     target_keyword: federal student loan interest rates explained
     secondary_keywords:
-      - student loan interest rate 2025 2026
+      - student loan interest rate 2026 2027
       - subsidized vs unsubsidized loans
     internal_link_targets:
       - /debt/loan-calculator/
       - /debt/debt-payoff/
     facts_refs:
-      - fsa-direct-subsidized-rate-2025-26
-      - fsa-direct-unsubsidized-undergrad-rate-2025-26
-      - fsa-direct-unsubsidized-grad-rate-2025-26
-      - fsa-direct-plus-rate-2025-26
+      - fsa-direct-subsidized-rate-2026-27
+      - fsa-direct-unsubsidized-undergrad-rate-2026-27
+      - fsa-direct-unsubsidized-grad-rate-2026-27
+      - fsa-direct-plus-rate-2026-27
 
   - slug: high-yield-savings-vs-cds
     title_working: High-Yield Savings vs CDs
