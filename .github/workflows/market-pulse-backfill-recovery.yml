@@ -1,0 +1,98 @@
+name: Market Pulse Backfill Recovery
+
+on:
+  push:
+    branches:
+      - recovery/market-pulse-backfill-2026-08-30
+    paths-ignore:
+      - '.recovery/**'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run market collectors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cache .recovery/advance-decline .recovery/major-indexes .recovery/meanreversion .recovery/implied-volatility
+          LOG=.recovery/status.txt
+          : > "$LOG"
+          {
+            echo "Recovery run: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            python --version
+            python - <<'PY'
+          import yfinance, pandas, curl_cffi
+          print('yfinance', yfinance.__version__)
+          print('pandas', pandas.__version__)
+          print('curl_cffi', getattr(curl_cffi, '__version__', 'unknown'))
+          PY
+            echo "=== breadth ==="
+          } >> "$LOG" 2>&1
+
+          python advancedecline/fetch_daily_breadth.py --cache-dir ./cache >> "$LOG" 2>&1
+          python advancedecline/fetch_ad_line_historical.py --cache-dir ./cache >> "$LOG" 2>&1
+          python advancedecline/fetch_ma_percentage_historical.py --cache-dir ./cache >> "$LOG" 2>&1
+          python advancedecline/fetch_highs_lows_historical.py --cache-dir ./cache >> "$LOG" 2>&1
+          python advancedecline/fetch_volume_metrics_historical.py --cache-dir ./cache --sessions 60 >> "$LOG" 2>&1
+
+          echo "=== major indexes ===" >> "$LOG"
+          python majorindexes/fetch_us_major.py --cache-dir ./cache >> "$LOG" 2>&1
+          python majorindexes/fetch_sectors.py --cache-dir ./cache >> "$LOG" 2>&1
+          python majorindexes/fetch_growth_value.py --cache-dir ./cache >> "$LOG" 2>&1
+          python majorindexes/fetch_international.py --cache-dir ./cache >> "$LOG" 2>&1
+          python majorindexes/fetch_bonds.py --cache-dir ./cache >> "$LOG" 2>&1
+          python majorindexes/fetch_commodities.py --cache-dir ./cache >> "$LOG" 2>&1
+
+          echo "=== mean reversion ===" >> "$LOG"
+          python meanreversion/fetch_price_vs_ma.py --cache-dir ./cache >> "$LOG" 2>&1
+          python meanreversion/fetch_ma_spreads.py --cache-dir ./cache >> "$LOG" 2>&1
+
+          echo "=== implied volatility ===" >> "$LOG"
+          python impliedvol/fetch_vix_options.py >> "$LOG" 2>&1 || true
+          python impliedvol/fetch_major_indices_iv.py >> "$LOG" 2>&1 || true
+          python impliedvol/fetch_sector_etfs_iv.py >> "$LOG" 2>&1 || true
+
+          cp advancedecline/*.json .recovery/advance-decline/ 2>/dev/null || true
+          cp majorindexes/*.json .recovery/major-indexes/ 2>/dev/null || true
+          cp meanreversion/*.json .recovery/meanreversion/ 2>/dev/null || true
+          cp impliedvol/*.json .recovery/implied-volatility/ 2>/dev/null || true
+
+          python - <<'PY' >> "$LOG" 2>&1
+          import json
+          from pathlib import Path
+          p=json.loads(Path('.recovery/advance-decline/daily_breadth.json').read_text())
+          print('latest_breadth_date', p['data']['date'])
+          h=json.loads(Path('.recovery/major-indexes/us_major_indices_historical.json').read_text())
+          print('major_history_end', h.get('metadata',{}).get('end_date'))
+          print('recovery_complete', True)
+          PY
+
+      - name: Commit reconstructed outputs
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f .recovery/
+          git commit -m "recovery: reconstruct Aug 27-28 market inputs" || exit 0
+          git push
