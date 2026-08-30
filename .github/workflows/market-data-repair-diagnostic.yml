@@ -1,0 +1,104 @@
+name: Market Data Repair Diagnostic
+
+on:
+  push:
+    branches:
+      - repair/market-pulse-2026-08-30
+    paths-ignore:
+      - '.diagnostics/**'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run market diagnostics
+        shell: bash
+        run: |
+          mkdir -p .diagnostics
+          LOG=.diagnostics/market-data-2026-08-30.txt
+          : > "$LOG"
+          {
+            echo "=== Environment ==="
+            date -u
+            python --version
+            python - <<'PY'
+          import yfinance as yf
+          import pandas as pd
+          import curl_cffi
+          print('yfinance:', yf.__version__)
+          print('pandas:', pd.__version__)
+          print('curl_cffi:', getattr(curl_cffi, '__version__', 'unknown'))
+          PY
+            echo
+            echo "=== Small yfinance download ==="
+            python - <<'PY'
+          import yfinance as yf
+          symbols = ['SPY', 'AAPL', 'MSFT']
+          df = yf.download(symbols, period='10d', progress=False, auto_adjust=True, threads=True)
+          print('empty:', df.empty)
+          print('rows:', len(df))
+          if not df.empty:
+              print('first_date:', df.index.min())
+              print('last_date:', df.index.max())
+              print('columns:', len(df.columns))
+          PY
+          } >> "$LOG" 2>&1
+
+          set +e
+          echo >> "$LOG"
+          echo "=== Daily breadth collector ===" >> "$LOG"
+          timeout 480 python advancedecline/fetch_daily_breadth.py --cache-dir ./cache >> "$LOG" 2>&1
+          BREADTH_STATUS=$?
+          echo "breadth_exit_status=$BREADTH_STATUS" >> "$LOG"
+          if [ -f advancedecline/daily_breadth.json ]; then
+            python - <<'PY' >> "$LOG" 2>&1
+          import json
+          p=json.load(open('advancedecline/daily_breadth.json'))
+          print('breadth_output_date:', p.get('data',{}).get('date'))
+          print('breadth_generated_at:', p.get('metadata',{}).get('generated_at'))
+          PY
+          else
+            echo "breadth_output_missing=true" >> "$LOG"
+          fi
+
+          echo >> "$LOG"
+          echo "=== Major indexes collector ===" >> "$LOG"
+          timeout 240 python majorindexes/fetch_us_major.py --cache-dir ./cache >> "$LOG" 2>&1
+          INDEX_STATUS=$?
+          echo "major_indexes_exit_status=$INDEX_STATUS" >> "$LOG"
+          if [ -f majorindexes/us_major_indices.json ]; then
+            python - <<'PY' >> "$LOG" 2>&1
+          import json
+          p=json.load(open('majorindexes/us_major_indices.json'))
+          print('major_indexes_metadata:', p.get('metadata',{}))
+          print('major_indexes_meta:', p.get('meta',{}))
+          PY
+          else
+            echo "major_indexes_output_missing=true" >> "$LOG"
+          fi
+          set -e
+
+      - name: Commit diagnostic output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .diagnostics/market-data-2026-08-30.txt
+          git commit -m "diagnostic: capture market data collector failure" || exit 0
+          git push
