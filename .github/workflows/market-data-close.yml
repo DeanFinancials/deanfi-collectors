@@ -1,0 +1,167 @@
+name: Market Data Close (Daily Safety Net)
+
+on:
+  schedule:
+    - cron: '20 21 * * 1-5'  # 5:20pm EDT / 4:20pm EST, safely after the US close year-round
+  workflow_dispatch:
+  # One-time bootstrap: creating or intentionally editing this workflow runs it immediately.
+  # Remove this push trigger after the August 2026 recovery is verified.
+  push:
+    paths:
+      - '.github/workflows/market-data-close.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+
+jobs:
+  fetch-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Serialize with the other collectors that write to deanfi-data.
+    concurrency:
+      group: deanfi-data-repo
+      queue: max
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout collectors repo
+        uses: actions/checkout@v5
+
+      - name: Checkout data repo
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create cache directory
+        run: mkdir -p ./cache
+
+      - name: Fetch core market breadth
+        run: |
+          set -euo pipefail
+          cd advancedecline
+          python fetch_daily_breadth.py --cache-dir ../cache
+          python fetch_ad_line_historical.py --cache-dir ../cache
+          python fetch_ma_percentage_historical.py --cache-dir ../cache
+          python fetch_highs_lows_historical.py --cache-dir ../cache
+          python fetch_volume_metrics_historical.py --cache-dir ../cache --sessions 60
+
+      - name: Fetch major and sector indexes
+        run: |
+          set -euo pipefail
+          cd majorindexes
+          python fetch_us_major.py --cache-dir ../cache
+          python fetch_sectors.py --cache-dir ../cache
+          python fetch_growth_value.py --cache-dir ../cache
+          python fetch_international.py --cache-dir ../cache
+          python fetch_bonds.py --cache-dir ../cache
+          python fetch_commodities.py --cache-dir ../cache
+
+      - name: Fetch mean reversion
+        run: |
+          set -euo pipefail
+          cd meanreversion
+          python fetch_price_vs_ma.py --cache-dir ../cache
+          python fetch_ma_spreads.py --cache-dir ../cache
+
+      - name: Fetch implied volatility
+        continue-on-error: true
+        run: |
+          cd impliedvol
+          python fetch_vix_options.py || true
+          python fetch_major_indices_iv.py || true
+          python fetch_sector_etfs_iv.py || true
+
+      - name: Verify recovered market date
+        run: |
+          set -euo pipefail
+          python3 << 'PY'
+          import json
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          breadth = json.loads(Path('advancedecline/daily_breadth.json').read_text())
+          breadth_date = breadth['data']['date']
+
+          majors = json.loads(Path('majorindexes/us_major_indices.json').read_text())
+          closes = []
+          for item in (majors.get('indices') or {}).values():
+              if isinstance(item, dict):
+                  for key in ('date', 'market_date', 'as_of_date'):
+                      value = item.get(key)
+                      if isinstance(value, str) and len(value) >= 10:
+                          closes.append(value[:10])
+                          break
+
+          et_today = datetime.now(ZoneInfo('America/New_York')).date().isoformat()
+          print(f'Breadth latest trading date: {breadth_date}')
+          print(f'ET calendar date: {et_today}')
+          if not breadth_date:
+              raise SystemExit('Missing breadth trading date')
+          print('Core market data recovery passed')
+          PY
+
+      - name: Copy files to data repo
+        run: |
+          set -euo pipefail
+          mkdir -p data-cache/advance-decline data-cache/major-indexes data-cache/meanreversion data-cache/implied-volatility
+          cp advancedecline/daily_breadth.json data-cache/advance-decline/
+          cp advancedecline/ad_line_historical.json data-cache/advance-decline/
+          cp advancedecline/ma_percentage_historical.json data-cache/advance-decline/
+          cp advancedecline/highs_lows_historical.json data-cache/advance-decline/
+          cp advancedecline/volume_metrics_historical.json data-cache/advance-decline/
+          cp majorindexes/*.json data-cache/major-indexes/
+          cp meanreversion/*.json data-cache/meanreversion/
+          cp impliedvol/*.json data-cache/implied-volatility/ 2>/dev/null || true
+
+      - name: Update data freshness
+        run: |
+          python3 << 'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          fp = Path('data-cache/data_freshness.json')
+          data = json.loads(fp.read_text()) if fp.exists() else {'sections': {}}
+          for section in ('advance-decline', 'major-indexes', 'meanreversion', 'implied-volatility'):
+              data.setdefault('sections', {})[section] = {'last_updated': now}
+          fp.write_text(json.dumps(data, indent=2) + '\n')
+          PY
+
+      - name: Validate snapshots
+        run: |
+          set -euo pipefail
+          cd data-cache
+          python ../scripts/validate_snapshots.py
+
+      - name: Commit and push recovered market data
+        run: |
+          set -euo pipefail
+          cd data-cache
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add advance-decline/ major-indexes/ meanreversion/ implied-volatility/ data_freshness.json
+
+          if git diff --staged --quiet; then
+            echo "No market data changes to commit"
+            exit 0
+          fi
+
+          git commit -m "chore: update closing market data - $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git pull --rebase origin main
+          git push origin main
+          echo "Closing market data pushed successfully"
