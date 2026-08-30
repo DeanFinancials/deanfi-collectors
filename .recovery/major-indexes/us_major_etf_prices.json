@@ -1,0 +1,46 @@
+{
+  "_README": {
+    "title": "US Major ETF Prices - Current Snapshot",
+    "description": "Lightweight current price snapshot for key US market ETFs (SPY/DIA/IWM/QQQ)",
+    "purpose": "Provide a small, easy-to-consume JSON for site widgets and pages that just need the latest ETF prices",
+    "update_frequency": "Every 10 minutes during market hours",
+    "data_source": "Yahoo Finance (yfinance)",
+    "notes": {
+      "pricing_field": "Price is the latest available intraday close from the most recent 5-minute bar.",
+      "after_hours": "After-hours and pre-market availability depends on Yahoo Finance; if unavailable, price may be null."
+    },
+    "schema": {
+      "data.{TICKER}.price": "Latest available price (float)",
+      "data.{TICKER}.as_of": "Timestamp (UTC) of the bar used for price"
+    }
+  },
+  "metadata": {
+    "generated_at": "2026-08-30T15:04:17Z",
+    "tickers": [
+      "SPY",
+      "DIA",
+      "IWM",
+      "QQQ"
+    ],
+    "ticker_count": 4,
+    "data_source": "Yahoo Finance (yfinance)"
+  },
+  "data": {
+    "SPY": {
+      "price": 769.38,
+      "as_of": "2026-08-28T19:55:00Z"
+    },
+    "DIA": {
+      "price": 535.04,
+      "as_of": "2026-08-28T19:55:00Z"
+    },
+    "IWM": {
+      "price": 295.75,
+      "as_of": "2026-08-28T19:55:00Z"
+    },
+    "QQQ": {
+      "price": 716.45,
+      "as_of": "2026-08-28T19:55:00Z"
+    }
+  }
+}

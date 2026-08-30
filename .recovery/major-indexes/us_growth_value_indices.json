@@ -1,0 +1,182 @@
+{
+  "_README": {
+    "title": "US Growth vs Value Indices - Daily Snapshot",
+    "description": "Russell growth and value indices across large-cap and small-cap segments",
+    "purpose": "Track growth vs value performance to identify market style rotation",
+    "style_definitions": {
+      "growth": "Companies with higher price-to-book ratios, expected faster earnings growth",
+      "value": "Companies with lower price-to-book ratios, trading at discounts to intrinsic value"
+    },
+    "indices_included": {
+      "^RLG": "Russell 1000 Growth - Large-cap growth stocks",
+      "^RLV": "Russell 1000 Value - Large-cap value stocks",
+      "^RUO": "Russell 2000 Growth - Small-cap growth stocks",
+      "^RUJ": "Russell 2000 Value - Small-cap value stocks",
+      "^RUA": "Russell 3000 - Total US equity market (98% coverage)"
+    },
+    "interpretation": {
+      "growth_outperforming": "RLG > RLV and RUO > RUJ = Growth stocks leading",
+      "value_outperforming": "RLV > RLG and RUJ > RUO = Value stocks leading",
+      "large_cap_leading": "RLG > RUO and RLV > RUJ = Large-caps preferred",
+      "small_cap_leading": "RUO > RLG and RUJ > RLV = Small-caps preferred",
+      "rotation_signal": "Style leadership changes indicate market regime shift"
+    },
+    "pivot_points": {
+      "description": "Support and resistance levels calculated from previous day's price action",
+      "formula": "Pivot Point = (High + Low + Close) / 3 from previous trading day",
+      "levels": "3 resistance (R1, R2, R3) and 3 support (S1, S2, S3) levels for each index"
+    }
+  },
+  "metadata": {
+    "generated_at": "2026-08-30T15:04:20Z",
+    "market_date": "2026-08-30",
+    "market_status": "closed",
+    "indices_count": 5,
+    "data_source": "Yahoo Finance (yfinance)",
+    "data_quality": {
+      "status": "complete",
+      "missing_days": 0,
+      "completeness_percent": 100.0,
+      "last_update": "2026-08-30T15:04:20Z",
+      "market_hours": "closed"
+    }
+  },
+  "indices": {
+    "^RLV": {
+      "name": "Russell 1000 Value",
+      "symbol": "^RLV",
+      "description": "Large-cap value stocks",
+      "style": "value",
+      "market_cap": "large",
+      "current_price": 2535.69,
+      "daily_change": 6.49,
+      "daily_change_percent": 0.26,
+      "volume": null,
+      "day_high": 2544.89,
+      "day_low": 2529.2,
+      "day_open": 2529.2,
+      "52_week_high": 2541.31,
+      "52_week_low": 1962.5,
+      "distance_from_52w_high_percent": -0.22,
+      "year_to_date_percent": 22.4,
+      "1_month_percent": 2.94,
+      "3_month_percent": 8.49,
+      "6_month_percent": 14.44,
+      "pivot_points": {
+        "pivot_point": 2529.46,
+        "resistance_1": 2536.66,
+        "resistance_2": 2544.11,
+        "resistance_3": 2551.31,
+        "support_1": 2522.01,
+        "support_2": 2514.81,
+        "support_3": 2492.97
+      }
+    },
+    "^RUO": {
+      "name": "Russell 2000 Growth",
+      "symbol": "^RUO",
+      "description": "Small-cap growth stocks",
+      "style": "growth",
+      "market_cap": "small",
+      "current_price": 1934.3,
+      "daily_change": -41.19,
+      "daily_change_percent": -2.09,
+      "volume": null,
+      "day_high": 1974.32,
+      "day_low": 1934.29,
+      "day_open": 1973.52,
+      "52_week_high": 2019.9,
+      "52_week_low": 1534.25,
+      "distance_from_52w_high_percent": -4.24,
+      "year_to_date_percent": 17.1,
+      "1_month_percent": 1.37,
+      "3_month_percent": -0.55,
+      "6_month_percent": 12.97,
+      "pivot_points": {
+        "pivot_point": 1973.85,
+        "resistance_1": 1981.35,
+        "resistance_2": 1987.21,
+        "resistance_3": 1994.71,
+        "support_1": 1967.99,
+        "support_2": 1960.49,
+        "support_3": 1939.63
+      }
+    },
+    "^RUJ": {
+      "name": "Russell 2000 Value",
+      "symbol": "^RUJ",
+      "description": "Small-cap value stocks",
+      "style": "value",
+      "market_cap": "small",
+      "current_price": 3331.97,
+      "daily_change": -22.46,
+      "daily_change_percent": -0.67,
+      "volume": null,
+      "day_high": 3363.59,
+      "day_low": 3331.97,
+      "day_open": 3357.61,
+      "52_week_high": 3398.75,
+      "52_week_low": 2523.52,
+      "distance_from_52w_high_percent": -1.96,
+      "year_to_date_percent": 22.63,
+      "1_month_percent": 0.41,
+      "3_month_percent": 4.39,
+      "6_month_percent": 12.8,
+      "pivot_points": {
+        "pivot_point": 3349.58,
+        "resistance_1": 3363.43,
+        "resistance_2": 3372.42,
+        "resistance_3": 3386.27,
+        "support_1": 3340.59,
+        "support_2": 3326.74,
+        "support_3": 3290.06
+      }
+    },
+    "^RUA": {
+      "name": "Russell 3000",
+      "symbol": "^RUA",
+      "description": "Total US equity market (98% coverage)",
+      "style": "blend",
+      "market_cap": "all",
+      "current_price": 4383.34,
+      "daily_change": -16.17,
+      "daily_change_percent": -0.37,
+      "volume": null,
+      "day_high": 4416.98,
+      "day_low": 4378.15,
+      "day_open": 4400.06,
+      "52_week_high": 4439.88,
+      "52_week_low": 3611.24,
+      "distance_from_52w_high_percent": -1.27,
+      "year_to_date_percent": 12.89,
+      "1_month_percent": 3.57,
+      "3_month_percent": 2.01,
+      "6_month_percent": 11.9,
+      "pivot_points": {
+        "pivot_point": 4389.65,
+        "resistance_1": 4415.15,
+        "resistance_2": 4430.78,
+        "resistance_3": 4456.28,
+        "support_1": 4374.02,
+        "support_2": 4348.52,
+        "support_3": 4281.89
+      },
+      "constituent_count": 3000
+    }
+  },
+  "style_analysis": {
+    "growth_vs_value": {
+      "large_cap_leader": "value",
+      "large_cap_spread_percent": 0.26,
+      "small_cap_leader": "value",
+      "small_cap_spread_percent": 1.42,
+      "overall_style_leader": "value"
+    },
+    "cap_size_preference": {
+      "growth_leader": "large",
+      "value_leader": "large",
+      "overall_cap_preference": "large-cap"
+    },
+    "market_regime": "defensive, quality large-cap value"
+  }
+}

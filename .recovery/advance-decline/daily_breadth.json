@@ -1,0 +1,72 @@
+{
+  "metadata": {
+    "generated_at": "2026-08-30T15:02:09.565159+00:00",
+    "data_source": "Yahoo Finance (yfinance)",
+    "universe": "S&P 500",
+    "total_stocks_analyzed": 503,
+    "description": "Daily market breadth indicators for S&P 500 constituents",
+    "calculation_note": "All metrics calculated using previous close as baseline"
+  },
+  "field_descriptions": {
+    "date": "Trading date for the breadth data (YYYY-MM-DD)",
+    "advances": "Number of stocks that closed higher than previous close",
+    "declines": "Number of stocks that closed lower than previous close",
+    "unchanged": "Number of stocks with no price change",
+    "advance_decline_ratio": "Ratio of advancing to declining stocks (advances/declines)",
+    "cumulative_ad_line": "Cumulative advance-decline line (running total of net advances over time)",
+    "advancing_volume": "Total volume of stocks that advanced",
+    "declining_volume": "Total volume of stocks that declined",
+    "volume_ratio": "Ratio of advancing volume to declining volume",
+    "stocks_near_52w_high": "Number of stocks within 1% of their 52-week high",
+    "stocks_near_52w_low": "Number of stocks within 1% of their 52-week low",
+    "above_20_day_ma": "Number and percentage of stocks trading above their 20-day moving average",
+    "above_50_day_ma": "Number and percentage of stocks trading above their 50-day moving average",
+    "above_200_day_ma": "Number and percentage of stocks trading above their 200-day moving average"
+  },
+  "data": {
+    "date": "2026-08-28",
+    "advances_declines": {
+      "advances": 230,
+      "declines": 272,
+      "unchanged": 1,
+      "total_stocks": 503,
+      "advance_decline_ratio": 0.846,
+      "advance_percentage": 45.73,
+      "interpretation": "Advances > Declines suggests broad market strength"
+    },
+    "volume_metrics": {
+      "advancing_volume": 1159793100,
+      "declining_volume": 1448018035,
+      "total_volume": 2621815835,
+      "volume_ratio": 0.801,
+      "advancing_volume_pct": 44.24,
+      "interpretation": "Volume ratio > 1 means more volume in advancing stocks (bullish)"
+    },
+    "new_highs_lows": {
+      "stocks_near_52w_high": 7,
+      "stocks_near_52w_low": 3,
+      "pct_near_52w_high": 1.39,
+      "pct_near_52w_low": 0.6,
+      "high_low_ratio": 2.333,
+      "threshold_note": "Near high: within 1%, Near low: within 1%",
+      "interpretation": "More new highs than lows indicates strong market leadership"
+    },
+    "moving_averages": {
+      "above_20_day_ma": {
+        "count": 218,
+        "percentage": 43.34,
+        "interpretation": ">70% = strong short-term trend, <30% = weak short-term trend"
+      },
+      "above_50_day_ma": {
+        "count": 269,
+        "percentage": 53.48,
+        "interpretation": ">70% = strong intermediate trend, <30% = weak trend"
+      },
+      "above_200_day_ma": {
+        "count": 358,
+        "percentage": 71.17,
+        "interpretation": ">70% = strong long-term trend, <30% = weak trend"
+      }
+    }
+  }
+}

@@ -1,0 +1,223 @@
+{
+  "_README": {
+    "title": "Moving Average Spreads - Mean Reversion Snapshot",
+    "description": "Current spread between moving average pairs for major US ETFs",
+    "purpose": "Identify extreme MA spreads that may signal mean reversion opportunities",
+    "update_frequency": "Every 10 minutes during market hours",
+    "indices_tracked": [
+      "SPY",
+      "QQQ",
+      "IWM"
+    ],
+    "ma_pairs_analyzed": {
+      "short_term_vs_intermediate": "20-day vs 50-day MA (swing trading timeframe)",
+      "short_term_vs_long_term": "20-day vs 200-day MA (trend identification)",
+      "intermediate_vs_long_term": "50-day vs 200-day MA (major trend changes)"
+    },
+    "metrics_explained": {
+      "spread": {
+        "description": "Point difference between two moving averages",
+        "formula": "ma_short - ma_long",
+        "interpretation": {
+          "positive": "Short MA above long MA (bullish alignment)",
+          "negative": "Short MA below long MA (bearish alignment)",
+          "large_magnitude": "Wide spread suggests potential snapback to mean"
+        }
+      },
+      "spread_percent": {
+        "description": "Percentage spread between two MAs",
+        "formula": "(ma_short - ma_long) / ma_long * 100",
+        "interpretation": "Normalizes spread for comparison across different price levels",
+        "usage": "Compare signals across different instruments"
+      },
+      "zscore": {
+        "description": "Statistical z-score of MA spread",
+        "formula": "(current_spread - mean_spread) / std_dev(spread)",
+        "lookback_period": "252 days",
+        "interpretation": {
+          ">2": "Extremely wide spread - Strong mean reversion signal (spread likely to narrow)",
+          "1 to 2": "Moderately wide spread",
+          "-1 to 1": "Normal spread range",
+          "-2 to -1": "Moderately narrow spread",
+          "<-2": "Extremely narrow/negative spread - Potential breakout or trend reversal"
+        },
+        "usage": "Most common institutional method for MA spread mean reversion"
+      }
+    },
+    "signal_types": {
+      "extremely_overbought": "Z-score > 2 (spread unusually wide, expect narrowing)",
+      "moderately_overbought": "Z-score 1 to 2 (spread above average)",
+      "normal_range": "Z-score -1 to 1 (spread in normal range)",
+      "moderately_oversold": "Z-score -2 to -1 (spread below average)",
+      "extremely_oversold": "Z-score < -2 (spread unusually narrow, potential expansion)",
+      "insufficient_data": "Not enough data for calculation"
+    },
+    "alignment_types": {
+      "bullish": "Shorter MA above longer MA (uptrend)",
+      "bearish": "Shorter MA below longer MA (downtrend)"
+    },
+    "trading_applications": {
+      "golden_cross": "50-day crosses above 200-day (bullish signal)",
+      "death_cross": "50-day crosses below 200-day (bearish signal)",
+      "extreme_spread_mean_reversion": "Z-score > 2 or < -2 suggests spread will revert to mean",
+      "trend_following": "Trade in direction of MA alignment (bullish/bearish)",
+      "swing_trading": "Use 20-day vs 50-day for short-term entries/exits"
+    },
+    "professional_usage": {
+      "description": "Institutional traders focus on MA spread z-scores",
+      "strategy": "When spread z-score is extreme, expect snapback to mean",
+      "timeframes": {
+        "20_vs_50": "Swing trading (days to weeks)",
+        "20_vs_200": "Trend validation (weeks to months)",
+        "50_vs_200": "Major trend changes (months to years)"
+      }
+    }
+  },
+  "metadata": {
+    "generated_at": "2026-08-30T15:04:52.428181+00:00",
+    "data_source": "Yahoo Finance (yfinance)",
+    "etfs_count": 3,
+    "description": "Moving average spread metrics for mean reversion analysis",
+    "calculation_note": "All metrics use adjusted closing prices"
+  },
+  "indices": {
+    "SPY": {
+      "symbol": "SPY",
+      "name": "SPDR S&P 500 ETF Trust",
+      "description": "Tracks S&P 500 Index - Large-cap benchmark (500 companies)",
+      "market_segment": "Large-Cap",
+      "tracks_index": "S&P 500",
+      "date": "2026-08-28",
+      "current_price": 769.35,
+      "moving_averages": {
+        "ma_20": 769.22,
+        "ma_50": 753.96,
+        "ma_200": 707.42
+      },
+      "ma_pairs": {
+        "short_term_vs_intermediate": {
+          "ma_short": 20,
+          "ma_long": 50,
+          "spread": 15.26,
+          "spread_percent": 2.02,
+          "zscore": 0.67,
+          "signal": "normal_range",
+          "alignment": "bullish",
+          "alignment_note": "20-day MA is above 50-day MA"
+        },
+        "short_term_vs_long_term": {
+          "ma_short": 20,
+          "ma_long": 200,
+          "spread": 61.79,
+          "spread_percent": 8.73,
+          "zscore": 0.78,
+          "signal": "normal_range",
+          "alignment": "bullish",
+          "alignment_note": "20-day MA is above 200-day MA"
+        },
+        "intermediate_vs_long_term": {
+          "ma_short": 50,
+          "ma_long": 200,
+          "spread": 46.53,
+          "spread_percent": 6.58,
+          "zscore": 0.44,
+          "signal": "normal_range",
+          "alignment": "bullish",
+          "alignment_note": "50-day MA is above 200-day MA"
+        }
+      }
+    },
+    "QQQ": {
+      "symbol": "QQQ",
+      "name": "Invesco QQQ Trust",
+      "description": "Tracks Nasdaq-100 Index - Tech-heavy growth stocks",
+      "market_segment": "Tech/Growth",
+      "tracks_index": "Nasdaq-100",
+      "date": "2026-08-28",
+      "current_price": 716.43,
+      "moving_averages": {
+        "ma_20": 717.94,
+        "ma_50": 712.05,
+        "ma_200": 654.19
+      },
+      "ma_pairs": {
+        "short_term_vs_intermediate": {
+          "ma_short": 20,
+          "ma_long": 50,
+          "spread": 5.89,
+          "spread_percent": 0.83,
+          "zscore": -0.16,
+          "signal": "normal_range",
+          "alignment": "bullish",
+          "alignment_note": "20-day MA is above 50-day MA"
+        },
+        "short_term_vs_long_term": {
+          "ma_short": 20,
+          "ma_long": 200,
+          "spread": 63.75,
+          "spread_percent": 9.74,
+          "zscore": 0.29,
+          "signal": "normal_range",
+          "alignment": "bullish",
+          "alignment_note": "20-day MA is above 200-day MA"
+        },
+        "intermediate_vs_long_term": {
+          "ma_short": 50,
+          "ma_long": 200,
+          "spread": 57.85,
+          "spread_percent": 8.84,
+          "zscore": 0.51,
+          "signal": "normal_range",
+          "alignment": "bullish",
+          "alignment_note": "50-day MA is above 200-day MA"
+        }
+      }
+    },
+    "IWM": {
+      "symbol": "IWM",
+      "name": "iShares Russell 2000 ETF",
+      "description": "Tracks Russell 2000 Index - Small-cap benchmark (2000 companies)",
+      "market_segment": "Small-Cap",
+      "tracks_index": "Russell 2000",
+      "date": "2026-08-28",
+      "current_price": 295.75,
+      "moving_averages": {
+        "ma_20": 300.26,
+        "ma_50": 297.31,
+        "ma_200": 270.56
+      },
+      "ma_pairs": {
+        "short_term_vs_intermediate": {
+          "ma_short": 20,
+          "ma_long": 50,
+          "spread": 2.94,
+          "spread_percent": 0.99,
+          "zscore": -0.31,
+          "signal": "normal_range",
+          "alignment": "bullish",
+          "alignment_note": "20-day MA is above 50-day MA"
+        },
+        "short_term_vs_long_term": {
+          "ma_short": 20,
+          "ma_long": 200,
+          "spread": 29.7,
+          "spread_percent": 10.98,
+          "zscore": 0.69,
+          "signal": "normal_range",
+          "alignment": "bullish",
+          "alignment_note": "20-day MA is above 200-day MA"
+        },
+        "intermediate_vs_long_term": {
+          "ma_short": 50,
+          "ma_long": 200,
+          "spread": 26.75,
+          "spread_percent": 9.89,
+          "zscore": 1.2,
+          "signal": "moderately_overbought",
+          "alignment": "bullish",
+          "alignment_note": "50-day MA is above 200-day MA"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,4600 @@
+{
+  "metadata": {
+    "generated_at": "2026-08-30T15:03:19.349526+00:00",
+    "data_source": "Yahoo Finance (yfinance)",
+    "universe": "S&P 500",
+    "total_stocks": 503,
+    "period": "2y",
+    "moving_average_periods": [
+      20,
+      50,
+      200
+    ],
+    "description": "Historical percentage of S&P 500 stocks above their moving averages",
+    "interpretation": {
+      "above_70_percent": "Strong market with broad participation - most stocks in uptrend",
+      "above_50_percent": "Moderate market - slight bullish bias",
+      "below_50_percent": "Weak market - more stocks in downtrend than uptrend",
+      "below_30_percent": "Very weak market - most stocks in downtrend, potential oversold",
+      "20_day_ma": "Measures short-term trend strength (1 month)",
+      "50_day_ma": "Measures intermediate-term trend strength (2-3 months)",
+      "200_day_ma": "Measures long-term trend strength (bull vs bear market)"
+    }
+  },
+  "field_descriptions": {
+    "date": "Trading date (YYYY-MM-DD)",
+    "ma_20": "Data for 20-day moving average analysis",
+    "ma_50": "Data for 50-day moving average analysis",
+    "ma_200": "Data for 200-day moving average analysis",
+    "count_above": "Number of stocks trading above their moving average",
+    "percentage_above": "Percentage of stocks trading above their moving average",
+    "statistics": "Summary statistics and trend analysis"
+  },
+  "statistics": {
+    "20_day_ma": {
+      "current_percentage": 43.34,
+      "market_condition": "Weak (more stocks in downtrend)",
+      "trend_20d": "Deteriorating (breadth contracting)",
+      "change_5_days": -6.76,
+      "change_20_days": -10.34,
+      "change_60_days": -7.06,
+      "min_percentage": 12.57,
+      "max_percentage": 84.4,
+      "average_percentage": 55.55
+    },
+    "50_day_ma": {
+      "current_percentage": 53.48,
+      "market_condition": "Moderate (mixed market)",
+      "trend_20d": "Deteriorating (breadth contracting)",
+      "change_5_days": -4.37,
+      "change_20_days": -8.75,
+      "change_60_days": 2.88,
+      "min_percentage": 20.16,
+      "max_percentage": 83.2,
+      "average_percentage": 57.94
+    },
+    "200_day_ma": {
+      "current_percentage": 71.17,
+      "market_condition": "Strong (most stocks in uptrend)",
+      "trend_20d": "Stable",
+      "change_5_days": -1.0,
+      "change_20_days": 3.77,
+      "change_60_days": 15.19,
+      "min_percentage": 44.31,
+      "max_percentage": 74.55,
+      "average_percentage": 62.93
+    }
+  },
+  "data": [
+    {
+      "date": "2025-06-17",
+      "ma_20": {
+        "count_above": 207,
+        "percentage_above": 41.4
+      },
+      "ma_50": {
+        "count_above": 353,
+        "percentage_above": 70.6
+      },
+      "ma_200": {
+        "count_above": 259,
+        "percentage_above": 51.8
+      }
+    },
+    {
+      "date": "2025-06-18",
+      "ma_20": {
+        "count_above": 239,
+        "percentage_above": 47.8
+      },
+      "ma_50": {
+        "count_above": 339,
+        "percentage_above": 67.8
+      },
+      "ma_200": {
+        "count_above": 255,
+        "percentage_above": 51.0
+      }
+    },
+    {
+      "date": "2025-06-20",
+      "ma_20": {
+        "count_above": 247,
+        "percentage_above": 49.4
+      },
+      "ma_50": {
+        "count_above": 343,
+        "percentage_above": 68.6
+      },
+      "ma_200": {
+        "count_above": 259,
+        "percentage_above": 51.8
+      }
+    },
+    {
+      "date": "2025-06-23",
+      "ma_20": {
+        "count_above": 301,
+        "percentage_above": 60.2
+      },
+      "ma_50": {
+        "count_above": 373,
+        "percentage_above": 74.6
+      },
+      "ma_200": {
+        "count_above": 275,
+        "percentage_above": 55.0
+      }
+    },
+    {
+      "date": "2025-06-24",
+      "ma_20": {
+        "count_above": 355,
+        "percentage_above": 71.0
+      },
+      "ma_50": {
+        "count_above": 389,
+        "percentage_above": 77.8
+      },
+      "ma_200": {
+        "count_above": 285,
+        "percentage_above": 57.0
+      }
+    },
+    {
+      "date": "2025-06-25",
+      "ma_20": {
+        "count_above": 294,
+        "percentage_above": 58.8
+      },
+      "ma_50": {
+        "count_above": 351,
+        "percentage_above": 70.2
+      },
+      "ma_200": {
+        "count_above": 266,
+        "percentage_above": 53.2
+      }
+    },
+    {
+      "date": "2025-06-26",
+      "ma_20": {
+        "count_above": 325,
+        "percentage_above": 65.0
+      },
+      "ma_50": {
+        "count_above": 365,
+        "percentage_above": 73.0
+      },
+      "ma_200": {
+        "count_above": 287,
+        "percentage_above": 57.4
+      }
+    },
+    {
+      "date": "2025-06-27",
+      "ma_20": {
+        "count_above": 348,
+        "percentage_above": 69.6
+      },
+      "ma_50": {
+        "count_above": 372,
+        "percentage_above": 74.4
+      },
+      "ma_200": {
+        "count_above": 292,
+        "percentage_above": 58.4
+      }
+    },
+    {
+      "date": "2025-06-30",
+      "ma_20": {
+        "count_above": 375,
+        "percentage_above": 75.0
+      },
+      "ma_50": {
+        "count_above": 383,
+        "percentage_above": 76.6
+      },
+      "ma_200": {
+        "count_above": 299,
+        "percentage_above": 59.8
+      }
+    },
+    {
+      "date": "2025-07-01",
+      "ma_20": {
+        "count_above": 422,
+        "percentage_above": 84.4
+      },
+      "ma_50": {
+        "count_above": 416,
+        "percentage_above": 83.2
+      },
+      "ma_200": {
+        "count_above": 321,
+        "percentage_above": 64.2
+      }
+    },
+    {
+      "date": "2025-07-02",
+      "ma_20": {
+        "count_above": 397,
+        "percentage_above": 79.4
+      },
+      "ma_50": {
+        "count_above": 394,
+        "percentage_above": 78.8
+      },
+      "ma_200": {
+        "count_above": 328,
+        "percentage_above": 65.6
+      }
+    },
+    {
+      "date": "2025-07-03",
+      "ma_20": {
+        "count_above": 414,
+        "percentage_above": 82.8
+      },
+      "ma_50": {
+        "count_above": 406,
+        "percentage_above": 81.2
+      },
+      "ma_200": {
+        "count_above": 335,
+        "percentage_above": 67.0
+      }
+    },
+    {
+      "date": "2025-07-07",
+      "ma_20": {
+        "count_above": 380,
+        "percentage_above": 76.0
+      },
+      "ma_50": {
+        "count_above": 382,
+        "percentage_above": 76.4
+      },
+      "ma_200": {
+        "count_above": 318,
+        "percentage_above": 63.6
+      }
+    },
+    {
+      "date": "2025-07-08",
+      "ma_20": {
+        "count_above": 380,
+        "percentage_above": 76.0
+      },
+      "ma_50": {
+        "count_above": 378,
+        "percentage_above": 75.6
+      },
+      "ma_200": {
+        "count_above": 324,
+        "percentage_above": 64.8
+      }
+    },
+    {
+      "date": "2025-07-09",
+      "ma_20": {
+        "count_above": 384,
+        "percentage_above": 76.8
+      },
+      "ma_50": {
+        "count_above": 378,
+        "percentage_above": 75.6
+      },
+      "ma_200": {
+        "count_above": 329,
+        "percentage_above": 65.8
+      }
+    },
+    {
+      "date": "2025-07-10",
+      "ma_20": {
+        "count_above": 386,
+        "percentage_above": 77.2
+      },
+      "ma_50": {
+        "count_above": 383,
+        "percentage_above": 76.6
+      },
+      "ma_200": {
+        "count_above": 336,
+        "percentage_above": 67.2
+      }
+    },
+    {
+      "date": "2025-07-11",
+      "ma_20": {
+        "count_above": 348,
+        "percentage_above": 69.6
+      },
+      "ma_50": {
+        "count_above": 357,
+        "percentage_above": 71.4
+      },
+      "ma_200": {
+        "count_above": 329,
+        "percentage_above": 65.8
+      }
+    },
+    {
+      "date": "2025-07-14",
+      "ma_20": {
+        "count_above": 362,
+        "percentage_above": 72.4
+      },
+      "ma_50": {
+        "count_above": 370,
+        "percentage_above": 74.0
+      },
+      "ma_200": {
+        "count_above": 323,
+        "percentage_above": 64.6
+      }
+    },
+    {
+      "date": "2025-07-15",
+      "ma_20": {
+        "count_above": 254,
+        "percentage_above": 50.8
+      },
+      "ma_50": {
+        "count_above": 319,
+        "percentage_above": 63.8
+      },
+      "ma_200": {
+        "count_above": 301,
+        "percentage_above": 60.2
+      }
+    },
+    {
+      "date": "2025-07-16",
+      "ma_20": {
+        "count_above": 281,
+        "percentage_above": 56.2
+      },
+      "ma_50": {
+        "count_above": 333,
+        "percentage_above": 66.6
+      },
+      "ma_200": {
+        "count_above": 312,
+        "percentage_above": 62.4
+      }
+    },
+    {
+      "date": "2025-07-17",
+      "ma_20": {
+        "count_above": 314,
+        "percentage_above": 62.8
+      },
+      "ma_50": {
+        "count_above": 349,
+        "percentage_above": 69.8
+      },
+      "ma_200": {
+        "count_above": 318,
+        "percentage_above": 63.6
+      }
+    },
+    {
+      "date": "2025-07-18",
+      "ma_20": {
+        "count_above": 304,
+        "percentage_above": 60.8
+      },
+      "ma_50": {
+        "count_above": 353,
+        "percentage_above": 70.6
+      },
+      "ma_200": {
+        "count_above": 319,
+        "percentage_above": 63.8
+      }
+    },
+    {
+      "date": "2025-07-21",
+      "ma_20": {
+        "count_above": 269,
+        "percentage_above": 53.8
+      },
+      "ma_50": {
+        "count_above": 332,
+        "percentage_above": 66.4
+      },
+      "ma_200": {
+        "count_above": 316,
+        "percentage_above": 63.2
+      }
+    },
+    {
+      "date": "2025-07-22",
+      "ma_20": {
+        "count_above": 344,
+        "percentage_above": 68.8
+      },
+      "ma_50": {
+        "count_above": 379,
+        "percentage_above": 75.8
+      },
+      "ma_200": {
+        "count_above": 347,
+        "percentage_above": 69.4
+      }
+    },
+    {
+      "date": "2025-07-23",
+      "ma_20": {
+        "count_above": 374,
+        "percentage_above": 74.8
+      },
+      "ma_50": {
+        "count_above": 391,
+        "percentage_above": 78.2
+      },
+      "ma_200": {
+        "count_above": 353,
+        "percentage_above": 70.6
+      }
+    },
+    {
+      "date": "2025-07-24",
+      "ma_20": {
+        "count_above": 348,
+        "percentage_above": 69.6
+      },
+      "ma_50": {
+        "count_above": 372,
+        "percentage_above": 74.4
+      },
+      "ma_200": {
+        "count_above": 346,
+        "percentage_above": 69.2
+      }
+    },
+    {
+      "date": "2025-07-25",
+      "ma_20": {
+        "count_above": 356,
+        "percentage_above": 71.2
+      },
+      "ma_50": {
+        "count_above": 382,
+        "percentage_above": 76.4
+      },
+      "ma_200": {
+        "count_above": 351,
+        "percentage_above": 70.2
+      }
+    },
+    {
+      "date": "2025-07-28",
+      "ma_20": {
+        "count_above": 314,
+        "percentage_above": 62.8
+      },
+      "ma_50": {
+        "count_above": 352,
+        "percentage_above": 70.4
+      },
+      "ma_200": {
+        "count_above": 336,
+        "percentage_above": 67.2
+      }
+    },
+    {
+      "date": "2025-07-29",
+      "ma_20": {
+        "count_above": 309,
+        "percentage_above": 61.8
+      },
+      "ma_50": {
+        "count_above": 348,
+        "percentage_above": 69.6
+      },
+      "ma_200": {
+        "count_above": 337,
+        "percentage_above": 67.4
+      }
+    },
+    {
+      "date": "2025-07-30",
+      "ma_20": {
+        "count_above": 250,
+        "percentage_above": 50.0
+      },
+      "ma_50": {
+        "count_above": 320,
+        "percentage_above": 64.0
+      },
+      "ma_200": {
+        "count_above": 321,
+        "percentage_above": 64.2
+      }
+    },
+    {
+      "date": "2025-07-31",
+      "ma_20": {
+        "count_above": 209,
+        "percentage_above": 41.8
+      },
+      "ma_50": {
+        "count_above": 299,
+        "percentage_above": 59.8
+      },
+      "ma_200": {
+        "count_above": 306,
+        "percentage_above": 61.2
+      }
+    },
+    {
+      "date": "2025-08-01",
+      "ma_20": {
+        "count_above": 188,
+        "percentage_above": 37.6
+      },
+      "ma_50": {
+        "count_above": 262,
+        "percentage_above": 52.4
+      },
+      "ma_200": {
+        "count_above": 292,
+        "percentage_above": 58.4
+      }
+    },
+    {
+      "date": "2025-08-04",
+      "ma_20": {
+        "count_above": 242,
+        "percentage_above": 48.4
+      },
+      "ma_50": {
+        "count_above": 285,
+        "percentage_above": 57.0
+      },
+      "ma_200": {
+        "count_above": 310,
+        "percentage_above": 62.0
+      }
+    },
+    {
+      "date": "2025-08-05",
+      "ma_20": {
+        "count_above": 218,
+        "percentage_above": 43.6
+      },
+      "ma_50": {
+        "count_above": 284,
+        "percentage_above": 56.8
+      },
+      "ma_200": {
+        "count_above": 301,
+        "percentage_above": 60.2
+      }
+    },
+    {
+      "date": "2025-08-06",
+      "ma_20": {
+        "count_above": 219,
+        "percentage_above": 43.8
+      },
+      "ma_50": {
+        "count_above": 270,
+        "percentage_above": 54.0
+      },
+      "ma_200": {
+        "count_above": 298,
+        "percentage_above": 59.6
+      }
+    },
+    {
+      "date": "2025-08-07",
+      "ma_20": {
+        "count_above": 229,
+        "percentage_above": 45.8
+      },
+      "ma_50": {
+        "count_above": 282,
+        "percentage_above": 56.4
+      },
+      "ma_200": {
+        "count_above": 299,
+        "percentage_above": 59.8
+      }
+    },
+    {
+      "date": "2025-08-08",
+      "ma_20": {
+        "count_above": 251,
+        "percentage_above": 50.2
+      },
+      "ma_50": {
+        "count_above": 295,
+        "percentage_above": 59.0
+      },
+      "ma_200": {
+        "count_above": 307,
+        "percentage_above": 61.4
+      }
+    },
+    {
+      "date": "2025-08-11",
+      "ma_20": {
+        "count_above": 236,
+        "percentage_above": 47.2
+      },
+      "ma_50": {
+        "count_above": 283,
+        "percentage_above": 56.6
+      },
+      "ma_200": {
+        "count_above": 303,
+        "percentage_above": 60.6
+      }
+    },
+    {
+      "date": "2025-08-12",
+      "ma_20": {
+        "count_above": 291,
+        "percentage_above": 58.2
+      },
+      "ma_50": {
+        "count_above": 313,
+        "percentage_above": 62.6
+      },
+      "ma_200": {
+        "count_above": 317,
+        "percentage_above": 63.4
+      }
+    },
+    {
+      "date": "2025-08-13",
+      "ma_20": {
+        "count_above": 332,
+        "percentage_above": 66.4
+      },
+      "ma_50": {
+        "count_above": 338,
+        "percentage_above": 67.6
+      },
+      "ma_200": {
+        "count_above": 343,
+        "percentage_above": 68.6
+      }
+    },
+    {
+      "date": "2025-08-14",
+      "ma_20": {
+        "count_above": 294,
+        "percentage_above": 58.8
+      },
+      "ma_50": {
+        "count_above": 320,
+        "percentage_above": 64.0
+      },
+      "ma_200": {
+        "count_above": 328,
+        "percentage_above": 65.6
+      }
+    },
+    {
+      "date": "2025-08-15",
+      "ma_20": {
+        "count_above": 260,
+        "percentage_above": 52.0
+      },
+      "ma_50": {
+        "count_above": 305,
+        "percentage_above": 61.0
+      },
+      "ma_200": {
+        "count_above": 324,
+        "percentage_above": 64.8
+      }
+    },
+    {
+      "date": "2025-08-18",
+      "ma_20": {
+        "count_above": 262,
+        "percentage_above": 52.4
+      },
+      "ma_50": {
+        "count_above": 305,
+        "percentage_above": 61.0
+      },
+      "ma_200": {
+        "count_above": 320,
+        "percentage_above": 64.0
+      }
+    },
+    {
+      "date": "2025-08-19",
+      "ma_20": {
+        "count_above": 299,
+        "percentage_above": 59.8
+      },
+      "ma_50": {
+        "count_above": 328,
+        "percentage_above": 65.6
+      },
+      "ma_200": {
+        "count_above": 337,
+        "percentage_above": 67.4
+      }
+    },
+    {
+      "date": "2025-08-20",
+      "ma_20": {
+        "count_above": 314,
+        "percentage_above": 62.8
+      },
+      "ma_50": {
+        "count_above": 327,
+        "percentage_above": 65.4
+      },
+      "ma_200": {
+        "count_above": 337,
+        "percentage_above": 67.4
+      }
+    },
+    {
+      "date": "2025-08-21",
+      "ma_20": {
+        "count_above": 292,
+        "percentage_above": 58.4
+      },
+      "ma_50": {
+        "count_above": 314,
+        "percentage_above": 62.8
+      },
+      "ma_200": {
+        "count_above": 334,
+        "percentage_above": 66.8
+      }
+    },
+    {
+      "date": "2025-08-22",
+      "ma_20": {
+        "count_above": 390,
+        "percentage_above": 78.0
+      },
+      "ma_50": {
+        "count_above": 365,
+        "percentage_above": 73.0
+      },
+      "ma_200": {
+        "count_above": 365,
+        "percentage_above": 73.0
+      }
+    },
+    {
+      "date": "2025-08-25",
+      "ma_20": {
+        "count_above": 340,
+        "percentage_above": 68.0
+      },
+      "ma_50": {
+        "count_above": 333,
+        "percentage_above": 66.6
+      },
+      "ma_200": {
+        "count_above": 347,
+        "percentage_above": 69.4
+      }
+    },
+    {
+      "date": "2025-08-26",
+      "ma_20": {
+        "count_above": 346,
+        "percentage_above": 69.2
+      },
+      "ma_50": {
+        "count_above": 331,
+        "percentage_above": 66.2
+      },
+      "ma_200": {
+        "count_above": 349,
+        "percentage_above": 69.8
+      }
+    },
+    {
+      "date": "2025-08-27",
+      "ma_20": {
+        "count_above": 362,
+        "percentage_above": 72.4
+      },
+      "ma_50": {
+        "count_above": 339,
+        "percentage_above": 67.8
+      },
+      "ma_200": {
+        "count_above": 352,
+        "percentage_above": 70.4
+      }
+    },
+    {
+      "date": "2025-08-28",
+      "ma_20": {
+        "count_above": 343,
+        "percentage_above": 68.6
+      },
+      "ma_50": {
+        "count_above": 333,
+        "percentage_above": 66.6
+      },
+      "ma_200": {
+        "count_above": 348,
+        "percentage_above": 69.6
+      }
+    },
+    {
+      "date": "2025-08-29",
+      "ma_20": {
+        "count_above": 340,
+        "percentage_above": 68.0
+      },
+      "ma_50": {
+        "count_above": 328,
+        "percentage_above": 65.6
+      },
+      "ma_200": {
+        "count_above": 349,
+        "percentage_above": 69.8
+      }
+    },
+    {
+      "date": "2025-09-02",
+      "ma_20": {
+        "count_above": 273,
+        "percentage_above": 54.6
+      },
+      "ma_50": {
+        "count_above": 299,
+        "percentage_above": 59.8
+      },
+      "ma_200": {
+        "count_above": 341,
+        "percentage_above": 68.2
+      }
+    },
+    {
+      "date": "2025-09-03",
+      "ma_20": {
+        "count_above": 265,
+        "percentage_above": 53.0
+      },
+      "ma_50": {
+        "count_above": 293,
+        "percentage_above": 58.6
+      },
+      "ma_200": {
+        "count_above": 339,
+        "percentage_above": 67.8
+      }
+    },
+    {
+      "date": "2025-09-04",
+      "ma_20": {
+        "count_above": 296,
+        "percentage_above": 59.2
+      },
+      "ma_50": {
+        "count_above": 304,
+        "percentage_above": 60.8
+      },
+      "ma_200": {
+        "count_above": 347,
+        "percentage_above": 69.4
+      }
+    },
+    {
+      "date": "2025-09-05",
+      "ma_20": {
+        "count_above": 279,
+        "percentage_above": 55.8
+      },
+      "ma_50": {
+        "count_above": 303,
+        "percentage_above": 60.6
+      },
+      "ma_200": {
+        "count_above": 346,
+        "percentage_above": 69.2
+      }
+    },
+    {
+      "date": "2025-09-08",
+      "ma_20": {
+        "count_above": 284,
+        "percentage_above": 56.8
+      },
+      "ma_50": {
+        "count_above": 306,
+        "percentage_above": 61.2
+      },
+      "ma_200": {
+        "count_above": 338,
+        "percentage_above": 67.6
+      }
+    },
+    {
+      "date": "2025-09-09",
+      "ma_20": {
+        "count_above": 246,
+        "percentage_above": 49.2
+      },
+      "ma_50": {
+        "count_above": 298,
+        "percentage_above": 59.6
+      },
+      "ma_200": {
+        "count_above": 332,
+        "percentage_above": 66.4
+      }
+    },
+    {
+      "date": "2025-09-10",
+      "ma_20": {
+        "count_above": 220,
+        "percentage_above": 44.0
+      },
+      "ma_50": {
+        "count_above": 288,
+        "percentage_above": 57.6
+      },
+      "ma_200": {
+        "count_above": 329,
+        "percentage_above": 65.8
+      }
+    },
+    {
+      "date": "2025-09-11",
+      "ma_20": {
+        "count_above": 318,
+        "percentage_above": 63.6
+      },
+      "ma_50": {
+        "count_above": 329,
+        "percentage_above": 65.8
+      },
+      "ma_200": {
+        "count_above": 352,
+        "percentage_above": 70.4
+      }
+    },
+    {
+      "date": "2025-09-12",
+      "ma_20": {
+        "count_above": 275,
+        "percentage_above": 55.0
+      },
+      "ma_50": {
+        "count_above": 311,
+        "percentage_above": 62.2
+      },
+      "ma_200": {
+        "count_above": 342,
+        "percentage_above": 68.4
+      }
+    },
+    {
+      "date": "2025-09-15",
+      "ma_20": {
+        "count_above": 249,
+        "percentage_above": 49.8
+      },
+      "ma_50": {
+        "count_above": 290,
+        "percentage_above": 58.0
+      },
+      "ma_200": {
+        "count_above": 330,
+        "percentage_above": 66.0
+      }
+    },
+    {
+      "date": "2025-09-16",
+      "ma_20": {
+        "count_above": 208,
+        "percentage_above": 41.6
+      },
+      "ma_50": {
+        "count_above": 271,
+        "percentage_above": 54.2
+      },
+      "ma_200": {
+        "count_above": 327,
+        "percentage_above": 65.4
+      }
+    },
+    {
+      "date": "2025-09-17",
+      "ma_20": {
+        "count_above": 229,
+        "percentage_above": 45.8
+      },
+      "ma_50": {
+        "count_above": 283,
+        "percentage_above": 56.6
+      },
+      "ma_200": {
+        "count_above": 326,
+        "percentage_above": 65.2
+      }
+    },
+    {
+      "date": "2025-09-18",
+      "ma_20": {
+        "count_above": 261,
+        "percentage_above": 52.2
+      },
+      "ma_50": {
+        "count_above": 296,
+        "percentage_above": 59.2
+      },
+      "ma_200": {
+        "count_above": 327,
+        "percentage_above": 65.4
+      }
+    },
+    {
+      "date": "2025-09-19",
+      "ma_20": {
+        "count_above": 247,
+        "percentage_above": 49.4
+      },
+      "ma_50": {
+        "count_above": 298,
+        "percentage_above": 59.6
+      },
+      "ma_200": {
+        "count_above": 328,
+        "percentage_above": 65.6
+      }
+    },
+    {
+      "date": "2025-09-22",
+      "ma_20": {
+        "count_above": 246,
+        "percentage_above": 49.2
+      },
+      "ma_50": {
+        "count_above": 287,
+        "percentage_above": 57.4
+      },
+      "ma_200": {
+        "count_above": 330,
+        "percentage_above": 66.0
+      }
+    },
+    {
+      "date": "2025-09-23",
+      "ma_20": {
+        "count_above": 264,
+        "percentage_above": 52.8
+      },
+      "ma_50": {
+        "count_above": 301,
+        "percentage_above": 60.2
+      },
+      "ma_200": {
+        "count_above": 330,
+        "percentage_above": 66.0
+      }
+    },
+    {
+      "date": "2025-09-24",
+      "ma_20": {
+        "count_above": 245,
+        "percentage_above": 49.0
+      },
+      "ma_50": {
+        "count_above": 282,
+        "percentage_above": 56.4
+      },
+      "ma_200": {
+        "count_above": 329,
+        "percentage_above": 65.8
+      }
+    },
+    {
+      "date": "2025-09-25",
+      "ma_20": {
+        "count_above": 206,
+        "percentage_above": 41.2
+      },
+      "ma_50": {
+        "count_above": 261,
+        "percentage_above": 52.2
+      },
+      "ma_200": {
+        "count_above": 320,
+        "percentage_above": 64.0
+      }
+    },
+    {
+      "date": "2025-09-26",
+      "ma_20": {
+        "count_above": 268,
+        "percentage_above": 53.6
+      },
+      "ma_50": {
+        "count_above": 290,
+        "percentage_above": 58.0
+      },
+      "ma_200": {
+        "count_above": 331,
+        "percentage_above": 66.2
+      }
+    },
+    {
+      "date": "2025-09-29",
+      "ma_20": {
+        "count_above": 277,
+        "percentage_above": 55.4
+      },
+      "ma_50": {
+        "count_above": 290,
+        "percentage_above": 58.0
+      },
+      "ma_200": {
+        "count_above": 336,
+        "percentage_above": 67.2
+      }
+    },
+    {
+      "date": "2025-09-30",
+      "ma_20": {
+        "count_above": 296,
+        "percentage_above": 59.2
+      },
+      "ma_50": {
+        "count_above": 302,
+        "percentage_above": 60.4
+      },
+      "ma_200": {
+        "count_above": 341,
+        "percentage_above": 68.2
+      }
+    },
+    {
+      "date": "2025-10-01",
+      "ma_20": {
+        "count_above": 284,
+        "percentage_above": 56.8
+      },
+      "ma_50": {
+        "count_above": 294,
+        "percentage_above": 58.8
+      },
+      "ma_200": {
+        "count_above": 344,
+        "percentage_above": 68.8
+      }
+    },
+    {
+      "date": "2025-10-02",
+      "ma_20": {
+        "count_above": 286,
+        "percentage_above": 57.2
+      },
+      "ma_50": {
+        "count_above": 294,
+        "percentage_above": 58.8
+      },
+      "ma_200": {
+        "count_above": 341,
+        "percentage_above": 68.2
+      }
+    },
+    {
+      "date": "2025-10-03",
+      "ma_20": {
+        "count_above": 309,
+        "percentage_above": 61.8
+      },
+      "ma_50": {
+        "count_above": 311,
+        "percentage_above": 62.2
+      },
+      "ma_200": {
+        "count_above": 345,
+        "percentage_above": 69.0
+      }
+    },
+    {
+      "date": "2025-10-06",
+      "ma_20": {
+        "count_above": 285,
+        "percentage_above": 57.0
+      },
+      "ma_50": {
+        "count_above": 301,
+        "percentage_above": 60.2
+      },
+      "ma_200": {
+        "count_above": 339,
+        "percentage_above": 67.8
+      }
+    },
+    {
+      "date": "2025-10-07",
+      "ma_20": {
+        "count_above": 264,
+        "percentage_above": 52.8
+      },
+      "ma_50": {
+        "count_above": 288,
+        "percentage_above": 57.6
+      },
+      "ma_200": {
+        "count_above": 339,
+        "percentage_above": 67.8
+      }
+    },
+    {
+      "date": "2025-10-08",
+      "ma_20": {
+        "count_above": 269,
+        "percentage_above": 53.8
+      },
+      "ma_50": {
+        "count_above": 288,
+        "percentage_above": 57.6
+      },
+      "ma_200": {
+        "count_above": 336,
+        "percentage_above": 67.2
+      }
+    },
+    {
+      "date": "2025-10-09",
+      "ma_20": {
+        "count_above": 231,
+        "percentage_above": 46.2
+      },
+      "ma_50": {
+        "count_above": 262,
+        "percentage_above": 52.4
+      },
+      "ma_200": {
+        "count_above": 329,
+        "percentage_above": 65.8
+      }
+    },
+    {
+      "date": "2025-10-10",
+      "ma_20": {
+        "count_above": 146,
+        "percentage_above": 29.2
+      },
+      "ma_50": {
+        "count_above": 196,
+        "percentage_above": 39.2
+      },
+      "ma_200": {
+        "count_above": 293,
+        "percentage_above": 58.6
+      }
+    },
+    {
+      "date": "2025-10-13",
+      "ma_20": {
+        "count_above": 183,
+        "percentage_above": 36.6
+      },
+      "ma_50": {
+        "count_above": 223,
+        "percentage_above": 44.6
+      },
+      "ma_200": {
+        "count_above": 313,
+        "percentage_above": 62.6
+      }
+    },
+    {
+      "date": "2025-10-14",
+      "ma_20": {
+        "count_above": 219,
+        "percentage_above": 43.8
+      },
+      "ma_50": {
+        "count_above": 255,
+        "percentage_above": 51.0
+      },
+      "ma_200": {
+        "count_above": 330,
+        "percentage_above": 66.0
+      }
+    },
+    {
+      "date": "2025-10-15",
+      "ma_20": {
+        "count_above": 220,
+        "percentage_above": 44.0
+      },
+      "ma_50": {
+        "count_above": 255,
+        "percentage_above": 51.0
+      },
+      "ma_200": {
+        "count_above": 322,
+        "percentage_above": 64.4
+      }
+    },
+    {
+      "date": "2025-10-16",
+      "ma_20": {
+        "count_above": 179,
+        "percentage_above": 35.8
+      },
+      "ma_50": {
+        "count_above": 210,
+        "percentage_above": 42.0
+      },
+      "ma_200": {
+        "count_above": 304,
+        "percentage_above": 60.8
+      }
+    },
+    {
+      "date": "2025-10-17",
+      "ma_20": {
+        "count_above": 212,
+        "percentage_above": 42.4
+      },
+      "ma_50": {
+        "count_above": 232,
+        "percentage_above": 46.4
+      },
+      "ma_200": {
+        "count_above": 315,
+        "percentage_above": 63.0
+      }
+    },
+    {
+      "date": "2025-10-20",
+      "ma_20": {
+        "count_above": 274,
+        "percentage_above": 54.8
+      },
+      "ma_50": {
+        "count_above": 270,
+        "percentage_above": 54.0
+      },
+      "ma_200": {
+        "count_above": 329,
+        "percentage_above": 65.8
+      }
+    },
+    {
+      "date": "2025-10-21",
+      "ma_20": {
+        "count_above": 303,
+        "percentage_above": 60.6
+      },
+      "ma_50": {
+        "count_above": 278,
+        "percentage_above": 55.6
+      },
+      "ma_200": {
+        "count_above": 337,
+        "percentage_above": 67.4
+      }
+    },
+    {
+      "date": "2025-10-22",
+      "ma_20": {
+        "count_above": 254,
+        "percentage_above": 50.8
+      },
+      "ma_50": {
+        "count_above": 260,
+        "percentage_above": 52.0
+      },
+      "ma_200": {
+        "count_above": 337,
+        "percentage_above": 67.4
+      }
+    },
+    {
+      "date": "2025-10-23",
+      "ma_20": {
+        "count_above": 287,
+        "percentage_above": 57.4
+      },
+      "ma_50": {
+        "count_above": 268,
+        "percentage_above": 53.6
+      },
+      "ma_200": {
+        "count_above": 341,
+        "percentage_above": 68.2
+      }
+    },
+    {
+      "date": "2025-10-24",
+      "ma_20": {
+        "count_above": 293,
+        "percentage_above": 58.6
+      },
+      "ma_50": {
+        "count_above": 271,
+        "percentage_above": 54.2
+      },
+      "ma_200": {
+        "count_above": 332,
+        "percentage_above": 66.4
+      }
+    },
+    {
+      "date": "2025-10-27",
+      "ma_20": {
+        "count_above": 318,
+        "percentage_above": 63.47
+      },
+      "ma_50": {
+        "count_above": 291,
+        "percentage_above": 58.08
+      },
+      "ma_200": {
+        "count_above": 332,
+        "percentage_above": 66.27
+      }
+    },
+    {
+      "date": "2025-10-28",
+      "ma_20": {
+        "count_above": 255,
+        "percentage_above": 50.9
+      },
+      "ma_50": {
+        "count_above": 247,
+        "percentage_above": 49.3
+      },
+      "ma_200": {
+        "count_above": 318,
+        "percentage_above": 63.47
+      }
+    },
+    {
+      "date": "2025-10-29",
+      "ma_20": {
+        "count_above": 190,
+        "percentage_above": 37.92
+      },
+      "ma_50": {
+        "count_above": 217,
+        "percentage_above": 43.31
+      },
+      "ma_200": {
+        "count_above": 288,
+        "percentage_above": 57.49
+      }
+    },
+    {
+      "date": "2025-10-30",
+      "ma_20": {
+        "count_above": 181,
+        "percentage_above": 36.13
+      },
+      "ma_50": {
+        "count_above": 214,
+        "percentage_above": 42.71
+      },
+      "ma_200": {
+        "count_above": 288,
+        "percentage_above": 57.49
+      }
+    },
+    {
+      "date": "2025-10-31",
+      "ma_20": {
+        "count_above": 205,
+        "percentage_above": 40.92
+      },
+      "ma_50": {
+        "count_above": 212,
+        "percentage_above": 42.32
+      },
+      "ma_200": {
+        "count_above": 289,
+        "percentage_above": 57.68
+      }
+    },
+    {
+      "date": "2025-11-03",
+      "ma_20": {
+        "count_above": 189,
+        "percentage_above": 37.72
+      },
+      "ma_50": {
+        "count_above": 202,
+        "percentage_above": 40.32
+      },
+      "ma_200": {
+        "count_above": 285,
+        "percentage_above": 56.89
+      }
+    },
+    {
+      "date": "2025-11-04",
+      "ma_20": {
+        "count_above": 177,
+        "percentage_above": 35.33
+      },
+      "ma_50": {
+        "count_above": 202,
+        "percentage_above": 40.32
+      },
+      "ma_200": {
+        "count_above": 288,
+        "percentage_above": 57.49
+      }
+    },
+    {
+      "date": "2025-11-05",
+      "ma_20": {
+        "count_above": 203,
+        "percentage_above": 40.52
+      },
+      "ma_50": {
+        "count_above": 208,
+        "percentage_above": 41.52
+      },
+      "ma_200": {
+        "count_above": 284,
+        "percentage_above": 56.69
+      }
+    },
+    {
+      "date": "2025-11-06",
+      "ma_20": {
+        "count_above": 194,
+        "percentage_above": 38.72
+      },
+      "ma_50": {
+        "count_above": 199,
+        "percentage_above": 39.72
+      },
+      "ma_200": {
+        "count_above": 273,
+        "percentage_above": 54.49
+      }
+    },
+    {
+      "date": "2025-11-07",
+      "ma_20": {
+        "count_above": 225,
+        "percentage_above": 44.91
+      },
+      "ma_50": {
+        "count_above": 226,
+        "percentage_above": 45.11
+      },
+      "ma_200": {
+        "count_above": 289,
+        "percentage_above": 57.68
+      }
+    },
+    {
+      "date": "2025-11-10",
+      "ma_20": {
+        "count_above": 250,
+        "percentage_above": 49.9
+      },
+      "ma_50": {
+        "count_above": 238,
+        "percentage_above": 47.5
+      },
+      "ma_200": {
+        "count_above": 291,
+        "percentage_above": 58.08
+      }
+    },
+    {
+      "date": "2025-11-11",
+      "ma_20": {
+        "count_above": 280,
+        "percentage_above": 55.89
+      },
+      "ma_50": {
+        "count_above": 256,
+        "percentage_above": 51.1
+      },
+      "ma_200": {
+        "count_above": 305,
+        "percentage_above": 60.88
+      }
+    },
+    {
+      "date": "2025-11-12",
+      "ma_20": {
+        "count_above": 285,
+        "percentage_above": 57.0
+      },
+      "ma_50": {
+        "count_above": 267,
+        "percentage_above": 53.4
+      },
+      "ma_200": {
+        "count_above": 304,
+        "percentage_above": 60.8
+      }
+    },
+    {
+      "date": "2025-11-13",
+      "ma_20": {
+        "count_above": 237,
+        "percentage_above": 47.31
+      },
+      "ma_50": {
+        "count_above": 229,
+        "percentage_above": 45.71
+      },
+      "ma_200": {
+        "count_above": 299,
+        "percentage_above": 59.68
+      }
+    },
+    {
+      "date": "2025-11-14",
+      "ma_20": {
+        "count_above": 214,
+        "percentage_above": 42.71
+      },
+      "ma_50": {
+        "count_above": 222,
+        "percentage_above": 44.31
+      },
+      "ma_200": {
+        "count_above": 299,
+        "percentage_above": 59.68
+      }
+    },
+    {
+      "date": "2025-11-17",
+      "ma_20": {
+        "count_above": 160,
+        "percentage_above": 31.94
+      },
+      "ma_50": {
+        "count_above": 189,
+        "percentage_above": 37.72
+      },
+      "ma_200": {
+        "count_above": 278,
+        "percentage_above": 55.49
+      }
+    },
+    {
+      "date": "2025-11-18",
+      "ma_20": {
+        "count_above": 165,
+        "percentage_above": 32.93
+      },
+      "ma_50": {
+        "count_above": 193,
+        "percentage_above": 38.52
+      },
+      "ma_200": {
+        "count_above": 282,
+        "percentage_above": 56.29
+      }
+    },
+    {
+      "date": "2025-11-19",
+      "ma_20": {
+        "count_above": 152,
+        "percentage_above": 30.34
+      },
+      "ma_50": {
+        "count_above": 183,
+        "percentage_above": 36.53
+      },
+      "ma_200": {
+        "count_above": 276,
+        "percentage_above": 55.09
+      }
+    },
+    {
+      "date": "2025-11-20",
+      "ma_20": {
+        "count_above": 141,
+        "percentage_above": 28.14
+      },
+      "ma_50": {
+        "count_above": 161,
+        "percentage_above": 32.14
+      },
+      "ma_200": {
+        "count_above": 261,
+        "percentage_above": 52.1
+      }
+    },
+    {
+      "date": "2025-11-21",
+      "ma_20": {
+        "count_above": 234,
+        "percentage_above": 46.71
+      },
+      "ma_50": {
+        "count_above": 207,
+        "percentage_above": 41.32
+      },
+      "ma_200": {
+        "count_above": 286,
+        "percentage_above": 57.09
+      }
+    },
+    {
+      "date": "2025-11-24",
+      "ma_20": {
+        "count_above": 244,
+        "percentage_above": 48.7
+      },
+      "ma_50": {
+        "count_above": 216,
+        "percentage_above": 43.11
+      },
+      "ma_200": {
+        "count_above": 286,
+        "percentage_above": 57.09
+      }
+    },
+    {
+      "date": "2025-11-25",
+      "ma_20": {
+        "count_above": 324,
+        "percentage_above": 64.67
+      },
+      "ma_50": {
+        "count_above": 267,
+        "percentage_above": 53.29
+      },
+      "ma_200": {
+        "count_above": 307,
+        "percentage_above": 61.28
+      }
+    },
+    {
+      "date": "2025-11-26",
+      "ma_20": {
+        "count_above": 358,
+        "percentage_above": 71.46
+      },
+      "ma_50": {
+        "count_above": 289,
+        "percentage_above": 57.68
+      },
+      "ma_200": {
+        "count_above": 309,
+        "percentage_above": 61.68
+      }
+    },
+    {
+      "date": "2025-11-28",
+      "ma_20": {
+        "count_above": 391,
+        "percentage_above": 78.04
+      },
+      "ma_50": {
+        "count_above": 307,
+        "percentage_above": 61.28
+      },
+      "ma_200": {
+        "count_above": 315,
+        "percentage_above": 62.87
+      }
+    },
+    {
+      "date": "2025-12-01",
+      "ma_20": {
+        "count_above": 342,
+        "percentage_above": 68.26
+      },
+      "ma_50": {
+        "count_above": 271,
+        "percentage_above": 54.09
+      },
+      "ma_200": {
+        "count_above": 308,
+        "percentage_above": 61.48
+      }
+    },
+    {
+      "date": "2025-12-02",
+      "ma_20": {
+        "count_above": 326,
+        "percentage_above": 65.07
+      },
+      "ma_50": {
+        "count_above": 265,
+        "percentage_above": 52.89
+      },
+      "ma_200": {
+        "count_above": 300,
+        "percentage_above": 59.88
+      }
+    },
+    {
+      "date": "2025-12-03",
+      "ma_20": {
+        "count_above": 343,
+        "percentage_above": 68.46
+      },
+      "ma_50": {
+        "count_above": 278,
+        "percentage_above": 55.49
+      },
+      "ma_200": {
+        "count_above": 314,
+        "percentage_above": 62.67
+      }
+    },
+    {
+      "date": "2025-12-04",
+      "ma_20": {
+        "count_above": 330,
+        "percentage_above": 65.87
+      },
+      "ma_50": {
+        "count_above": 287,
+        "percentage_above": 57.29
+      },
+      "ma_200": {
+        "count_above": 311,
+        "percentage_above": 62.08
+      }
+    },
+    {
+      "date": "2025-12-05",
+      "ma_20": {
+        "count_above": 315,
+        "percentage_above": 62.87
+      },
+      "ma_50": {
+        "count_above": 283,
+        "percentage_above": 56.49
+      },
+      "ma_200": {
+        "count_above": 320,
+        "percentage_above": 63.87
+      }
+    },
+    {
+      "date": "2025-12-08",
+      "ma_20": {
+        "count_above": 288,
+        "percentage_above": 57.49
+      },
+      "ma_50": {
+        "count_above": 256,
+        "percentage_above": 51.1
+      },
+      "ma_200": {
+        "count_above": 306,
+        "percentage_above": 61.08
+      }
+    },
+    {
+      "date": "2025-12-09",
+      "ma_20": {
+        "count_above": 264,
+        "percentage_above": 52.69
+      },
+      "ma_50": {
+        "count_above": 245,
+        "percentage_above": 48.9
+      },
+      "ma_200": {
+        "count_above": 299,
+        "percentage_above": 59.68
+      }
+    },
+    {
+      "date": "2025-12-10",
+      "ma_20": {
+        "count_above": 305,
+        "percentage_above": 60.88
+      },
+      "ma_50": {
+        "count_above": 279,
+        "percentage_above": 55.69
+      },
+      "ma_200": {
+        "count_above": 307,
+        "percentage_above": 61.28
+      }
+    },
+    {
+      "date": "2025-12-11",
+      "ma_20": {
+        "count_above": 353,
+        "percentage_above": 70.46
+      },
+      "ma_50": {
+        "count_above": 307,
+        "percentage_above": 61.28
+      },
+      "ma_200": {
+        "count_above": 324,
+        "percentage_above": 64.67
+      }
+    },
+    {
+      "date": "2025-12-12",
+      "ma_20": {
+        "count_above": 334,
+        "percentage_above": 66.67
+      },
+      "ma_50": {
+        "count_above": 298,
+        "percentage_above": 59.48
+      },
+      "ma_200": {
+        "count_above": 324,
+        "percentage_above": 64.67
+      }
+    },
+    {
+      "date": "2025-12-15",
+      "ma_20": {
+        "count_above": 339,
+        "percentage_above": 67.66
+      },
+      "ma_50": {
+        "count_above": 309,
+        "percentage_above": 61.68
+      },
+      "ma_200": {
+        "count_above": 324,
+        "percentage_above": 64.67
+      }
+    },
+    {
+      "date": "2025-12-16",
+      "ma_20": {
+        "count_above": 303,
+        "percentage_above": 60.48
+      },
+      "ma_50": {
+        "count_above": 289,
+        "percentage_above": 57.68
+      },
+      "ma_200": {
+        "count_above": 316,
+        "percentage_above": 63.07
+      }
+    },
+    {
+      "date": "2025-12-17",
+      "ma_20": {
+        "count_above": 289,
+        "percentage_above": 57.68
+      },
+      "ma_50": {
+        "count_above": 299,
+        "percentage_above": 59.68
+      },
+      "ma_200": {
+        "count_above": 316,
+        "percentage_above": 63.07
+      }
+    },
+    {
+      "date": "2025-12-18",
+      "ma_20": {
+        "count_above": 292,
+        "percentage_above": 58.28
+      },
+      "ma_50": {
+        "count_above": 291,
+        "percentage_above": 58.08
+      },
+      "ma_200": {
+        "count_above": 319,
+        "percentage_above": 63.67
+      }
+    },
+    {
+      "date": "2025-12-19",
+      "ma_20": {
+        "count_above": 284,
+        "percentage_above": 56.69
+      },
+      "ma_50": {
+        "count_above": 291,
+        "percentage_above": 58.08
+      },
+      "ma_200": {
+        "count_above": 311,
+        "percentage_above": 62.08
+      }
+    },
+    {
+      "date": "2025-12-22",
+      "ma_20": {
+        "count_above": 319,
+        "percentage_above": 63.67
+      },
+      "ma_50": {
+        "count_above": 312,
+        "percentage_above": 62.28
+      },
+      "ma_200": {
+        "count_above": 320,
+        "percentage_above": 63.87
+      }
+    },
+    {
+      "date": "2025-12-23",
+      "ma_20": {
+        "count_above": 307,
+        "percentage_above": 61.28
+      },
+      "ma_50": {
+        "count_above": 313,
+        "percentage_above": 62.48
+      },
+      "ma_200": {
+        "count_above": 315,
+        "percentage_above": 62.87
+      }
+    },
+    {
+      "date": "2025-12-24",
+      "ma_20": {
+        "count_above": 330,
+        "percentage_above": 65.87
+      },
+      "ma_50": {
+        "count_above": 315,
+        "percentage_above": 62.87
+      },
+      "ma_200": {
+        "count_above": 321,
+        "percentage_above": 64.07
+      }
+    },
+    {
+      "date": "2025-12-26",
+      "ma_20": {
+        "count_above": 331,
+        "percentage_above": 66.07
+      },
+      "ma_50": {
+        "count_above": 318,
+        "percentage_above": 63.47
+      },
+      "ma_200": {
+        "count_above": 321,
+        "percentage_above": 64.07
+      }
+    },
+    {
+      "date": "2025-12-29",
+      "ma_20": {
+        "count_above": 339,
+        "percentage_above": 67.66
+      },
+      "ma_50": {
+        "count_above": 327,
+        "percentage_above": 65.27
+      },
+      "ma_200": {
+        "count_above": 324,
+        "percentage_above": 64.67
+      }
+    },
+    {
+      "date": "2025-12-30",
+      "ma_20": {
+        "count_above": 321,
+        "percentage_above": 64.07
+      },
+      "ma_50": {
+        "count_above": 314,
+        "percentage_above": 62.67
+      },
+      "ma_200": {
+        "count_above": 324,
+        "percentage_above": 64.67
+      }
+    },
+    {
+      "date": "2025-12-31",
+      "ma_20": {
+        "count_above": 215,
+        "percentage_above": 42.91
+      },
+      "ma_50": {
+        "count_above": 286,
+        "percentage_above": 57.09
+      },
+      "ma_200": {
+        "count_above": 307,
+        "percentage_above": 61.28
+      }
+    },
+    {
+      "date": "2026-01-02",
+      "ma_20": {
+        "count_above": 289,
+        "percentage_above": 57.68
+      },
+      "ma_50": {
+        "count_above": 303,
+        "percentage_above": 60.48
+      },
+      "ma_200": {
+        "count_above": 310,
+        "percentage_above": 61.88
+      }
+    },
+    {
+      "date": "2026-01-05",
+      "ma_20": {
+        "count_above": 310,
+        "percentage_above": 61.88
+      },
+      "ma_50": {
+        "count_above": 317,
+        "percentage_above": 63.27
+      },
+      "ma_200": {
+        "count_above": 318,
+        "percentage_above": 63.47
+      }
+    },
+    {
+      "date": "2026-01-06",
+      "ma_20": {
+        "count_above": 360,
+        "percentage_above": 71.86
+      },
+      "ma_50": {
+        "count_above": 341,
+        "percentage_above": 68.06
+      },
+      "ma_200": {
+        "count_above": 330,
+        "percentage_above": 65.87
+      }
+    },
+    {
+      "date": "2026-01-07",
+      "ma_20": {
+        "count_above": 286,
+        "percentage_above": 57.09
+      },
+      "ma_50": {
+        "count_above": 316,
+        "percentage_above": 63.07
+      },
+      "ma_200": {
+        "count_above": 316,
+        "percentage_above": 63.07
+      }
+    },
+    {
+      "date": "2026-01-08",
+      "ma_20": {
+        "count_above": 345,
+        "percentage_above": 68.86
+      },
+      "ma_50": {
+        "count_above": 355,
+        "percentage_above": 70.86
+      },
+      "ma_200": {
+        "count_above": 333,
+        "percentage_above": 66.47
+      }
+    },
+    {
+      "date": "2026-01-09",
+      "ma_20": {
+        "count_above": 350,
+        "percentage_above": 69.86
+      },
+      "ma_50": {
+        "count_above": 361,
+        "percentage_above": 72.06
+      },
+      "ma_200": {
+        "count_above": 344,
+        "percentage_above": 68.66
+      }
+    },
+    {
+      "date": "2026-01-12",
+      "ma_20": {
+        "count_above": 336,
+        "percentage_above": 67.07
+      },
+      "ma_50": {
+        "count_above": 357,
+        "percentage_above": 71.26
+      },
+      "ma_200": {
+        "count_above": 341,
+        "percentage_above": 68.06
+      }
+    },
+    {
+      "date": "2026-01-13",
+      "ma_20": {
+        "count_above": 329,
+        "percentage_above": 65.67
+      },
+      "ma_50": {
+        "count_above": 343,
+        "percentage_above": 68.46
+      },
+      "ma_200": {
+        "count_above": 338,
+        "percentage_above": 67.47
+      }
+    },
+    {
+      "date": "2026-01-14",
+      "ma_20": {
+        "count_above": 343,
+        "percentage_above": 68.46
+      },
+      "ma_50": {
+        "count_above": 364,
+        "percentage_above": 72.65
+      },
+      "ma_200": {
+        "count_above": 351,
+        "percentage_above": 70.06
+      }
+    },
+    {
+      "date": "2026-01-15",
+      "ma_20": {
+        "count_above": 351,
+        "percentage_above": 70.06
+      },
+      "ma_50": {
+        "count_above": 368,
+        "percentage_above": 73.45
+      },
+      "ma_200": {
+        "count_above": 359,
+        "percentage_above": 71.66
+      }
+    },
+    {
+      "date": "2026-01-16",
+      "ma_20": {
+        "count_above": 334,
+        "percentage_above": 66.67
+      },
+      "ma_50": {
+        "count_above": 364,
+        "percentage_above": 72.65
+      },
+      "ma_200": {
+        "count_above": 352,
+        "percentage_above": 70.26
+      }
+    },
+    {
+      "date": "2026-01-20",
+      "ma_20": {
+        "count_above": 270,
+        "percentage_above": 53.89
+      },
+      "ma_50": {
+        "count_above": 323,
+        "percentage_above": 64.47
+      },
+      "ma_200": {
+        "count_above": 333,
+        "percentage_above": 66.47
+      }
+    },
+    {
+      "date": "2026-01-21",
+      "ma_20": {
+        "count_above": 312,
+        "percentage_above": 62.28
+      },
+      "ma_50": {
+        "count_above": 350,
+        "percentage_above": 69.86
+      },
+      "ma_200": {
+        "count_above": 352,
+        "percentage_above": 70.26
+      }
+    },
+    {
+      "date": "2026-01-22",
+      "ma_20": {
+        "count_above": 312,
+        "percentage_above": 62.28
+      },
+      "ma_50": {
+        "count_above": 348,
+        "percentage_above": 69.46
+      },
+      "ma_200": {
+        "count_above": 351,
+        "percentage_above": 70.06
+      }
+    },
+    {
+      "date": "2026-01-23",
+      "ma_20": {
+        "count_above": 290,
+        "percentage_above": 57.88
+      },
+      "ma_50": {
+        "count_above": 337,
+        "percentage_above": 67.27
+      },
+      "ma_200": {
+        "count_above": 350,
+        "percentage_above": 69.86
+      }
+    },
+    {
+      "date": "2026-01-26",
+      "ma_20": {
+        "count_above": 302,
+        "percentage_above": 60.28
+      },
+      "ma_50": {
+        "count_above": 351,
+        "percentage_above": 70.06
+      },
+      "ma_200": {
+        "count_above": 352,
+        "percentage_above": 70.26
+      }
+    },
+    {
+      "date": "2026-01-27",
+      "ma_20": {
+        "count_above": 290,
+        "percentage_above": 57.88
+      },
+      "ma_50": {
+        "count_above": 336,
+        "percentage_above": 67.07
+      },
+      "ma_200": {
+        "count_above": 344,
+        "percentage_above": 68.66
+      }
+    },
+    {
+      "date": "2026-01-28",
+      "ma_20": {
+        "count_above": 261,
+        "percentage_above": 52.1
+      },
+      "ma_50": {
+        "count_above": 313,
+        "percentage_above": 62.48
+      },
+      "ma_200": {
+        "count_above": 341,
+        "percentage_above": 68.06
+      }
+    },
+    {
+      "date": "2026-01-29",
+      "ma_20": {
+        "count_above": 275,
+        "percentage_above": 54.89
+      },
+      "ma_50": {
+        "count_above": 323,
+        "percentage_above": 64.47
+      },
+      "ma_200": {
+        "count_above": 342,
+        "percentage_above": 68.26
+      }
+    },
+    {
+      "date": "2026-01-30",
+      "ma_20": {
+        "count_above": 272,
+        "percentage_above": 54.29
+      },
+      "ma_50": {
+        "count_above": 336,
+        "percentage_above": 67.07
+      },
+      "ma_200": {
+        "count_above": 341,
+        "percentage_above": 68.06
+      }
+    },
+    {
+      "date": "2026-02-02",
+      "ma_20": {
+        "count_above": 283,
+        "percentage_above": 56.49
+      },
+      "ma_50": {
+        "count_above": 336,
+        "percentage_above": 67.07
+      },
+      "ma_200": {
+        "count_above": 334,
+        "percentage_above": 66.67
+      }
+    },
+    {
+      "date": "2026-02-03",
+      "ma_20": {
+        "count_above": 283,
+        "percentage_above": 56.49
+      },
+      "ma_50": {
+        "count_above": 318,
+        "percentage_above": 63.47
+      },
+      "ma_200": {
+        "count_above": 329,
+        "percentage_above": 65.67
+      }
+    },
+    {
+      "date": "2026-02-04",
+      "ma_20": {
+        "count_above": 312,
+        "percentage_above": 62.28
+      },
+      "ma_50": {
+        "count_above": 341,
+        "percentage_above": 68.06
+      },
+      "ma_200": {
+        "count_above": 348,
+        "percentage_above": 69.46
+      }
+    },
+    {
+      "date": "2026-02-05",
+      "ma_20": {
+        "count_above": 291,
+        "percentage_above": 58.08
+      },
+      "ma_50": {
+        "count_above": 327,
+        "percentage_above": 65.27
+      },
+      "ma_200": {
+        "count_above": 340,
+        "percentage_above": 67.86
+      }
+    },
+    {
+      "date": "2026-02-06",
+      "ma_20": {
+        "count_above": 337,
+        "percentage_above": 67.27
+      },
+      "ma_50": {
+        "count_above": 346,
+        "percentage_above": 69.06
+      },
+      "ma_200": {
+        "count_above": 347,
+        "percentage_above": 69.26
+      }
+    },
+    {
+      "date": "2026-02-09",
+      "ma_20": {
+        "count_above": 326,
+        "percentage_above": 65.07
+      },
+      "ma_50": {
+        "count_above": 342,
+        "percentage_above": 68.26
+      },
+      "ma_200": {
+        "count_above": 348,
+        "percentage_above": 69.46
+      }
+    },
+    {
+      "date": "2026-02-10",
+      "ma_20": {
+        "count_above": 337,
+        "percentage_above": 67.27
+      },
+      "ma_50": {
+        "count_above": 344,
+        "percentage_above": 68.66
+      },
+      "ma_200": {
+        "count_above": 349,
+        "percentage_above": 69.66
+      }
+    },
+    {
+      "date": "2026-02-11",
+      "ma_20": {
+        "count_above": 337,
+        "percentage_above": 67.27
+      },
+      "ma_50": {
+        "count_above": 336,
+        "percentage_above": 67.07
+      },
+      "ma_200": {
+        "count_above": 350,
+        "percentage_above": 69.86
+      }
+    },
+    {
+      "date": "2026-02-12",
+      "ma_20": {
+        "count_above": 292,
+        "percentage_above": 58.28
+      },
+      "ma_50": {
+        "count_above": 310,
+        "percentage_above": 61.88
+      },
+      "ma_200": {
+        "count_above": 335,
+        "percentage_above": 66.87
+      }
+    },
+    {
+      "date": "2026-02-13",
+      "ma_20": {
+        "count_above": 309,
+        "percentage_above": 61.68
+      },
+      "ma_50": {
+        "count_above": 318,
+        "percentage_above": 63.47
+      },
+      "ma_200": {
+        "count_above": 339,
+        "percentage_above": 67.66
+      }
+    },
+    {
+      "date": "2026-02-17",
+      "ma_20": {
+        "count_above": 308,
+        "percentage_above": 61.48
+      },
+      "ma_50": {
+        "count_above": 326,
+        "percentage_above": 65.07
+      },
+      "ma_200": {
+        "count_above": 333,
+        "percentage_above": 66.47
+      }
+    },
+    {
+      "date": "2026-02-18",
+      "ma_20": {
+        "count_above": 334,
+        "percentage_above": 66.67
+      },
+      "ma_50": {
+        "count_above": 335,
+        "percentage_above": 66.87
+      },
+      "ma_200": {
+        "count_above": 344,
+        "percentage_above": 68.66
+      }
+    },
+    {
+      "date": "2026-02-19",
+      "ma_20": {
+        "count_above": 308,
+        "percentage_above": 61.48
+      },
+      "ma_50": {
+        "count_above": 323,
+        "percentage_above": 64.47
+      },
+      "ma_200": {
+        "count_above": 337,
+        "percentage_above": 67.27
+      }
+    },
+    {
+      "date": "2026-02-20",
+      "ma_20": {
+        "count_above": 316,
+        "percentage_above": 63.07
+      },
+      "ma_50": {
+        "count_above": 332,
+        "percentage_above": 66.27
+      },
+      "ma_200": {
+        "count_above": 341,
+        "percentage_above": 68.06
+      }
+    },
+    {
+      "date": "2026-02-23",
+      "ma_20": {
+        "count_above": 283,
+        "percentage_above": 56.49
+      },
+      "ma_50": {
+        "count_above": 310,
+        "percentage_above": 61.88
+      },
+      "ma_200": {
+        "count_above": 333,
+        "percentage_above": 66.47
+      }
+    },
+    {
+      "date": "2026-02-24",
+      "ma_20": {
+        "count_above": 293,
+        "percentage_above": 58.48
+      },
+      "ma_50": {
+        "count_above": 314,
+        "percentage_above": 62.67
+      },
+      "ma_200": {
+        "count_above": 336,
+        "percentage_above": 67.07
+      }
+    },
+    {
+      "date": "2026-02-25",
+      "ma_20": {
+        "count_above": 292,
+        "percentage_above": 58.28
+      },
+      "ma_50": {
+        "count_above": 316,
+        "percentage_above": 63.07
+      },
+      "ma_200": {
+        "count_above": 331,
+        "percentage_above": 66.07
+      }
+    },
+    {
+      "date": "2026-02-26",
+      "ma_20": {
+        "count_above": 323,
+        "percentage_above": 64.47
+      },
+      "ma_50": {
+        "count_above": 331,
+        "percentage_above": 66.07
+      },
+      "ma_200": {
+        "count_above": 340,
+        "percentage_above": 67.86
+      }
+    },
+    {
+      "date": "2026-02-27",
+      "ma_20": {
+        "count_above": 308,
+        "percentage_above": 61.48
+      },
+      "ma_50": {
+        "count_above": 317,
+        "percentage_above": 63.27
+      },
+      "ma_200": {
+        "count_above": 342,
+        "percentage_above": 68.26
+      }
+    },
+    {
+      "date": "2026-03-02",
+      "ma_20": {
+        "count_above": 294,
+        "percentage_above": 58.68
+      },
+      "ma_50": {
+        "count_above": 311,
+        "percentage_above": 62.08
+      },
+      "ma_200": {
+        "count_above": 341,
+        "percentage_above": 68.06
+      }
+    },
+    {
+      "date": "2026-03-03",
+      "ma_20": {
+        "count_above": 236,
+        "percentage_above": 47.11
+      },
+      "ma_50": {
+        "count_above": 286,
+        "percentage_above": 57.09
+      },
+      "ma_200": {
+        "count_above": 319,
+        "percentage_above": 63.67
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "ma_20": {
+        "count_above": 247,
+        "percentage_above": 49.3
+      },
+      "ma_50": {
+        "count_above": 294,
+        "percentage_above": 58.68
+      },
+      "ma_200": {
+        "count_above": 317,
+        "percentage_above": 63.27
+      }
+    },
+    {
+      "date": "2026-03-05",
+      "ma_20": {
+        "count_above": 206,
+        "percentage_above": 41.12
+      },
+      "ma_50": {
+        "count_above": 260,
+        "percentage_above": 51.9
+      },
+      "ma_200": {
+        "count_above": 305,
+        "percentage_above": 60.88
+      }
+    },
+    {
+      "date": "2026-03-06",
+      "ma_20": {
+        "count_above": 176,
+        "percentage_above": 35.13
+      },
+      "ma_50": {
+        "count_above": 226,
+        "percentage_above": 45.11
+      },
+      "ma_200": {
+        "count_above": 289,
+        "percentage_above": 57.68
+      }
+    },
+    {
+      "date": "2026-03-09",
+      "ma_20": {
+        "count_above": 173,
+        "percentage_above": 34.53
+      },
+      "ma_50": {
+        "count_above": 224,
+        "percentage_above": 44.71
+      },
+      "ma_200": {
+        "count_above": 291,
+        "percentage_above": 58.08
+      }
+    },
+    {
+      "date": "2026-03-10",
+      "ma_20": {
+        "count_above": 147,
+        "percentage_above": 29.34
+      },
+      "ma_50": {
+        "count_above": 209,
+        "percentage_above": 41.72
+      },
+      "ma_200": {
+        "count_above": 278,
+        "percentage_above": 55.49
+      }
+    },
+    {
+      "date": "2026-03-11",
+      "ma_20": {
+        "count_above": 138,
+        "percentage_above": 27.54
+      },
+      "ma_50": {
+        "count_above": 198,
+        "percentage_above": 39.52
+      },
+      "ma_200": {
+        "count_above": 273,
+        "percentage_above": 54.49
+      }
+    },
+    {
+      "date": "2026-03-12",
+      "ma_20": {
+        "count_above": 105,
+        "percentage_above": 20.96
+      },
+      "ma_50": {
+        "count_above": 163,
+        "percentage_above": 32.53
+      },
+      "ma_200": {
+        "count_above": 257,
+        "percentage_above": 51.3
+      }
+    },
+    {
+      "date": "2026-03-13",
+      "ma_20": {
+        "count_above": 113,
+        "percentage_above": 22.55
+      },
+      "ma_50": {
+        "count_above": 164,
+        "percentage_above": 32.73
+      },
+      "ma_200": {
+        "count_above": 254,
+        "percentage_above": 50.7
+      }
+    },
+    {
+      "date": "2026-03-16",
+      "ma_20": {
+        "count_above": 132,
+        "percentage_above": 26.35
+      },
+      "ma_50": {
+        "count_above": 173,
+        "percentage_above": 34.53
+      },
+      "ma_200": {
+        "count_above": 262,
+        "percentage_above": 52.3
+      }
+    },
+    {
+      "date": "2026-03-17",
+      "ma_20": {
+        "count_above": 144,
+        "percentage_above": 28.74
+      },
+      "ma_50": {
+        "count_above": 179,
+        "percentage_above": 35.73
+      },
+      "ma_200": {
+        "count_above": 261,
+        "percentage_above": 52.1
+      }
+    },
+    {
+      "date": "2026-03-18",
+      "ma_20": {
+        "count_above": 95,
+        "percentage_above": 18.96
+      },
+      "ma_50": {
+        "count_above": 150,
+        "percentage_above": 29.94
+      },
+      "ma_200": {
+        "count_above": 248,
+        "percentage_above": 49.5
+      }
+    },
+    {
+      "date": "2026-03-19",
+      "ma_20": {
+        "count_above": 99,
+        "percentage_above": 19.76
+      },
+      "ma_50": {
+        "count_above": 144,
+        "percentage_above": 28.74
+      },
+      "ma_200": {
+        "count_above": 246,
+        "percentage_above": 49.1
+      }
+    },
+    {
+      "date": "2026-03-20",
+      "ma_20": {
+        "count_above": 63,
+        "percentage_above": 12.57
+      },
+      "ma_50": {
+        "count_above": 104,
+        "percentage_above": 20.76
+      },
+      "ma_200": {
+        "count_above": 231,
+        "percentage_above": 46.11
+      }
+    },
+    {
+      "date": "2026-03-23",
+      "ma_20": {
+        "count_above": 85,
+        "percentage_above": 16.97
+      },
+      "ma_50": {
+        "count_above": 125,
+        "percentage_above": 24.95
+      },
+      "ma_200": {
+        "count_above": 246,
+        "percentage_above": 49.1
+      }
+    },
+    {
+      "date": "2026-03-24",
+      "ma_20": {
+        "count_above": 101,
+        "percentage_above": 20.16
+      },
+      "ma_50": {
+        "count_above": 128,
+        "percentage_above": 25.55
+      },
+      "ma_200": {
+        "count_above": 247,
+        "percentage_above": 49.3
+      }
+    },
+    {
+      "date": "2026-03-25",
+      "ma_20": {
+        "count_above": 122,
+        "percentage_above": 24.35
+      },
+      "ma_50": {
+        "count_above": 140,
+        "percentage_above": 27.94
+      },
+      "ma_200": {
+        "count_above": 247,
+        "percentage_above": 49.3
+      }
+    },
+    {
+      "date": "2026-03-26",
+      "ma_20": {
+        "count_above": 97,
+        "percentage_above": 19.36
+      },
+      "ma_50": {
+        "count_above": 115,
+        "percentage_above": 22.95
+      },
+      "ma_200": {
+        "count_above": 241,
+        "percentage_above": 48.1
+      }
+    },
+    {
+      "date": "2026-03-27",
+      "ma_20": {
+        "count_above": 70,
+        "percentage_above": 13.97
+      },
+      "ma_50": {
+        "count_above": 101,
+        "percentage_above": 20.16
+      },
+      "ma_200": {
+        "count_above": 222,
+        "percentage_above": 44.31
+      }
+    },
+    {
+      "date": "2026-03-30",
+      "ma_20": {
+        "count_above": 90,
+        "percentage_above": 17.96
+      },
+      "ma_50": {
+        "count_above": 101,
+        "percentage_above": 20.16
+      },
+      "ma_200": {
+        "count_above": 226,
+        "percentage_above": 45.11
+      }
+    },
+    {
+      "date": "2026-03-31",
+      "ma_20": {
+        "count_above": 186,
+        "percentage_above": 37.13
+      },
+      "ma_50": {
+        "count_above": 124,
+        "percentage_above": 24.75
+      },
+      "ma_200": {
+        "count_above": 246,
+        "percentage_above": 49.1
+      }
+    },
+    {
+      "date": "2026-04-01",
+      "ma_20": {
+        "count_above": 232,
+        "percentage_above": 46.31
+      },
+      "ma_50": {
+        "count_above": 139,
+        "percentage_above": 27.74
+      },
+      "ma_200": {
+        "count_above": 248,
+        "percentage_above": 49.5
+      }
+    },
+    {
+      "date": "2026-04-02",
+      "ma_20": {
+        "count_above": 268,
+        "percentage_above": 53.49
+      },
+      "ma_50": {
+        "count_above": 154,
+        "percentage_above": 30.74
+      },
+      "ma_200": {
+        "count_above": 249,
+        "percentage_above": 49.7
+      }
+    },
+    {
+      "date": "2026-04-06",
+      "ma_20": {
+        "count_above": 298,
+        "percentage_above": 59.48
+      },
+      "ma_50": {
+        "count_above": 171,
+        "percentage_above": 34.13
+      },
+      "ma_200": {
+        "count_above": 248,
+        "percentage_above": 49.5
+      }
+    },
+    {
+      "date": "2026-04-07",
+      "ma_20": {
+        "count_above": 274,
+        "percentage_above": 54.69
+      },
+      "ma_50": {
+        "count_above": 154,
+        "percentage_above": 30.74
+      },
+      "ma_200": {
+        "count_above": 251,
+        "percentage_above": 50.1
+      }
+    },
+    {
+      "date": "2026-04-08",
+      "ma_20": {
+        "count_above": 381,
+        "percentage_above": 76.05
+      },
+      "ma_50": {
+        "count_above": 249,
+        "percentage_above": 49.7
+      },
+      "ma_200": {
+        "count_above": 281,
+        "percentage_above": 56.09
+      }
+    },
+    {
+      "date": "2026-04-09",
+      "ma_20": {
+        "count_above": 373,
+        "percentage_above": 74.45
+      },
+      "ma_50": {
+        "count_above": 254,
+        "percentage_above": 50.7
+      },
+      "ma_200": {
+        "count_above": 288,
+        "percentage_above": 57.49
+      }
+    },
+    {
+      "date": "2026-04-10",
+      "ma_20": {
+        "count_above": 335,
+        "percentage_above": 66.87
+      },
+      "ma_50": {
+        "count_above": 226,
+        "percentage_above": 45.11
+      },
+      "ma_200": {
+        "count_above": 272,
+        "percentage_above": 54.29
+      }
+    },
+    {
+      "date": "2026-04-13",
+      "ma_20": {
+        "count_above": 363,
+        "percentage_above": 72.46
+      },
+      "ma_50": {
+        "count_above": 256,
+        "percentage_above": 51.1
+      },
+      "ma_200": {
+        "count_above": 287,
+        "percentage_above": 57.29
+      }
+    },
+    {
+      "date": "2026-04-14",
+      "ma_20": {
+        "count_above": 371,
+        "percentage_above": 74.05
+      },
+      "ma_50": {
+        "count_above": 273,
+        "percentage_above": 54.49
+      },
+      "ma_200": {
+        "count_above": 291,
+        "percentage_above": 58.08
+      }
+    },
+    {
+      "date": "2026-04-15",
+      "ma_20": {
+        "count_above": 367,
+        "percentage_above": 73.25
+      },
+      "ma_50": {
+        "count_above": 264,
+        "percentage_above": 52.69
+      },
+      "ma_200": {
+        "count_above": 284,
+        "percentage_above": 56.69
+      }
+    },
+    {
+      "date": "2026-04-16",
+      "ma_20": {
+        "count_above": 379,
+        "percentage_above": 75.65
+      },
+      "ma_50": {
+        "count_above": 269,
+        "percentage_above": 53.69
+      },
+      "ma_200": {
+        "count_above": 285,
+        "percentage_above": 56.89
+      }
+    },
+    {
+      "date": "2026-04-17",
+      "ma_20": {
+        "count_above": 403,
+        "percentage_above": 80.44
+      },
+      "ma_50": {
+        "count_above": 308,
+        "percentage_above": 61.48
+      },
+      "ma_200": {
+        "count_above": 311,
+        "percentage_above": 62.08
+      }
+    },
+    {
+      "date": "2026-04-20",
+      "ma_20": {
+        "count_above": 392,
+        "percentage_above": 78.24
+      },
+      "ma_50": {
+        "count_above": 314,
+        "percentage_above": 62.67
+      },
+      "ma_200": {
+        "count_above": 306,
+        "percentage_above": 61.08
+      }
+    },
+    {
+      "date": "2026-04-21",
+      "ma_20": {
+        "count_above": 350,
+        "percentage_above": 69.86
+      },
+      "ma_50": {
+        "count_above": 292,
+        "percentage_above": 58.28
+      },
+      "ma_200": {
+        "count_above": 293,
+        "percentage_above": 58.48
+      }
+    },
+    {
+      "date": "2026-04-22",
+      "ma_20": {
+        "count_above": 331,
+        "percentage_above": 66.07
+      },
+      "ma_50": {
+        "count_above": 278,
+        "percentage_above": 55.49
+      },
+      "ma_200": {
+        "count_above": 294,
+        "percentage_above": 58.68
+      }
+    },
+    {
+      "date": "2026-04-23",
+      "ma_20": {
+        "count_above": 333,
+        "percentage_above": 66.47
+      },
+      "ma_50": {
+        "count_above": 280,
+        "percentage_above": 55.89
+      },
+      "ma_200": {
+        "count_above": 295,
+        "percentage_above": 58.88
+      }
+    },
+    {
+      "date": "2026-04-24",
+      "ma_20": {
+        "count_above": 302,
+        "percentage_above": 60.28
+      },
+      "ma_50": {
+        "count_above": 267,
+        "percentage_above": 53.29
+      },
+      "ma_200": {
+        "count_above": 288,
+        "percentage_above": 57.49
+      }
+    },
+    {
+      "date": "2026-04-27",
+      "ma_20": {
+        "count_above": 285,
+        "percentage_above": 56.89
+      },
+      "ma_50": {
+        "count_above": 261,
+        "percentage_above": 52.1
+      },
+      "ma_200": {
+        "count_above": 287,
+        "percentage_above": 57.29
+      }
+    },
+    {
+      "date": "2026-04-28",
+      "ma_20": {
+        "count_above": 284,
+        "percentage_above": 56.69
+      },
+      "ma_50": {
+        "count_above": 265,
+        "percentage_above": 52.89
+      },
+      "ma_200": {
+        "count_above": 289,
+        "percentage_above": 57.68
+      }
+    },
+    {
+      "date": "2026-04-29",
+      "ma_20": {
+        "count_above": 246,
+        "percentage_above": 49.1
+      },
+      "ma_50": {
+        "count_above": 252,
+        "percentage_above": 50.3
+      },
+      "ma_200": {
+        "count_above": 283,
+        "percentage_above": 56.49
+      }
+    },
+    {
+      "date": "2026-04-30",
+      "ma_20": {
+        "count_above": 298,
+        "percentage_above": 59.48
+      },
+      "ma_50": {
+        "count_above": 283,
+        "percentage_above": 56.49
+      },
+      "ma_200": {
+        "count_above": 293,
+        "percentage_above": 58.48
+      }
+    },
+    {
+      "date": "2026-05-01",
+      "ma_20": {
+        "count_above": 285,
+        "percentage_above": 56.89
+      },
+      "ma_50": {
+        "count_above": 278,
+        "percentage_above": 55.49
+      },
+      "ma_200": {
+        "count_above": 292,
+        "percentage_above": 58.28
+      }
+    },
+    {
+      "date": "2026-05-04",
+      "ma_20": {
+        "count_above": 232,
+        "percentage_above": 46.31
+      },
+      "ma_50": {
+        "count_above": 263,
+        "percentage_above": 52.5
+      },
+      "ma_200": {
+        "count_above": 278,
+        "percentage_above": 55.49
+      }
+    },
+    {
+      "date": "2026-05-05",
+      "ma_20": {
+        "count_above": 244,
+        "percentage_above": 48.7
+      },
+      "ma_50": {
+        "count_above": 271,
+        "percentage_above": 54.09
+      },
+      "ma_200": {
+        "count_above": 281,
+        "percentage_above": 56.09
+      }
+    },
+    {
+      "date": "2026-05-06",
+      "ma_20": {
+        "count_above": 264,
+        "percentage_above": 52.69
+      },
+      "ma_50": {
+        "count_above": 284,
+        "percentage_above": 56.69
+      },
+      "ma_200": {
+        "count_above": 291,
+        "percentage_above": 58.08
+      }
+    },
+    {
+      "date": "2026-05-07",
+      "ma_20": {
+        "count_above": 226,
+        "percentage_above": 45.11
+      },
+      "ma_50": {
+        "count_above": 272,
+        "percentage_above": 54.29
+      },
+      "ma_200": {
+        "count_above": 287,
+        "percentage_above": 57.29
+      }
+    },
+    {
+      "date": "2026-05-08",
+      "ma_20": {
+        "count_above": 214,
+        "percentage_above": 42.71
+      },
+      "ma_50": {
+        "count_above": 264,
+        "percentage_above": 52.69
+      },
+      "ma_200": {
+        "count_above": 281,
+        "percentage_above": 56.09
+      }
+    },
+    {
+      "date": "2026-05-11",
+      "ma_20": {
+        "count_above": 214,
+        "percentage_above": 42.71
+      },
+      "ma_50": {
+        "count_above": 255,
+        "percentage_above": 50.9
+      },
+      "ma_200": {
+        "count_above": 277,
+        "percentage_above": 55.29
+      }
+    },
+    {
+      "date": "2026-05-12",
+      "ma_20": {
+        "count_above": 224,
+        "percentage_above": 44.71
+      },
+      "ma_50": {
+        "count_above": 260,
+        "percentage_above": 51.9
+      },
+      "ma_200": {
+        "count_above": 280,
+        "percentage_above": 55.89
+      }
+    },
+    {
+      "date": "2026-05-13",
+      "ma_20": {
+        "count_above": 211,
+        "percentage_above": 42.12
+      },
+      "ma_50": {
+        "count_above": 234,
+        "percentage_above": 46.71
+      },
+      "ma_200": {
+        "count_above": 275,
+        "percentage_above": 54.89
+      }
+    },
+    {
+      "date": "2026-05-14",
+      "ma_20": {
+        "count_above": 209,
+        "percentage_above": 41.72
+      },
+      "ma_50": {
+        "count_above": 239,
+        "percentage_above": 47.7
+      },
+      "ma_200": {
+        "count_above": 278,
+        "percentage_above": 55.49
+      }
+    },
+    {
+      "date": "2026-05-15",
+      "ma_20": {
+        "count_above": 181,
+        "percentage_above": 36.13
+      },
+      "ma_50": {
+        "count_above": 228,
+        "percentage_above": 45.51
+      },
+      "ma_200": {
+        "count_above": 264,
+        "percentage_above": 52.69
+      }
+    },
+    {
+      "date": "2026-05-18",
+      "ma_20": {
+        "count_above": 226,
+        "percentage_above": 45.11
+      },
+      "ma_50": {
+        "count_above": 261,
+        "percentage_above": 52.1
+      },
+      "ma_200": {
+        "count_above": 283,
+        "percentage_above": 56.49
+      }
+    },
+    {
+      "date": "2026-05-19",
+      "ma_20": {
+        "count_above": 201,
+        "percentage_above": 40.12
+      },
+      "ma_50": {
+        "count_above": 241,
+        "percentage_above": 48.1
+      },
+      "ma_200": {
+        "count_above": 273,
+        "percentage_above": 54.49
+      }
+    },
+    {
+      "date": "2026-05-20",
+      "ma_20": {
+        "count_above": 242,
+        "percentage_above": 48.3
+      },
+      "ma_50": {
+        "count_above": 270,
+        "percentage_above": 53.89
+      },
+      "ma_200": {
+        "count_above": 285,
+        "percentage_above": 56.89
+      }
+    },
+    {
+      "date": "2026-05-21",
+      "ma_20": {
+        "count_above": 263,
+        "percentage_above": 52.5
+      },
+      "ma_50": {
+        "count_above": 279,
+        "percentage_above": 55.69
+      },
+      "ma_200": {
+        "count_above": 289,
+        "percentage_above": 57.68
+      }
+    },
+    {
+      "date": "2026-05-22",
+      "ma_20": {
+        "count_above": 300,
+        "percentage_above": 59.88
+      },
+      "ma_50": {
+        "count_above": 293,
+        "percentage_above": 58.48
+      },
+      "ma_200": {
+        "count_above": 298,
+        "percentage_above": 59.48
+      }
+    },
+    {
+      "date": "2026-05-26",
+      "ma_20": {
+        "count_above": 308,
+        "percentage_above": 61.48
+      },
+      "ma_50": {
+        "count_above": 285,
+        "percentage_above": 56.89
+      },
+      "ma_200": {
+        "count_above": 299,
+        "percentage_above": 59.68
+      }
+    },
+    {
+      "date": "2026-05-27",
+      "ma_20": {
+        "count_above": 283,
+        "percentage_above": 56.37
+      },
+      "ma_50": {
+        "count_above": 284,
+        "percentage_above": 56.57
+      },
+      "ma_200": {
+        "count_above": 295,
+        "percentage_above": 58.76
+      }
+    },
+    {
+      "date": "2026-05-28",
+      "ma_20": {
+        "count_above": 279,
+        "percentage_above": 55.58
+      },
+      "ma_50": {
+        "count_above": 287,
+        "percentage_above": 57.17
+      },
+      "ma_200": {
+        "count_above": 301,
+        "percentage_above": 59.96
+      }
+    },
+    {
+      "date": "2026-05-29",
+      "ma_20": {
+        "count_above": 254,
+        "percentage_above": 50.6
+      },
+      "ma_50": {
+        "count_above": 276,
+        "percentage_above": 54.98
+      },
+      "ma_200": {
+        "count_above": 297,
+        "percentage_above": 59.16
+      }
+    },
+    {
+      "date": "2026-06-01",
+      "ma_20": {
+        "count_above": 240,
+        "percentage_above": 47.81
+      },
+      "ma_50": {
+        "count_above": 266,
+        "percentage_above": 52.99
+      },
+      "ma_200": {
+        "count_above": 278,
+        "percentage_above": 55.38
+      }
+    },
+    {
+      "date": "2026-06-02",
+      "ma_20": {
+        "count_above": 263,
+        "percentage_above": 52.39
+      },
+      "ma_50": {
+        "count_above": 265,
+        "percentage_above": 52.79
+      },
+      "ma_200": {
+        "count_above": 281,
+        "percentage_above": 55.98
+      }
+    },
+    {
+      "date": "2026-06-03",
+      "ma_20": {
+        "count_above": 253,
+        "percentage_above": 50.4
+      },
+      "ma_50": {
+        "count_above": 254,
+        "percentage_above": 50.6
+      },
+      "ma_200": {
+        "count_above": 281,
+        "percentage_above": 55.98
+      }
+    },
+    {
+      "date": "2026-06-04",
+      "ma_20": {
+        "count_above": 312,
+        "percentage_above": 62.15
+      },
+      "ma_50": {
+        "count_above": 282,
+        "percentage_above": 56.18
+      },
+      "ma_200": {
+        "count_above": 295,
+        "percentage_above": 58.76
+      }
+    },
+    {
+      "date": "2026-06-05",
+      "ma_20": {
+        "count_above": 308,
+        "percentage_above": 61.35
+      },
+      "ma_50": {
+        "count_above": 276,
+        "percentage_above": 54.98
+      },
+      "ma_200": {
+        "count_above": 298,
+        "percentage_above": 59.36
+      }
+    },
+    {
+      "date": "2026-06-08",
+      "ma_20": {
+        "count_above": 277,
+        "percentage_above": 55.18
+      },
+      "ma_50": {
+        "count_above": 266,
+        "percentage_above": 52.99
+      },
+      "ma_200": {
+        "count_above": 291,
+        "percentage_above": 57.97
+      }
+    },
+    {
+      "date": "2026-06-09",
+      "ma_20": {
+        "count_above": 325,
+        "percentage_above": 64.74
+      },
+      "ma_50": {
+        "count_above": 294,
+        "percentage_above": 58.57
+      },
+      "ma_200": {
+        "count_above": 306,
+        "percentage_above": 60.96
+      }
+    },
+    {
+      "date": "2026-06-10",
+      "ma_20": {
+        "count_above": 282,
+        "percentage_above": 56.18
+      },
+      "ma_50": {
+        "count_above": 259,
+        "percentage_above": 51.59
+      },
+      "ma_200": {
+        "count_above": 298,
+        "percentage_above": 59.36
+      }
+    },
+    {
+      "date": "2026-06-11",
+      "ma_20": {
+        "count_above": 324,
+        "percentage_above": 64.54
+      },
+      "ma_50": {
+        "count_above": 285,
+        "percentage_above": 56.77
+      },
+      "ma_200": {
+        "count_above": 306,
+        "percentage_above": 60.96
+      }
+    },
+    {
+      "date": "2026-06-12",
+      "ma_20": {
+        "count_above": 356,
+        "percentage_above": 70.92
+      },
+      "ma_50": {
+        "count_above": 307,
+        "percentage_above": 61.16
+      },
+      "ma_200": {
+        "count_above": 309,
+        "percentage_above": 61.55
+      }
+    },
+    {
+      "date": "2026-06-15",
+      "ma_20": {
+        "count_above": 352,
+        "percentage_above": 69.98
+      },
+      "ma_50": {
+        "count_above": 321,
+        "percentage_above": 63.82
+      },
+      "ma_200": {
+        "count_above": 314,
+        "percentage_above": 62.43
+      }
+    },
+    {
+      "date": "2026-06-16",
+      "ma_20": {
+        "count_above": 343,
+        "percentage_above": 68.19
+      },
+      "ma_50": {
+        "count_above": 330,
+        "percentage_above": 65.61
+      },
+      "ma_200": {
+        "count_above": 321,
+        "percentage_above": 63.82
+      }
+    },
+    {
+      "date": "2026-06-17",
+      "ma_20": {
+        "count_above": 260,
+        "percentage_above": 51.69
+      },
+      "ma_50": {
+        "count_above": 276,
+        "percentage_above": 54.87
+      },
+      "ma_200": {
+        "count_above": 308,
+        "percentage_above": 61.23
+      }
+    },
+    {
+      "date": "2026-06-18",
+      "ma_20": {
+        "count_above": 258,
+        "percentage_above": 51.29
+      },
+      "ma_50": {
+        "count_above": 282,
+        "percentage_above": 56.06
+      },
+      "ma_200": {
+        "count_above": 307,
+        "percentage_above": 61.03
+      }
+    },
+    {
+      "date": "2026-06-22",
+      "ma_20": {
+        "count_above": 262,
+        "percentage_above": 52.09
+      },
+      "ma_50": {
+        "count_above": 279,
+        "percentage_above": 55.47
+      },
+      "ma_200": {
+        "count_above": 302,
+        "percentage_above": 60.04
+      }
+    },
+    {
+      "date": "2026-06-23",
+      "ma_20": {
+        "count_above": 272,
+        "percentage_above": 54.08
+      },
+      "ma_50": {
+        "count_above": 300,
+        "percentage_above": 59.64
+      },
+      "ma_200": {
+        "count_above": 309,
+        "percentage_above": 61.43
+      }
+    },
+    {
+      "date": "2026-06-24",
+      "ma_20": {
+        "count_above": 300,
+        "percentage_above": 59.64
+      },
+      "ma_50": {
+        "count_above": 319,
+        "percentage_above": 63.42
+      },
+      "ma_200": {
+        "count_above": 318,
+        "percentage_above": 63.22
+      }
+    },
+    {
+      "date": "2026-06-25",
+      "ma_20": {
+        "count_above": 305,
+        "percentage_above": 60.64
+      },
+      "ma_50": {
+        "count_above": 318,
+        "percentage_above": 63.22
+      },
+      "ma_200": {
+        "count_above": 314,
+        "percentage_above": 62.43
+      }
+    },
+    {
+      "date": "2026-06-26",
+      "ma_20": {
+        "count_above": 315,
+        "percentage_above": 62.62
+      },
+      "ma_50": {
+        "count_above": 321,
+        "percentage_above": 63.82
+      },
+      "ma_200": {
+        "count_above": 325,
+        "percentage_above": 64.61
+      }
+    },
+    {
+      "date": "2026-06-29",
+      "ma_20": {
+        "count_above": 327,
+        "percentage_above": 65.01
+      },
+      "ma_50": {
+        "count_above": 324,
+        "percentage_above": 64.41
+      },
+      "ma_200": {
+        "count_above": 316,
+        "percentage_above": 62.82
+      }
+    },
+    {
+      "date": "2026-06-30",
+      "ma_20": {
+        "count_above": 316,
+        "percentage_above": 62.82
+      },
+      "ma_50": {
+        "count_above": 312,
+        "percentage_above": 62.03
+      },
+      "ma_200": {
+        "count_above": 309,
+        "percentage_above": 61.43
+      }
+    },
+    {
+      "date": "2026-07-01",
+      "ma_20": {
+        "count_above": 322,
+        "percentage_above": 64.02
+      },
+      "ma_50": {
+        "count_above": 319,
+        "percentage_above": 63.42
+      },
+      "ma_200": {
+        "count_above": 319,
+        "percentage_above": 63.42
+      }
+    },
+    {
+      "date": "2026-07-02",
+      "ma_20": {
+        "count_above": 341,
+        "percentage_above": 67.79
+      },
+      "ma_50": {
+        "count_above": 337,
+        "percentage_above": 67.0
+      },
+      "ma_200": {
+        "count_above": 338,
+        "percentage_above": 67.2
+      }
+    },
+    {
+      "date": "2026-07-06",
+      "ma_20": {
+        "count_above": 340,
+        "percentage_above": 67.59
+      },
+      "ma_50": {
+        "count_above": 344,
+        "percentage_above": 68.39
+      },
+      "ma_200": {
+        "count_above": 338,
+        "percentage_above": 67.2
+      }
+    },
+    {
+      "date": "2026-07-07",
+      "ma_20": {
+        "count_above": 335,
+        "percentage_above": 66.6
+      },
+      "ma_50": {
+        "count_above": 339,
+        "percentage_above": 67.4
+      },
+      "ma_200": {
+        "count_above": 339,
+        "percentage_above": 67.4
+      }
+    },
+    {
+      "date": "2026-07-08",
+      "ma_20": {
+        "count_above": 289,
+        "percentage_above": 57.46
+      },
+      "ma_50": {
+        "count_above": 321,
+        "percentage_above": 63.82
+      },
+      "ma_200": {
+        "count_above": 323,
+        "percentage_above": 64.21
+      }
+    },
+    {
+      "date": "2026-07-09",
+      "ma_20": {
+        "count_above": 297,
+        "percentage_above": 59.05
+      },
+      "ma_50": {
+        "count_above": 325,
+        "percentage_above": 64.61
+      },
+      "ma_200": {
+        "count_above": 325,
+        "percentage_above": 64.61
+      }
+    },
+    {
+      "date": "2026-07-10",
+      "ma_20": {
+        "count_above": 313,
+        "percentage_above": 62.23
+      },
+      "ma_50": {
+        "count_above": 342,
+        "percentage_above": 67.99
+      },
+      "ma_200": {
+        "count_above": 337,
+        "percentage_above": 67.0
+      }
+    },
+    {
+      "date": "2026-07-13",
+      "ma_20": {
+        "count_above": 316,
+        "percentage_above": 62.82
+      },
+      "ma_50": {
+        "count_above": 330,
+        "percentage_above": 65.61
+      },
+      "ma_200": {
+        "count_above": 339,
+        "percentage_above": 67.4
+      }
+    },
+    {
+      "date": "2026-07-14",
+      "ma_20": {
+        "count_above": 290,
+        "percentage_above": 57.65
+      },
+      "ma_50": {
+        "count_above": 319,
+        "percentage_above": 63.42
+      },
+      "ma_200": {
+        "count_above": 333,
+        "percentage_above": 66.2
+      }
+    },
+    {
+      "date": "2026-07-15",
+      "ma_20": {
+        "count_above": 264,
+        "percentage_above": 52.49
+      },
+      "ma_50": {
+        "count_above": 311,
+        "percentage_above": 61.83
+      },
+      "ma_200": {
+        "count_above": 335,
+        "percentage_above": 66.6
+      }
+    },
+    {
+      "date": "2026-07-16",
+      "ma_20": {
+        "count_above": 326,
+        "percentage_above": 64.81
+      },
+      "ma_50": {
+        "count_above": 339,
+        "percentage_above": 67.4
+      },
+      "ma_200": {
+        "count_above": 354,
+        "percentage_above": 70.38
+      }
+    },
+    {
+      "date": "2026-07-17",
+      "ma_20": {
+        "count_above": 292,
+        "percentage_above": 58.05
+      },
+      "ma_50": {
+        "count_above": 323,
+        "percentage_above": 64.21
+      },
+      "ma_200": {
+        "count_above": 343,
+        "percentage_above": 68.19
+      }
+    },
+    {
+      "date": "2026-07-20",
+      "ma_20": {
+        "count_above": 264,
+        "percentage_above": 52.49
+      },
+      "ma_50": {
+        "count_above": 310,
+        "percentage_above": 61.63
+      },
+      "ma_200": {
+        "count_above": 331,
+        "percentage_above": 65.81
+      }
+    },
+    {
+      "date": "2026-07-21",
+      "ma_20": {
+        "count_above": 250,
+        "percentage_above": 49.7
+      },
+      "ma_50": {
+        "count_above": 299,
+        "percentage_above": 59.44
+      },
+      "ma_200": {
+        "count_above": 327,
+        "percentage_above": 65.01
+      }
+    },
+    {
+      "date": "2026-07-22",
+      "ma_20": {
+        "count_above": 231,
+        "percentage_above": 45.92
+      },
+      "ma_50": {
+        "count_above": 314,
+        "percentage_above": 62.43
+      },
+      "ma_200": {
+        "count_above": 330,
+        "percentage_above": 65.61
+      }
+    },
+    {
+      "date": "2026-07-23",
+      "ma_20": {
+        "count_above": 221,
+        "percentage_above": 43.94
+      },
+      "ma_50": {
+        "count_above": 297,
+        "percentage_above": 59.05
+      },
+      "ma_200": {
+        "count_above": 327,
+        "percentage_above": 65.01
+      }
+    },
+    {
+      "date": "2026-07-24",
+      "ma_20": {
+        "count_above": 279,
+        "percentage_above": 55.47
+      },
+      "ma_50": {
+        "count_above": 328,
+        "percentage_above": 65.21
+      },
+      "ma_200": {
+        "count_above": 332,
+        "percentage_above": 66.0
+      }
+    },
+    {
+      "date": "2026-07-27",
+      "ma_20": {
+        "count_above": 323,
+        "percentage_above": 64.21
+      },
+      "ma_50": {
+        "count_above": 348,
+        "percentage_above": 69.18
+      },
+      "ma_200": {
+        "count_above": 350,
+        "percentage_above": 69.58
+      }
+    },
+    {
+      "date": "2026-07-28",
+      "ma_20": {
+        "count_above": 349,
+        "percentage_above": 69.38
+      },
+      "ma_50": {
+        "count_above": 362,
+        "percentage_above": 71.97
+      },
+      "ma_200": {
+        "count_above": 360,
+        "percentage_above": 71.57
+      }
+    },
+    {
+      "date": "2026-07-29",
+      "ma_20": {
+        "count_above": 316,
+        "percentage_above": 62.82
+      },
+      "ma_50": {
+        "count_above": 332,
+        "percentage_above": 66.0
+      },
+      "ma_200": {
+        "count_above": 350,
+        "percentage_above": 69.58
+      }
+    },
+    {
+      "date": "2026-07-30",
+      "ma_20": {
+        "count_above": 282,
+        "percentage_above": 56.06
+      },
+      "ma_50": {
+        "count_above": 323,
+        "percentage_above": 64.21
+      },
+      "ma_200": {
+        "count_above": 346,
+        "percentage_above": 68.79
+      }
+    },
+    {
+      "date": "2026-07-31",
+      "ma_20": {
+        "count_above": 270,
+        "percentage_above": 53.68
+      },
+      "ma_50": {
+        "count_above": 313,
+        "percentage_above": 62.23
+      },
+      "ma_200": {
+        "count_above": 339,
+        "percentage_above": 67.4
+      }
+    },
+    {
+      "date": "2026-08-03",
+      "ma_20": {
+        "count_above": 300,
+        "percentage_above": 59.64
+      },
+      "ma_50": {
+        "count_above": 328,
+        "percentage_above": 65.21
+      },
+      "ma_200": {
+        "count_above": 351,
+        "percentage_above": 69.78
+      }
+    },
+    {
+      "date": "2026-08-04",
+      "ma_20": {
+        "count_above": 344,
+        "percentage_above": 68.39
+      },
+      "ma_50": {
+        "count_above": 344,
+        "percentage_above": 68.39
+      },
+      "ma_200": {
+        "count_above": 361,
+        "percentage_above": 71.77
+      }
+    },
+    {
+      "date": "2026-08-05",
+      "ma_20": {
+        "count_above": 330,
+        "percentage_above": 65.61
+      },
+      "ma_50": {
+        "count_above": 339,
+        "percentage_above": 67.4
+      },
+      "ma_200": {
+        "count_above": 359,
+        "percentage_above": 71.37
+      }
+    },
+    {
+      "date": "2026-08-06",
+      "ma_20": {
+        "count_above": 319,
+        "percentage_above": 63.42
+      },
+      "ma_50": {
+        "count_above": 324,
+        "percentage_above": 64.41
+      },
+      "ma_200": {
+        "count_above": 356,
+        "percentage_above": 70.78
+      }
+    },
+    {
+      "date": "2026-08-07",
+      "ma_20": {
+        "count_above": 330,
+        "percentage_above": 65.61
+      },
+      "ma_50": {
+        "count_above": 334,
+        "percentage_above": 66.4
+      },
+      "ma_200": {
+        "count_above": 368,
+        "percentage_above": 73.16
+      }
+    },
+    {
+      "date": "2026-08-10",
+      "ma_20": {
+        "count_above": 320,
+        "percentage_above": 63.75
+      },
+      "ma_50": {
+        "count_above": 331,
+        "percentage_above": 65.94
+      },
+      "ma_200": {
+        "count_above": 364,
+        "percentage_above": 72.51
+      }
+    },
+    {
+      "date": "2026-08-11",
+      "ma_20": {
+        "count_above": 322,
+        "percentage_above": 64.02
+      },
+      "ma_50": {
+        "count_above": 322,
+        "percentage_above": 64.02
+      },
+      "ma_200": {
+        "count_above": 361,
+        "percentage_above": 71.77
+      }
+    },
+    {
+      "date": "2026-08-12",
+      "ma_20": {
+        "count_above": 327,
+        "percentage_above": 65.01
+      },
+      "ma_50": {
+        "count_above": 329,
+        "percentage_above": 65.41
+      },
+      "ma_200": {
+        "count_above": 358,
+        "percentage_above": 71.17
+      }
+    },
+    {
+      "date": "2026-08-13",
+      "ma_20": {
+        "count_above": 349,
+        "percentage_above": 69.38
+      },
+      "ma_50": {
+        "count_above": 345,
+        "percentage_above": 68.59
+      },
+      "ma_200": {
+        "count_above": 374,
+        "percentage_above": 74.35
+      }
+    },
+    {
+      "date": "2026-08-14",
+      "ma_20": {
+        "count_above": 341,
+        "percentage_above": 67.79
+      },
+      "ma_50": {
+        "count_above": 354,
+        "percentage_above": 70.38
+      },
+      "ma_200": {
+        "count_above": 373,
+        "percentage_above": 74.16
+      }
+    },
+    {
+      "date": "2026-08-17",
+      "ma_20": {
+        "count_above": 294,
+        "percentage_above": 58.45
+      },
+      "ma_50": {
+        "count_above": 312,
+        "percentage_above": 62.03
+      },
+      "ma_200": {
+        "count_above": 358,
+        "percentage_above": 71.17
+      }
+    },
+    {
+      "date": "2026-08-18",
+      "ma_20": {
+        "count_above": 268,
+        "percentage_above": 53.28
+      },
+      "ma_50": {
+        "count_above": 304,
+        "percentage_above": 60.44
+      },
+      "ma_200": {
+        "count_above": 358,
+        "percentage_above": 71.17
+      }
+    },
+    {
+      "date": "2026-08-19",
+      "ma_20": {
+        "count_above": 273,
+        "percentage_above": 54.27
+      },
+      "ma_50": {
+        "count_above": 308,
+        "percentage_above": 61.23
+      },
+      "ma_200": {
+        "count_above": 375,
+        "percentage_above": 74.55
+      }
+    },
+    {
+      "date": "2026-08-20",
+      "ma_20": {
+        "count_above": 230,
+        "percentage_above": 45.73
+      },
+      "ma_50": {
+        "count_above": 274,
+        "percentage_above": 54.47
+      },
+      "ma_200": {
+        "count_above": 367,
+        "percentage_above": 72.96
+      }
+    },
+    {
+      "date": "2026-08-21",
+      "ma_20": {
+        "count_above": 252,
+        "percentage_above": 50.1
+      },
+      "ma_50": {
+        "count_above": 291,
+        "percentage_above": 57.85
+      },
+      "ma_200": {
+        "count_above": 363,
+        "percentage_above": 72.17
+      }
+    },
+    {
+      "date": "2026-08-24",
+      "ma_20": {
+        "count_above": 268,
+        "percentage_above": 53.28
+      },
+      "ma_50": {
+        "count_above": 304,
+        "percentage_above": 60.44
+      },
+      "ma_200": {
+        "count_above": 372,
+        "percentage_above": 73.96
+      }
+    },
+    {
+      "date": "2026-08-25",
+      "ma_20": {
+        "count_above": 259,
+        "percentage_above": 51.49
+      },
+      "ma_50": {
+        "count_above": 296,
+        "percentage_above": 58.85
+      },
+      "ma_200": {
+        "count_above": 362,
+        "percentage_above": 71.97
+      }
+    },
+    {
+      "date": "2026-08-26",
+      "ma_20": {
+        "count_above": 271,
+        "percentage_above": 53.88
+      },
+      "ma_50": {
+        "count_above": 297,
+        "percentage_above": 59.05
+      },
+      "ma_200": {
+        "count_above": 364,
+        "percentage_above": 72.37
+      }
+    },
+    {
+      "date": "2026-08-27",
+      "ma_20": {
+        "count_above": 226,
+        "percentage_above": 44.93
+      },
+      "ma_50": {
+        "count_above": 271,
+        "percentage_above": 53.88
+      },
+      "ma_200": {
+        "count_above": 354,
+        "percentage_above": 70.38
+      }
+    },
+    {
+      "date": "2026-08-28",
+      "ma_20": {
+        "count_above": 218,
+        "percentage_above": 43.34
+      },
+      "ma_50": {
+        "count_above": 269,
+        "percentage_above": 53.48
+      },
+      "ma_200": {
+        "count_above": 358,
+        "percentage_above": 71.17
+      }
+    }
+  ]
+}

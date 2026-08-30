@@ -1,0 +1,183 @@
+{
+  "_README": {
+    "title": "Price vs Moving Average - Mean Reversion Snapshot",
+    "description": "Current price distance from key moving averages for major US ETFs",
+    "purpose": "Identify overbought/oversold conditions and potential mean reversion opportunities",
+    "update_frequency": "Every 10 minutes during market hours",
+    "indices_tracked": [
+      "SPY",
+      "QQQ",
+      "IWM"
+    ],
+    "moving_averages": {
+      "ma_20": "20-day SMA (short-term trend, ~1 month)",
+      "ma_50": "50-day SMA (intermediate trend, ~2.5 months)",
+      "ma_200": "200-day SMA (long-term trend, ~1 year)"
+    },
+    "metrics_explained": {
+      "distance": {
+        "description": "Point distance between current price and MA",
+        "formula": "current_price - ma_value",
+        "interpretation": "Positive = above MA (bullish), Negative = below MA (bearish)"
+      },
+      "distance_percent": {
+        "description": "Percentage distance from MA",
+        "formula": "(current_price - ma_value) / ma_value * 100",
+        "interpretation": {
+          ">5%": "Significantly overbought",
+          "2% to 5%": "Moderately overbought",
+          "-2% to 2%": "Normal range",
+          "-5% to -2%": "Moderately oversold",
+          "<-5%": "Significantly oversold"
+        }
+      },
+      "zscore": {
+        "description": "Statistical z-score of price distance from MA",
+        "formula": "(current_price - ma) / std_dev(price - ma)",
+        "lookback_period": "252 days",
+        "interpretation": {
+          ">2": "Statistically overbought (>95th percentile) - Strong mean reversion signal",
+          "1 to 2": "Moderately overbought",
+          "-1 to 1": "Normal statistical range",
+          "-2 to -1": "Moderately oversold",
+          "<-2": "Statistically oversold (<5th percentile) - Strong mean reversion signal"
+        },
+        "usage": "Institutional standard for normalized mean reversion signals"
+      }
+    },
+    "signal_types": {
+      "extremely_overbought": "Z-score > 2 (potential reversal down)",
+      "moderately_overbought": "Z-score 1 to 2",
+      "normal_range": "Z-score -1 to 1",
+      "moderately_oversold": "Z-score -2 to -1",
+      "extremely_oversold": "Z-score < -2 (potential reversal up)",
+      "insufficient_data": "Not enough data for calculation"
+    },
+    "trend_alignment": {
+      "strong_bullish": "20-day > 50-day > 200-day (all MAs aligned bullish)",
+      "moderate_bullish": "20-day > 50-day (short above medium)",
+      "strong_bearish": "20-day < 50-day < 200-day (all MAs aligned bearish)",
+      "moderate_bearish": "20-day < 50-day (short below medium)",
+      "mixed": "No clear alignment"
+    },
+    "trading_applications": {
+      "mean_reversion": "Use extreme z-scores as contrarian entry signals",
+      "trend_filter": "Only trade mean reversion in direction of 200-day MA",
+      "overbought_oversold": "Distance >5% or z-score >2 indicates stretched conditions"
+    }
+  },
+  "metadata": {
+    "generated_at": "2026-08-30T15:04:49.235192+00:00",
+    "data_source": "Yahoo Finance (yfinance)",
+    "etfs_count": 3,
+    "description": "Price distance from moving averages for mean reversion analysis",
+    "calculation_note": "All metrics use adjusted closing prices"
+  },
+  "indices": {
+    "SPY": {
+      "symbol": "SPY",
+      "name": "SPDR S&P 500 ETF Trust",
+      "description": "Tracks S&P 500 Index - Large-cap benchmark (500 companies)",
+      "market_segment": "Large-Cap",
+      "tracks_index": "S&P 500",
+      "date": "2026-08-28",
+      "current_price": 769.35,
+      "moving_averages": {
+        "ma_20": 769.22,
+        "ma_50": 753.96,
+        "ma_200": 707.42
+      },
+      "metrics_by_ma": {
+        "ma_20": {
+          "distance": 0.13,
+          "distance_percent": 0.02,
+          "zscore": -0.4,
+          "signal": "normal_range"
+        },
+        "ma_50": {
+          "distance": 15.39,
+          "distance_percent": 2.04,
+          "zscore": 0.14,
+          "signal": "normal_range"
+        },
+        "ma_200": {
+          "distance": 61.93,
+          "distance_percent": 8.75,
+          "zscore": 0.43,
+          "signal": "normal_range"
+        }
+      },
+      "trend_alignment": "strong_bullish"
+    },
+    "QQQ": {
+      "symbol": "QQQ",
+      "name": "Invesco QQQ Trust",
+      "description": "Tracks Nasdaq-100 Index - Tech-heavy growth stocks",
+      "market_segment": "Tech/Growth",
+      "tracks_index": "Nasdaq-100",
+      "date": "2026-08-28",
+      "current_price": 716.43,
+      "moving_averages": {
+        "ma_20": 717.94,
+        "ma_50": 712.05,
+        "ma_200": 654.19
+      },
+      "metrics_by_ma": {
+        "ma_20": {
+          "distance": -1.51,
+          "distance_percent": -0.21,
+          "zscore": -0.4,
+          "signal": "normal_range"
+        },
+        "ma_50": {
+          "distance": 4.38,
+          "distance_percent": 0.62,
+          "zscore": -0.34,
+          "signal": "normal_range"
+        },
+        "ma_200": {
+          "distance": 62.24,
+          "distance_percent": 9.51,
+          "zscore": 0.02,
+          "signal": "normal_range"
+        }
+      },
+      "trend_alignment": "strong_bullish"
+    },
+    "IWM": {
+      "symbol": "IWM",
+      "name": "iShares Russell 2000 ETF",
+      "description": "Tracks Russell 2000 Index - Small-cap benchmark (2000 companies)",
+      "market_segment": "Small-Cap",
+      "tracks_index": "Russell 2000",
+      "date": "2026-08-28",
+      "current_price": 295.75,
+      "moving_averages": {
+        "ma_20": 300.26,
+        "ma_50": 297.31,
+        "ma_200": 270.56
+      },
+      "metrics_by_ma": {
+        "ma_20": {
+          "distance": -4.51,
+          "distance_percent": -1.5,
+          "zscore": -1.17,
+          "signal": "moderately_oversold"
+        },
+        "ma_50": {
+          "distance": -1.56,
+          "distance_percent": -0.53,
+          "zscore": -1.04,
+          "signal": "moderately_oversold"
+        },
+        "ma_200": {
+          "distance": 25.19,
+          "distance_percent": 9.31,
+          "zscore": -0.31,
+          "signal": "normal_range"
+        }
+      },
+      "trend_alignment": "strong_bullish"
+    }
+  }
+}

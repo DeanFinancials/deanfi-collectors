@@ -1,0 +1,747 @@
+Recovery run: 2026-08-30 15:01:36 UTC
+Python 3.11.16
+yfinance 1.7.0
+pandas 3.0.5
+curl_cffi 0.16.2
+=== breadth ===
+Fetching S&P 500 universe...
+Fetching S&P 500 tickers from Wikipedia...
+✓ Fetched 503 tickers from Wikipedia
+Downloading 2y of data for 503 symbols...
+✓ Downloaded 2y data for 503 symbols
+Saved cache: 501 rows
+Calculating breadth metrics...
+Warning: A/D line historical file not found in any location
+
+✓ Daily breadth metrics saved to /home/runner/work/deanfi-collectors/deanfi-collectors/advancedecline/daily_breadth.json
+  Date: 2026-08-28
+  Advances: 230
+  Declines: 272
+  A/D Ratio: 0.846
+  Above 20-day MA: 43.34%
+  Above 50-day MA: 53.48%
+  Above 200-day MA: 71.17%
+Fetching S&P 500 universe...
+Fetching S&P 500 tickers from Wikipedia...
+✓ Fetched 503 tickers from Wikipedia
+Downloading 2y of data for 503 stocks...
+✓ Successfully downloaded data
+Calculating historical A/D line...
+Calculating statistics...
+
+✓ Historical A/D line saved to /home/runner/work/deanfi-collectors/deanfi-collectors/advancedecline/ad_line_historical.json
+  Period: 2024-08-30 to 2026-08-28
+  Days tracked: 500
+  Current A/D line: 9174.0
+  Trend: Rising (bullish breadth)
+  20-day change: 250.0
+Fetching S&P 500 universe...
+Fetching S&P 500 tickers from Wikipedia...
+✓ Fetched 503 tickers from Wikipedia
+Downloading 2y of data for 503 stocks...
+✓ Successfully downloaded data
+Calculating historical MA percentages for periods: [20, 50, 200]...
+Calculating statistics...
+
+✓ Historical MA percentages saved to /home/runner/work/deanfi-collectors/deanfi-collectors/advancedecline/ma_percentage_historical.json
+  Period: 2025-06-17 to 2026-08-28
+  Days tracked: 302
+
+  20-day MA:
+    Current: 43.34%
+    Condition: Weak (more stocks in downtrend)
+    Trend: Deteriorating (breadth contracting)
+
+  50-day MA:
+    Current: 53.48%
+    Condition: Moderate (mixed market)
+    Trend: Deteriorating (breadth contracting)
+
+  200-day MA:
+    Current: 71.17%
+    Condition: Strong (most stocks in uptrend)
+    Trend: Stable
+Fetching S&P 500 universe...
+Fetching S&P 500 tickers from Wikipedia...
+✓ Fetched 503 tickers from Wikipedia
+Downloading 2y of data for 503 symbols...
+✓ Downloaded 2y data for 503 symbols
+Saved cache: 501 rows
+Calculating historical 52-week highs/lows...
+Calculating statistics...
+
+✓ Historical 52-week highs/lows saved to /home/runner/work/deanfi-collectors/deanfi-collectors/advancedecline/highs_lows_historical.json
+  Period: 2025-06-18 to 2026-08-28
+  Days tracked: 301
+
+  Near 52-week high:
+    Current: 1.39%
+    20-day change: 0.79%
+
+  Near 52-week low:
+    Current: 0.6%
+    20-day change: 0.4%
+
+  Market condition: Neutral (mixed market)
+  Trend: Stable
+Fetching S&P 500 tickers from Wikipedia...
+✓ Fetched 503 tickers from Wikipedia
+Downloading 2y of data for 503 symbols...
+✓ Downloaded 2y data for 503 symbols
+Saved cache: 501 rows
+✓ Volume metrics historical saved to /home/runner/work/deanfi-collectors/deanfi-collectors/advancedecline/volume_metrics_historical.json
+  Latest date: 2026-08-28
+=== major indexes ===
+================================================================================
+US MAJOR INDICES DATA FETCH
+================================================================================
+Indices: 6
+Historical Days: 252
+Data Source: Yahoo Finance
+================================================================================
+Fetching US Major Indices snapshot data...
+  Processing ^GSPC...
+  Processing ^DJI...
+  Processing ^IXIC...
+  Processing ^NDX...
+  Processing ^RUT...
+  Processing ^VIX...
+✅ Saved snapshot to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_major_indices.json
+
+Fetching US Major Indices 252-day historical data...
+  Processing ^GSPC...
+    ✓ 251 days processed
+  Processing ^DJI...
+    ✓ 251 days processed
+  Processing ^IXIC...
+    ✓ 251 days processed
+  Processing ^NDX...
+    ✓ 251 days processed
+  Processing ^RUT...
+    ✓ 251 days processed
+  Processing ^VIX...
+    ✓ 252 days processed
+✅ Saved historical data to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_major_indices_historical.json
+
+Fetching US Major ETF prices snapshot...
+✅ Saved ETF prices snapshot to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_major_etf_prices.json
+
+================================================================================
+✅ US MAJOR INDICES FETCH COMPLETE
+================================================================================
+Snapshot: 6 indices
+Historical: 6 indices
+================================================================================
+================================================================================
+US SECTOR INDICES DATA FETCH
+================================================================================
+Fetching US Sector Indices snapshot data...
+  Processing XLK (Technology)...
+  Processing XLV (Health Care)...
+  Processing XLF (Financials)...
+  Processing XLY (Consumer Discretionary)...
+  Processing XLI (Industrials)...
+  Processing XLP (Consumer Staples)...
+  Processing XLE (Energy)...
+  Processing XLB (Materials)...
+  Processing XLC (Communication Services)...
+  Processing XLU (Utilities)...
+  Processing XLRE (Real Estate)...
+✅ Saved snapshot to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_sector_indices.json
+
+Fetching US Sector Indices 252-day historical data...
+  Processing XLK...
+    ✓ 251 days processed
+  Processing XLV...
+    ✓ 251 days processed
+  Processing XLF...
+    ✓ 251 days processed
+  Processing XLY...
+    ✓ 251 days processed
+  Processing XLI...
+    ✓ 251 days processed
+  Processing XLP...
+    ✓ 251 days processed
+  Processing XLE...
+    ✓ 251 days processed
+  Processing XLB...
+    ✓ 251 days processed
+  Processing XLC...
+    ✓ 251 days processed
+  Processing XLU...
+    ✓ 251 days processed
+  Processing XLRE...
+    ✓ 251 days processed
+✅ Saved historical data to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_sector_indices_historical.json
+
+================================================================================
+✅ US SECTOR INDICES FETCH COMPLETE
+================================================================================
+================================================================================
+US GROWTH/VALUE INDICES DATA FETCH
+================================================================================
+Fetching US Growth/Value Indices snapshot data...
+  Fetching ^RLG...
+    ⚠️  Insufficient data for ^RLG
+  Fetching ^RLV...
+  Fetching ^RUO...
+  Fetching ^RUJ...
+  Fetching ^RUA...
+✅ Saved snapshot to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_growth_value_indices.json
+
+Fetching US Growth/Value Indices 252-day historical data...
+  Processing ^RLG...
+    ⚠️  Insufficient data for ^RLG
+  Processing ^RLV...
+    ✓ 252 days processed
+  Processing ^RUO...
+    ✓ 252 days processed
+  Processing ^RUJ...
+    ✓ 252 days processed
+  Processing ^RUA...
+    ✓ 252 days processed
+✅ Saved historical data to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_growth_value_indices_historical.json
+
+================================================================================
+✅ US GROWTH/VALUE INDICES FETCH COMPLETE
+================================================================================
+Downloading 1y of data for 1 symbols...
+✓ Downloaded 1y data for 1 symbols
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 255 rows
+Merging: cache=255 rows, new=4 rows
+✓ Merged result: 255 rows
+Saved cache: 255 rows
+================================================================================
+INTERNATIONAL INDICES DATA FETCH
+================================================================================
+Fetching International Indices snapshot data...
+  Fetching ^FTSE (United Kingdom)...
+  Fetching ^GDAXI (Germany)...
+  Fetching ^FCHI (France)...
+  Fetching ^STOXX50E (Eurozone)...
+  Fetching ^SSMI (Switzerland)...
+  Fetching ^N225 (Japan)...
+  Fetching ^HSI (Hong Kong)...
+  Fetching ^AXJO (Australia)...
+  Fetching ^KS11 (South Korea)...
+  Fetching ^GSPTSE (Canada)...
+  Fetching ^TA125.TA (Israel)...
+✅ Saved snapshot to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/international_major_indices.json
+
+Fetching International Indices 252-day historical data...
+  Processing ^FTSE...
+    ✓ 252 days
+  Processing ^GDAXI...
+    ✓ 252 days
+  Processing ^FCHI...
+    ✓ 252 days
+  Processing ^STOXX50E...
+    ✓ 252 days
+  Processing ^SSMI...
+    ✓ 252 days
+  Processing ^N225...
+    ✓ 252 days
+  Processing ^HSI...
+    ✓ 252 days
+  Processing ^AXJO...
+    ✓ 252 days
+  Processing ^KS11...
+    ✓ 252 days
+  Processing ^GSPTSE...
+    ✓ 252 days
+  Processing ^TA125.TA...
+    ✓ 252 days
+✅ Saved to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/international_major_indices_historical.json
+
+✅ COMPLETE
+Downloading 1y of data for 1 symbols...
+✓ Downloaded 1y data for 1 symbols
+Saved cache: 252 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 252 rows
+Merging: cache=252 rows, new=4 rows
+✓ Merged result: 252 rows
+Saved cache: 252 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 252 rows
+Merging: cache=252 rows, new=4 rows
+✓ Merged result: 252 rows
+Saved cache: 252 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 252 rows
+Merging: cache=252 rows, new=4 rows
+✓ Merged result: 252 rows
+Saved cache: 252 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 252 rows
+Merging: cache=252 rows, new=4 rows
+✓ Merged result: 252 rows
+Saved cache: 252 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 252 rows
+Merging: cache=252 rows, new=4 rows
+✓ Merged result: 252 rows
+Saved cache: 252 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 252 rows
+Merging: cache=252 rows, new=4 rows
+✓ Merged result: 252 rows
+Saved cache: 252 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 252 rows
+Merging: cache=252 rows, new=4 rows
+✓ Merged result: 252 rows
+Saved cache: 252 rows
+================================================================================
+BOND/TREASURY INDICES FETCH
+================================================================================
+Fetching Bond/Treasury Indices...
+  ^TNX...
+  ^TYX...
+  ^FVX...
+  ^IRX...
+✅ Saved
+
+Fetching Bonds 252-day historical...
+  ^TNX...
+    ✓ 252 days
+  ^TYX...
+    ✓ 252 days
+  ^FVX...
+    ✓ 252 days
+  ^IRX...
+    ✓ 252 days
+✅ Saved
+
+✅ COMPLETE
+Downloading 1y of data for 1 symbols...
+✓ Downloaded 1y data for 1 symbols
+Saved cache: 250 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 250 rows
+Merging: cache=250 rows, new=4 rows
+✓ Merged result: 250 rows
+Saved cache: 250 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 250 rows
+Merging: cache=250 rows, new=4 rows
+✓ Merged result: 250 rows
+Saved cache: 250 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 250 rows
+Merging: cache=250 rows, new=4 rows
+✓ Merged result: 250 rows
+Saved cache: 250 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 250 rows
+Merging: cache=250 rows, new=4 rows
+✓ Merged result: 250 rows
+Saved cache: 250 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 250 rows
+Merging: cache=250 rows, new=4 rows
+✓ Merged result: 250 rows
+Saved cache: 250 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 250 rows
+Merging: cache=250 rows, new=4 rows
+✓ Merged result: 250 rows
+Saved cache: 250 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 250 rows
+Merging: cache=250 rows, new=4 rows
+✓ Merged result: 250 rows
+Saved cache: 250 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 250 rows
+Merging: cache=250 rows, new=4 rows
+✓ Merged result: 250 rows
+Saved cache: 250 rows
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 250 rows
+Merging: cache=250 rows, new=4 rows
+✓ Merged result: 250 rows
+Saved cache: 250 rows
+================================================================================
+COMMODITY INDICES FETCH
+================================================================================
+Fetching Commodity Indices...
+  GC=F...
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+  SI=F...
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+  CL=F...
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+  NG=F...
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+  DBC...
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+✅ Saved
+
+Fetching Commodities 252-day historical...
+  GC=F...
+    ✓ 252 days
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+  SI=F...
+    ✓ 252 days
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+  CL=F...
+    ✓ 252 days
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+  NG=F...
+    ✓ 252 days
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+  DBC...
+    ✓ 252 days
+    ❌ type object 'datetime.time' has no attribute 'sleep'
+✅ Saved
+
+✅ COMPLETE
+=== mean reversion ===
+================================================================================
+PRICE VS MOVING AVERAGE MEAN REVERSION COLLECTOR
+================================================================================
+Tracking 3 ETFs
+MA periods: [20, 50, 200]
+Historical days: 504
+Z-score lookback: 252
+Using cache: ./cache
+================================================================================
+
+Processing SPY (SPDR S&P 500 ETF Trust)...
+Downloading 5y of data for 1 symbols...
+✓ Downloaded 5y data for 1 symbols
+Saved cache: 1255 rows
+  Retrieved 956 days of data
+  Current price: $769.35
+  20-day MA: $769.22 | Distance: 0.02% | Z-score: -0.40 | Signal: normal_range
+  50-day MA: $753.96 | Distance: 2.04% | Z-score: 0.14 | Signal: normal_range
+  200-day MA: $707.42 | Distance: 8.75% | Z-score: 0.43 | Signal: normal_range
+
+Processing QQQ (Invesco QQQ Trust)...
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 1255 rows
+Merging: cache=1255 rows, new=4 rows
+✓ Merged result: 1255 rows
+Saved cache: 1255 rows
+  Retrieved 956 days of data
+  Current price: $716.43
+  20-day MA: $717.94 | Distance: -0.21% | Z-score: -0.40 | Signal: normal_range
+  50-day MA: $712.05 | Distance: 0.62% | Z-score: -0.34 | Signal: normal_range
+  200-day MA: $654.19 | Distance: 9.51% | Z-score: 0.02 | Signal: normal_range
+
+Processing IWM (iShares Russell 2000 ETF)...
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 1255 rows
+Merging: cache=1255 rows, new=4 rows
+✓ Merged result: 1255 rows
+Saved cache: 1255 rows
+  Retrieved 956 days of data
+  Current price: $295.75
+  20-day MA: $300.26 | Distance: -1.50% | Z-score: -1.17 | Signal: moderately_oversold
+  50-day MA: $297.31 | Distance: -0.53% | Z-score: -1.04 | Signal: moderately_oversold
+  200-day MA: $270.56 | Distance: 9.31% | Z-score: -0.31 | Signal: normal_range
+
+Saving snapshot to /home/runner/work/deanfi-collectors/deanfi-collectors/meanreversion/price_vs_ma_snapshot.json...
+Saving historical data to /home/runner/work/deanfi-collectors/deanfi-collectors/meanreversion/price_vs_ma_historical.json...
+
+================================================================================
+COMPLETE
+================================================================================
+Snapshot: /home/runner/work/deanfi-collectors/deanfi-collectors/meanreversion/price_vs_ma_snapshot.json
+Historical: /home/runner/work/deanfi-collectors/deanfi-collectors/meanreversion/price_vs_ma_historical.json
+================================================================================
+MOVING AVERAGE SPREAD MEAN REVERSION COLLECTOR
+================================================================================
+Tracking 3 ETFs
+MA periods: [20, 50, 200]
+MA pairs: 3
+  - 20-day vs 50-day (short_term_vs_intermediate)
+  - 20-day vs 200-day (short_term_vs_long_term)
+  - 50-day vs 200-day (intermediate_vs_long_term)
+Historical days: 504
+Z-score lookback: 252
+Using cache: ./cache
+================================================================================
+
+Processing SPY (SPDR S&P 500 ETF Trust)...
+Downloading 5y of data for 1 symbols...
+✓ Downloaded 5y data for 1 symbols
+Saved cache: 1255 rows
+  Retrieved 956 days of data
+  Current price: $769.35
+  Moving averages:
+    20-day: $769.22
+    50-day: $753.96
+    200-day: $707.42
+  MA Spreads:
+    20-day vs 50-day:
+      Spread: 15.26 points
+      Spread %: 2.02%
+      Z-score: 0.67
+      Signal: normal_range
+      Alignment: bullish - 20-day MA is above 50-day MA
+    20-day vs 200-day:
+      Spread: 61.79 points
+      Spread %: 8.73%
+      Z-score: 0.78
+      Signal: normal_range
+      Alignment: bullish - 20-day MA is above 200-day MA
+    50-day vs 200-day:
+      Spread: 46.53 points
+      Spread %: 6.58%
+      Z-score: 0.44
+      Signal: normal_range
+      Alignment: bullish - 50-day MA is above 200-day MA
+
+Processing QQQ (Invesco QQQ Trust)...
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 1255 rows
+Merging: cache=1255 rows, new=4 rows
+✓ Merged result: 1255 rows
+Saved cache: 1255 rows
+  Retrieved 956 days of data
+  Current price: $716.43
+  Moving averages:
+    20-day: $717.94
+    50-day: $712.05
+    200-day: $654.19
+  MA Spreads:
+    20-day vs 50-day:
+      Spread: 5.89 points
+      Spread %: 0.83%
+      Z-score: -0.16
+      Signal: normal_range
+      Alignment: bullish - 20-day MA is above 50-day MA
+    20-day vs 200-day:
+      Spread: 63.75 points
+      Spread %: 9.74%
+      Z-score: 0.29
+      Signal: normal_range
+      Alignment: bullish - 20-day MA is above 200-day MA
+    50-day vs 200-day:
+      Spread: 57.85 points
+      Spread %: 8.84%
+      Z-score: 0.51
+      Signal: normal_range
+      Alignment: bullish - 50-day MA is above 200-day MA
+
+Processing IWM (iShares Russell 2000 ETF)...
+Cache age 0.0h - intraday incremental update (last 5 days)
+Downloading data for 1 symbols from 2026-08-25...
+✓ Downloaded data for 1 symbols
+Loaded cache: 1255 rows
+Merging: cache=1255 rows, new=4 rows
+✓ Merged result: 1255 rows
+Saved cache: 1255 rows
+  Retrieved 956 days of data
+  Current price: $295.75
+  Moving averages:
+    20-day: $300.26
+    50-day: $297.31
+    200-day: $270.56
+  MA Spreads:
+    20-day vs 50-day:
+      Spread: 2.94 points
+      Spread %: 0.99%
+      Z-score: -0.31
+      Signal: normal_range
+      Alignment: bullish - 20-day MA is above 50-day MA
+    20-day vs 200-day:
+      Spread: 29.70 points
+      Spread %: 10.98%
+      Z-score: 0.69
+      Signal: normal_range
+      Alignment: bullish - 20-day MA is above 200-day MA
+    50-day vs 200-day:
+      Spread: 26.75 points
+      Spread %: 9.89%
+      Z-score: 1.20
+      Signal: moderately_overbought
+      Alignment: bullish - 50-day MA is above 200-day MA
+
+Saving snapshot to /home/runner/work/deanfi-collectors/deanfi-collectors/meanreversion/ma_spreads_snapshot.json...
+Saving historical data to /home/runner/work/deanfi-collectors/deanfi-collectors/meanreversion/ma_spreads_historical.json...
+
+================================================================================
+COMPLETE
+================================================================================
+Snapshot: /home/runner/work/deanfi-collectors/deanfi-collectors/meanreversion/ma_spreads_snapshot.json
+Historical: /home/runner/work/deanfi-collectors/deanfi-collectors/meanreversion/ma_spreads_historical.json
+=== implied volatility ===
+VIX OPTIONS IMPLIED VOLATILITY FETCHER
+Time: 2026-08-30 15:04:54
+
+================================================================================
+FETCHING VIX OPTIONS IMPLIED VOLATILITY SNAPSHOT
+================================================================================
+Symbol: ^VIX
+Timestamp: 2026-08-30 11:04:54 EDT
+
+Fetching ^VIX (CBOE Volatility Index)... ✅ IV: 91.50% (Low)
+
+✅ Snapshot saved: /home/runner/work/deanfi-collectors/deanfi-collectors/impliedvol/vix_options_snapshot.json
+   Size: 3,759 bytes
+
+================================================================================
+VIX OPTIONS IV FETCH COMPLETE
+================================================================================
+MAJOR INDICES IMPLIED VOLATILITY FETCHER
+Time: 2026-08-30 15:04:55
+
+================================================================================
+FETCHING MAJOR INDICES IMPLIED VOLATILITY SNAPSHOT
+================================================================================
+Symbols: SPY, QQQ, IWM, DIA
+Timestamp: 2026-08-30 11:04:55 EDT
+
+Fetching SPY (S&P 500)... ✅ IV: 10.51%
+Fetching QQQ (Nasdaq-100)... ✅ IV: 15.97%
+Fetching IWM (Russell 2000)... ✅ IV: 15.01%
+Fetching DIA (Dow Jones)... ✅ IV: 10.55%
+
+Successfully fetched: 4/4
+
+✅ Snapshot saved: /home/runner/work/deanfi-collectors/deanfi-collectors/impliedvol/major_indices_iv_snapshot.json
+   Size: 8,164 bytes
+
+================================================================================
+MAJOR INDICES IV FETCH COMPLETE
+================================================================================
+SECTOR ETFs IMPLIED VOLATILITY FETCHER
+Time: 2026-08-30 15:04:58
+
+================================================================================
+FETCHING SECTOR ETFs IMPLIED VOLATILITY SNAPSHOT
+================================================================================
+Symbols: XLK, XLV, XLF, XLE, XLY, XLP, XLI, XLU, XLB, XLRE, XLC
+Timestamp: 2026-08-30 11:04:58 EDT
+
+Fetching XLK (Technology)... ✅ IV: 33.41%
+Fetching XLV (Health Care)... ✅ IV: 30.47%
+Fetching XLF (Financials)... ✅ IV: 18.29%
+Fetching XLE (Energy)... ✅ IV: 27.00%
+Fetching XLY (Consumer Discretionary)... ✅ IV: 52.03%
+Fetching XLP (Consumer Staples)... ✅ IV: 16.94%
+Fetching XLI (Industrials)... ✅ IV: 28.40%
+Fetching XLU (Utilities)... ✅ IV: 27.59%
+Fetching XLB (Materials)... ✅ IV: 24.71%
+Fetching XLRE (Real Estate)... ✅ IV: 19.97%
+Fetching XLC (Communication Services)... ✅ IV: 55.52%
+
+Successfully fetched: 11/11
+
+✅ Snapshot saved: /home/runner/work/deanfi-collectors/deanfi-collectors/impliedvol/sector_etfs_iv_snapshot.json
+   Size: 18,324 bytes
+
+================================================================================
+SECTOR ETFs IV FETCH COMPLETE
+================================================================================
+latest_breadth_date 2026-08-28
+major_history_end 2026-08-30
+recovery_complete True

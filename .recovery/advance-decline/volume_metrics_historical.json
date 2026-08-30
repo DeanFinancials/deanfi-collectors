@@ -1,0 +1,500 @@
+{
+  "metadata": {
+    "generated_at": "2026-08-30T15:04:16.043384+00:00",
+    "data_source": "Yahoo Finance (yfinance)",
+    "universe": "S&P 500",
+    "total_stocks_analyzed": 503,
+    "sessions_emitted": 60,
+    "description": "Rolling advancing/declining volume metrics for market breadth lookbacks"
+  },
+  "field_descriptions": {
+    "date": "Trading date (YYYY-MM-DD)",
+    "advancing_volume": "Sum of volumes for stocks up vs prior close",
+    "declining_volume": "Sum of volumes for stocks down vs prior close",
+    "total_volume": "Sum of volumes for all stocks in universe",
+    "volume_ratio": "advancing_volume / declining_volume",
+    "advancing_volume_pct": "advancing_volume / total_volume * 100"
+  },
+  "data": [
+    {
+      "date": "2026-06-04",
+      "advancing_volume": 2094286435,
+      "declining_volume": 1276124220,
+      "total_volume": 3384851755,
+      "volume_ratio": 1.641,
+      "advancing_volume_pct": 61.87
+    },
+    {
+      "date": "2026-06-05",
+      "advancing_volume": 1124067014,
+      "declining_volume": 2603411411,
+      "total_volume": 3727478425,
+      "volume_ratio": 0.432,
+      "advancing_volume_pct": 30.16
+    },
+    {
+      "date": "2026-06-08",
+      "advancing_volume": 1551582603,
+      "declining_volume": 1534126813,
+      "total_volume": 3090345016,
+      "volume_ratio": 1.011,
+      "advancing_volume_pct": 50.21
+    },
+    {
+      "date": "2026-06-09",
+      "advancing_volume": 1826956143,
+      "declining_volume": 1771606800,
+      "total_volume": 3604875643,
+      "volume_ratio": 1.031,
+      "advancing_volume_pct": 50.68
+    },
+    {
+      "date": "2026-06-10",
+      "advancing_volume": 1075824464,
+      "declining_volume": 2304505768,
+      "total_volume": 3382781032,
+      "volume_ratio": 0.467,
+      "advancing_volume_pct": 31.8
+    },
+    {
+      "date": "2026-06-11",
+      "advancing_volume": 2642406129,
+      "declining_volume": 982066516,
+      "total_volume": 3657481345,
+      "volume_ratio": 2.691,
+      "advancing_volume_pct": 72.25
+    },
+    {
+      "date": "2026-06-12",
+      "advancing_volume": 2192383878,
+      "declining_volume": 847026600,
+      "total_volume": 3039410478,
+      "volume_ratio": 2.588,
+      "advancing_volume_pct": 72.13
+    },
+    {
+      "date": "2026-06-15",
+      "advancing_volume": 2028442306,
+      "declining_volume": 1444802100,
+      "total_volume": 3478826206,
+      "volume_ratio": 1.404,
+      "advancing_volume_pct": 58.31
+    },
+    {
+      "date": "2026-06-16",
+      "advancing_volume": 1264987896,
+      "declining_volume": 1872021533,
+      "total_volume": 3137009429,
+      "volume_ratio": 0.676,
+      "advancing_volume_pct": 40.32
+    },
+    {
+      "date": "2026-06-17",
+      "advancing_volume": 645522534,
+      "declining_volume": 2824326818,
+      "total_volume": 3469861052,
+      "volume_ratio": 0.229,
+      "advancing_volume_pct": 18.6
+    },
+    {
+      "date": "2026-06-18",
+      "advancing_volume": 3899448957,
+      "declining_volume": 2787462526,
+      "total_volume": 6691271683,
+      "volume_ratio": 1.399,
+      "advancing_volume_pct": 58.28
+    },
+    {
+      "date": "2026-06-22",
+      "advancing_volume": 1847737822,
+      "declining_volume": 1912430681,
+      "total_volume": 3777222403,
+      "volume_ratio": 0.966,
+      "advancing_volume_pct": 48.92
+    },
+    {
+      "date": "2026-06-23",
+      "advancing_volume": 1643070100,
+      "declining_volume": 2038422544,
+      "total_volume": 3699815844,
+      "volume_ratio": 0.806,
+      "advancing_volume_pct": 44.41
+    },
+    {
+      "date": "2026-06-24",
+      "advancing_volume": 1602704250,
+      "declining_volume": 2097015300,
+      "total_volume": 3714340350,
+      "volume_ratio": 0.764,
+      "advancing_volume_pct": 43.15
+    },
+    {
+      "date": "2026-06-25",
+      "advancing_volume": 1851989664,
+      "declining_volume": 1785611123,
+      "total_volume": 3637600787,
+      "volume_ratio": 1.037,
+      "advancing_volume_pct": 50.91
+    },
+    {
+      "date": "2026-06-26",
+      "advancing_volume": 3587679620,
+      "declining_volume": 2347692838,
+      "total_volume": 5945237358,
+      "volume_ratio": 1.528,
+      "advancing_volume_pct": 60.35
+    },
+    {
+      "date": "2026-06-29",
+      "advancing_volume": 1924527006,
+      "declining_volume": 1656491557,
+      "total_volume": 3611012963,
+      "volume_ratio": 1.162,
+      "advancing_volume_pct": 53.3
+    },
+    {
+      "date": "2026-06-30",
+      "advancing_volume": 1680656687,
+      "declining_volume": 2229685096,
+      "total_volume": 3910341783,
+      "volume_ratio": 0.754,
+      "advancing_volume_pct": 42.98
+    },
+    {
+      "date": "2026-07-01",
+      "advancing_volume": 1859689100,
+      "declining_volume": 1835277320,
+      "total_volume": 3694966420,
+      "volume_ratio": 1.013,
+      "advancing_volume_pct": 50.33
+    },
+    {
+      "date": "2026-07-02",
+      "advancing_volume": 2057687500,
+      "declining_volume": 1429856088,
+      "total_volume": 3495023188,
+      "volume_ratio": 1.439,
+      "advancing_volume_pct": 58.87
+    },
+    {
+      "date": "2026-07-06",
+      "advancing_volume": 1526274890,
+      "declining_volume": 1502737700,
+      "total_volume": 3147044490,
+      "volume_ratio": 1.016,
+      "advancing_volume_pct": 48.5
+    },
+    {
+      "date": "2026-07-07",
+      "advancing_volume": 1686862900,
+      "declining_volume": 1365933406,
+      "total_volume": 3063164306,
+      "volume_ratio": 1.235,
+      "advancing_volume_pct": 55.07
+    },
+    {
+      "date": "2026-07-08",
+      "advancing_volume": 992142210,
+      "declining_volume": 1970820400,
+      "total_volume": 2962962610,
+      "volume_ratio": 0.503,
+      "advancing_volume_pct": 33.48
+    },
+    {
+      "date": "2026-07-09",
+      "advancing_volume": 1750529719,
+      "declining_volume": 1101193300,
+      "total_volume": 2851723019,
+      "volume_ratio": 1.59,
+      "advancing_volume_pct": 61.38
+    },
+    {
+      "date": "2026-07-10",
+      "advancing_volume": 1503751729,
+      "declining_volume": 879150400,
+      "total_volume": 2386044729,
+      "volume_ratio": 1.71,
+      "advancing_volume_pct": 63.02
+    },
+    {
+      "date": "2026-07-13",
+      "advancing_volume": 1358484700,
+      "declining_volume": 1388964166,
+      "total_volume": 2747448866,
+      "volume_ratio": 0.978,
+      "advancing_volume_pct": 49.45
+    },
+    {
+      "date": "2026-07-14",
+      "advancing_volume": 1282215941,
+      "declining_volume": 1554296000,
+      "total_volume": 2847337341,
+      "volume_ratio": 0.825,
+      "advancing_volume_pct": 45.03
+    },
+    {
+      "date": "2026-07-15",
+      "advancing_volume": 1795311000,
+      "declining_volume": 1328258884,
+      "total_volume": 3123569884,
+      "volume_ratio": 1.352,
+      "advancing_volume_pct": 57.48
+    },
+    {
+      "date": "2026-07-16",
+      "advancing_volume": 1945713183,
+      "declining_volume": 1311609200,
+      "total_volume": 3261991583,
+      "volume_ratio": 1.483,
+      "advancing_volume_pct": 59.65
+    },
+    {
+      "date": "2026-07-17",
+      "advancing_volume": 789916792,
+      "declining_volume": 2661441300,
+      "total_volume": 3451358092,
+      "volume_ratio": 0.297,
+      "advancing_volume_pct": 22.89
+    },
+    {
+      "date": "2026-07-20",
+      "advancing_volume": 1124523500,
+      "declining_volume": 1618177103,
+      "total_volume": 2754193603,
+      "volume_ratio": 0.695,
+      "advancing_volume_pct": 40.83
+    },
+    {
+      "date": "2026-07-21",
+      "advancing_volume": 1761064900,
+      "declining_volume": 1178305660,
+      "total_volume": 2949150160,
+      "volume_ratio": 1.495,
+      "advancing_volume_pct": 59.71
+    },
+    {
+      "date": "2026-07-22",
+      "advancing_volume": 1646842200,
+      "declining_volume": 1380615444,
+      "total_volume": 3047554144,
+      "volume_ratio": 1.193,
+      "advancing_volume_pct": 54.04
+    },
+    {
+      "date": "2026-07-23",
+      "advancing_volume": 984226535,
+      "declining_volume": 2424593100,
+      "total_volume": 3408819635,
+      "volume_ratio": 0.406,
+      "advancing_volume_pct": 28.87
+    },
+    {
+      "date": "2026-07-24",
+      "advancing_volume": 1737533400,
+      "declining_volume": 1292052512,
+      "total_volume": 3029585912,
+      "volume_ratio": 1.345,
+      "advancing_volume_pct": 57.35
+    },
+    {
+      "date": "2026-07-27",
+      "advancing_volume": 1870867592,
+      "declining_volume": 1270214500,
+      "total_volume": 3141082092,
+      "volume_ratio": 1.473,
+      "advancing_volume_pct": 59.56
+    },
+    {
+      "date": "2026-07-28",
+      "advancing_volume": 2403125700,
+      "declining_volume": 1293587120,
+      "total_volume": 3703216320,
+      "volume_ratio": 1.858,
+      "advancing_volume_pct": 64.89
+    },
+    {
+      "date": "2026-07-29",
+      "advancing_volume": 1215778800,
+      "declining_volume": 2488869330,
+      "total_volume": 3704648130,
+      "volume_ratio": 0.488,
+      "advancing_volume_pct": 32.82
+    },
+    {
+      "date": "2026-07-30",
+      "advancing_volume": 1795031986,
+      "declining_volume": 1895814000,
+      "total_volume": 3699902886,
+      "volume_ratio": 0.947,
+      "advancing_volume_pct": 48.52
+    },
+    {
+      "date": "2026-07-31",
+      "advancing_volume": 1827483200,
+      "declining_volume": 1679688146,
+      "total_volume": 3508413446,
+      "volume_ratio": 1.088,
+      "advancing_volume_pct": 52.09
+    },
+    {
+      "date": "2026-08-03",
+      "advancing_volume": 2383887068,
+      "declining_volume": 878012200,
+      "total_volume": 3261899268,
+      "volume_ratio": 2.715,
+      "advancing_volume_pct": 73.08
+    },
+    {
+      "date": "2026-08-04",
+      "advancing_volume": 2909933435,
+      "declining_volume": 897849500,
+      "total_volume": 3819452635,
+      "volume_ratio": 3.241,
+      "advancing_volume_pct": 76.19
+    },
+    {
+      "date": "2026-08-05",
+      "advancing_volume": 1482668571,
+      "declining_volume": 1764112200,
+      "total_volume": 3246780771,
+      "volume_ratio": 0.84,
+      "advancing_volume_pct": 45.67
+    },
+    {
+      "date": "2026-08-06",
+      "advancing_volume": 1113019100,
+      "declining_volume": 1919400516,
+      "total_volume": 3061503916,
+      "volume_ratio": 0.58,
+      "advancing_volume_pct": 36.36
+    },
+    {
+      "date": "2026-08-07",
+      "advancing_volume": 1932534415,
+      "declining_volume": 890539500,
+      "total_volume": 2826896515,
+      "volume_ratio": 2.17,
+      "advancing_volume_pct": 68.36
+    },
+    {
+      "date": "2026-08-10",
+      "advancing_volume": 1428889800,
+      "declining_volume": 1325251596,
+      "total_volume": 2775376496,
+      "volume_ratio": 1.078,
+      "advancing_volume_pct": 51.48
+    },
+    {
+      "date": "2026-08-11",
+      "advancing_volume": 1457241173,
+      "declining_volume": 1087297600,
+      "total_volume": 2571111373,
+      "volume_ratio": 1.34,
+      "advancing_volume_pct": 56.68
+    },
+    {
+      "date": "2026-08-12",
+      "advancing_volume": 1619560200,
+      "declining_volume": 1149084713,
+      "total_volume": 2775361013,
+      "volume_ratio": 1.409,
+      "advancing_volume_pct": 58.35
+    },
+    {
+      "date": "2026-08-13",
+      "advancing_volume": 2048561100,
+      "declining_volume": 669297261,
+      "total_volume": 2720213961,
+      "volume_ratio": 3.061,
+      "advancing_volume_pct": 75.31
+    },
+    {
+      "date": "2026-08-14",
+      "advancing_volume": 1160307706,
+      "declining_volume": 1060661800,
+      "total_volume": 2270678106,
+      "volume_ratio": 1.094,
+      "advancing_volume_pct": 51.1
+    },
+    {
+      "date": "2026-08-17",
+      "advancing_volume": 735526000,
+      "declining_volume": 1892510135,
+      "total_volume": 2639426035,
+      "volume_ratio": 0.389,
+      "advancing_volume_pct": 27.87
+    },
+    {
+      "date": "2026-08-18",
+      "advancing_volume": 1158574800,
+      "declining_volume": 1508158994,
+      "total_volume": 2692186694,
+      "volume_ratio": 0.768,
+      "advancing_volume_pct": 43.03
+    },
+    {
+      "date": "2026-08-19",
+      "advancing_volume": 1885282400,
+      "declining_volume": 1165770964,
+      "total_volume": 3052348964,
+      "volume_ratio": 1.617,
+      "advancing_volume_pct": 61.76
+    },
+    {
+      "date": "2026-08-20",
+      "advancing_volume": 794306200,
+      "declining_volume": 1967903899,
+      "total_volume": 2787980599,
+      "volume_ratio": 0.404,
+      "advancing_volume_pct": 28.49
+    },
+    {
+      "date": "2026-08-21",
+      "advancing_volume": 1787576602,
+      "declining_volume": 969725400,
+      "total_volume": 2772822102,
+      "volume_ratio": 1.843,
+      "advancing_volume_pct": 64.47
+    },
+    {
+      "date": "2026-08-24",
+      "advancing_volume": 1276558200,
+      "declining_volume": 1286221732,
+      "total_volume": 2586842632,
+      "volume_ratio": 0.992,
+      "advancing_volume_pct": 49.35
+    },
+    {
+      "date": "2026-08-25",
+      "advancing_volume": 1346328800,
+      "declining_volume": 1025128347,
+      "total_volume": 2381698047,
+      "volume_ratio": 1.313,
+      "advancing_volume_pct": 56.53
+    },
+    {
+      "date": "2026-08-26",
+      "advancing_volume": 1098631007,
+      "declining_volume": 1355250500,
+      "total_volume": 2470388607,
+      "volume_ratio": 0.811,
+      "advancing_volume_pct": 44.47
+    },
+    {
+      "date": "2026-08-27",
+      "advancing_volume": 1285465000,
+      "declining_volume": 1595857263,
+      "total_volume": 2890342263,
+      "volume_ratio": 0.806,
+      "advancing_volume_pct": 44.47
+    },
+    {
+      "date": "2026-08-28",
+      "advancing_volume": 1159793100,
+      "declining_volume": 1448018035,
+      "total_volume": 2621815835,
+      "volume_ratio": 0.801,
+      "advancing_volume_pct": 44.24
+    }
+  ]
+}

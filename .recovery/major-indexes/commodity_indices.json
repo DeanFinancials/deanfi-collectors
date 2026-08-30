@@ -1,0 +1,182 @@
+{
+  "_README": {
+    "title": "Commodity Indices - Daily Snapshot",
+    "description": "Major commodity futures and ETFs",
+    "interpretation": {
+      "gold_rising": "Risk-off sentiment, inflation hedge",
+      "oil_rising": "Economic growth expectations",
+      "correlation": "Commodities often correlate with EM performance"
+    },
+    "pivot_points": {
+      "description": "Daily pivot levels for commodity futures and ETFs",
+      "formula": "PP=(Previous High + Low + Close)/3, plus R1-R3 and S1-S3 levels",
+      "note": "Particularly useful for oil and gold where technical levels are closely watched"
+    }
+  },
+  "metadata": {
+    "generated_at": "2026-08-30T15:04:44Z",
+    "market_date": "2026-08-30",
+    "market_status": "closed",
+    "indices_count": 5,
+    "data_source": "Yahoo Finance (yfinance)",
+    "data_quality": {
+      "status": "complete",
+      "missing_days": 0,
+      "completeness_percent": 100.0,
+      "last_update": "2026-08-30T15:04:44Z",
+      "market_hours": "closed"
+    }
+  },
+  "indices": {
+    "GC=F": {
+      "name": "Gold Futures",
+      "symbol": "GC=F",
+      "commodity_type": "Precious Metal",
+      "unit": "$/troy ounce",
+      "is_etf": false,
+      "current_price": 4529.9,
+      "daily_change": -134.1,
+      "daily_change_percent": -2.88,
+      "volume": 268759,
+      "day_high": 4688.0,
+      "day_low": 4495.5,
+      "day_open": 4656.0,
+      "52_week_high": 5318.4,
+      "52_week_low": 3431.8,
+      "distance_from_52w_high_percent": -14.83,
+      "year_to_date_percent": 4.72,
+      "1_month_percent": 10.48,
+      "3_month_percent": -0.67,
+      "6_month_percent": -13.39,
+      "pivot_points": {
+        "pivot_point": 4609.7,
+        "resistance_1": 4609.7,
+        "resistance_2": 4609.7,
+        "resistance_3": 4609.7,
+        "support_1": 4609.7,
+        "support_2": 4609.7,
+        "support_3": 4609.7
+      }
+    },
+    "SI=F": {
+      "name": "Silver Futures",
+      "symbol": "SI=F",
+      "commodity_type": "Precious Metal",
+      "unit": "$/troy ounce",
+      "is_etf": false,
+      "current_price": 67.79,
+      "daily_change": -2.45,
+      "daily_change_percent": -3.49,
+      "volume": 85735,
+      "day_high": 72.05,
+      "day_low": 66.83,
+      "day_open": 70.05,
+      "52_week_high": 115.08,
+      "52_week_low": 39.19,
+      "distance_from_52w_high_percent": -41.1,
+      "year_to_date_percent": -3.35,
+      "1_month_percent": 15.25,
+      "3_month_percent": -10.35,
+      "6_month_percent": -26.86,
+      "pivot_points": {
+        "pivot_point": 69.43,
+        "resistance_1": 69.43,
+        "resistance_2": 69.43,
+        "resistance_3": 69.43,
+        "support_1": 69.43,
+        "support_2": 69.43,
+        "support_3": 69.43
+      }
+    },
+    "CL=F": {
+      "name": "Crude Oil Futures (WTI)",
+      "symbol": "CL=F",
+      "commodity_type": "Energy",
+      "unit": "$/barrel",
+      "is_etf": false,
+      "current_price": 83.4,
+      "daily_change": -0.13,
+      "daily_change_percent": -0.16,
+      "volume": 142318,
+      "day_high": 83.78,
+      "day_low": 82.25,
+      "day_open": 83.67,
+      "52_week_high": 112.95,
+      "52_week_low": 55.27,
+      "distance_from_52w_high_percent": -26.16,
+      "year_to_date_percent": 45.25,
+      "1_month_percent": -0.23,
+      "3_month_percent": -4.53,
+      "6_month_percent": 24.44,
+      "pivot_points": {
+        "pivot_point": 82.82,
+        "resistance_1": 84.98,
+        "resistance_2": 86.44,
+        "resistance_3": 88.6,
+        "support_1": 81.36,
+        "support_2": 79.2,
+        "support_3": 73.41
+      }
+    },
+    "NG=F": {
+      "name": "Natural Gas Futures",
+      "symbol": "NG=F",
+      "commodity_type": "Energy",
+      "unit": "$/MMBtu",
+      "is_etf": false,
+      "current_price": 2.89,
+      "daily_change": -0.03,
+      "daily_change_percent": -0.89,
+      "volume": 123778,
+      "day_high": 2.93,
+      "day_low": 2.84,
+      "day_open": 2.91,
+      "52_week_high": 7.46,
+      "52_week_low": 2.52,
+      "distance_from_52w_high_percent": -61.29,
+      "year_to_date_percent": -21.65,
+      "1_month_percent": 4.71,
+      "3_month_percent": -12.22,
+      "6_month_percent": 1.01,
+      "pivot_points": {
+        "pivot_point": 2.9,
+        "resistance_1": 2.95,
+        "resistance_2": 2.99,
+        "resistance_3": 3.04,
+        "support_1": 2.86,
+        "support_2": 2.81,
+        "support_3": 2.66
+      }
+    },
+    "DBC": {
+      "name": "Invesco DB Commodity Index Tracking Fund",
+      "symbol": "DBC",
+      "commodity_type": "Diversified",
+      "unit": null,
+      "is_etf": true,
+      "current_price": 30.79,
+      "daily_change": -0.07,
+      "daily_change_percent": -0.23,
+      "volume": 939788,
+      "day_high": 30.92,
+      "day_low": 30.69,
+      "day_open": 30.94,
+      "52_week_high": 31.69,
+      "52_week_low": 21.31,
+      "distance_from_52w_high_percent": -2.84,
+      "year_to_date_percent": 37.7,
+      "1_month_percent": 5.01,
+      "3_month_percent": 4.44,
+      "6_month_percent": 22.67,
+      "pivot_points": {
+        "pivot_point": 30.78,
+        "resistance_1": 31.03,
+        "resistance_2": 31.19,
+        "resistance_3": 31.44,
+        "support_1": 30.62,
+        "support_2": 30.37,
+        "support_3": 29.72
+      }
+    }
+  }
+}

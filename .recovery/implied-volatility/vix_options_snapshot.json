@@ -1,0 +1,95 @@
+{
+  "_README": {
+    "description": "Implied volatility snapshot for VIX options (volatility of volatility)",
+    "data_source": "yfinance (Yahoo Finance) - VIX options data",
+    "update_frequency": "Real-time (run script to update)",
+    "last_updated": "2026-08-30T11:04:55.020005-04:00",
+    "symbol": "^VIX",
+    "important_note": "VIX options measure volatility OF volatility - different from equity options",
+    "vix_background": {
+      "what_is_vix": "CBOE Volatility Index - measures S&P 500 30-day expected volatility",
+      "vix_range": "Typically 10-30, can spike to 50+ during crises",
+      "vix_options": "Options on VIX itself - used to hedge or speculate on volatility changes"
+    },
+    "options_criteria": {
+      "min_days_to_expiration": 7,
+      "max_days_to_expiration": 60,
+      "atm_tolerance": "2.0%"
+    },
+    "fields_explanation": {
+      "current_price": "Current VIX level (not a price, but volatility index value)",
+      "average_iv": "Average of ATM VIX call and put implied volatility",
+      "average_iv_formatted": "IV as percentage - NOTE: VIX IV is much higher than equity IV",
+      "iv_level": "Classification specific to VIX (different scale than equities)",
+      "atm_call": "ATM VIX call option details",
+      "atm_put": "ATM VIX put option details"
+    },
+    "interpretation": {
+      "vix_iv_meaning": "High VIX option IV = Market expects large swings in volatility itself",
+      "typical_range": "VIX option IV typically 80-150% (much higher than equity options)",
+      "low_vix_iv": "IV < 100% - Market expects stable volatility environment",
+      "normal_vix_iv": "IV 100-150% - Normal VIX option volatility",
+      "high_vix_iv": "IV > 150% - Extreme uncertainty about future volatility",
+      "vix_term_structure": "Compare near-term vs longer-term VIX option IV for term structure insights"
+    },
+    "use_cases": {
+      "hedge_volatility": "VIX options used to hedge against volatility spikes",
+      "volatility_trading": "Traders speculate on volatility changes using VIX options",
+      "crisis_indicator": "Extreme VIX option IV can signal market stress"
+    }
+  },
+  "data": {
+    "^VIX": {
+      "symbol": "^VIX",
+      "current_price": 14.43,
+      "timestamp": "2026-08-30T11:04:55.019725-04:00",
+      "expiration_date": "2026-09-09",
+      "days_to_expiration": 10,
+      "atm_call": {
+        "strike": 14.5,
+        "implied_volatility": 1.66797,
+        "last_price": 2.05,
+        "bid": 1.06,
+        "ask": 2.2,
+        "mid_price": 1.63,
+        "moneyness": 1.0049,
+        "pct_from_atm": 0.49,
+        "classification": "ATM",
+        "volume": 160,
+        "open_interest": 538,
+        "bid_ask_spread": 1.14,
+        "spread_pct": 69.94
+      },
+      "atm_put": {
+        "strike": 14.5,
+        "implied_volatility": 0.162118,
+        "last_price": 0.06,
+        "bid": 0.04,
+        "ask": 0.2,
+        "mid_price": 0.12,
+        "moneyness": 1.0049,
+        "pct_from_atm": 0.49,
+        "classification": "ATM",
+        "volume": 105,
+        "open_interest": 31,
+        "bid_ask_spread": 0.16,
+        "spread_pct": 133.33
+      },
+      "average_iv": 0.915044,
+      "name": "CBOE Volatility Index",
+      "description": "Market's expectation of 30-day S&P 500 volatility",
+      "note": "VIX options measure volatility of volatility - unique characteristics",
+      "average_iv_formatted": "91.50%",
+      "iv_level": "Low",
+      "historical_reference": {
+        "historical_avg": 0.21,
+        "historical_avg_formatted": "21%",
+        "typical_low": 0.12,
+        "typical_high": 0.3,
+        "current_vs_average": 0.705,
+        "current_vs_average_pct": "335.74%",
+        "special_note": "VIX > 30 indicates high market uncertainty"
+      }
+    }
+  }
+}
