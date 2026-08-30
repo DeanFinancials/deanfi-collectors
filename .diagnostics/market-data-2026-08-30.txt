@@ -1,0 +1,80 @@
+=== Environment ===
+Sun Aug 30 14:28:37 UTC 2026
+Python 3.11.16
+yfinance: 1.7.0
+pandas: 3.0.5
+curl_cffi: 0.16.2
+
+=== Small yfinance download ===
+empty: False
+rows: 10
+first_date: 2026-08-17 00:00:00
+last_date: 2026-08-28 00:00:00
+columns: 15
+
+=== Daily breadth collector ===
+Fetching S&P 500 universe...
+Fetching S&P 500 tickers from Wikipedia...
+✓ Fetched 503 tickers from Wikipedia
+Downloading 2y of data for 503 symbols...
+✓ Downloaded 2y data for 503 symbols
+Saved cache: 501 rows
+Calculating breadth metrics...
+Warning: A/D line historical file not found in any location
+
+✓ Daily breadth metrics saved to /home/runner/work/deanfi-collectors/deanfi-collectors/advancedecline/daily_breadth.json
+  Date: 2026-08-28
+  Advances: 230
+  Declines: 272
+  A/D Ratio: 0.846
+  Above 20-day MA: 43.34%
+  Above 50-day MA: 53.48%
+  Above 200-day MA: 71.17%
+breadth_exit_status=0
+breadth_output_date: 2026-08-28
+breadth_generated_at: 2026-08-30T14:29:24.697205+00:00
+
+=== Major indexes collector ===
+================================================================================
+US MAJOR INDICES DATA FETCH
+================================================================================
+Indices: 6
+Historical Days: 252
+Data Source: Yahoo Finance
+================================================================================
+Fetching US Major Indices snapshot data...
+  Processing ^GSPC...
+  Processing ^DJI...
+  Processing ^IXIC...
+  Processing ^NDX...
+  Processing ^RUT...
+  Processing ^VIX...
+✅ Saved snapshot to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_major_indices.json
+
+Fetching US Major Indices 252-day historical data...
+  Processing ^GSPC...
+    ✓ 251 days processed
+  Processing ^DJI...
+    ✓ 251 days processed
+  Processing ^IXIC...
+    ✓ 251 days processed
+  Processing ^NDX...
+    ✓ 251 days processed
+  Processing ^RUT...
+    ✓ 251 days processed
+  Processing ^VIX...
+    ✓ 252 days processed
+✅ Saved historical data to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_major_indices_historical.json
+
+Fetching US Major ETF prices snapshot...
+✅ Saved ETF prices snapshot to /home/runner/work/deanfi-collectors/deanfi-collectors/majorindexes/us_major_etf_prices.json
+
+================================================================================
+✅ US MAJOR INDICES FETCH COMPLETE
+================================================================================
+Snapshot: 6 indices
+Historical: 6 indices
+================================================================================
+major_indexes_exit_status=0
+major_indexes_metadata: {'generated_at': '2026-08-30T14:29:26Z', 'market_date': '2026-08-30', 'market_status': 'closed', 'indices_count': 6, 'data_source': 'Yahoo Finance (yfinance)', 'data_quality': {'status': 'complete', 'missing_days': 0, 'completeness_percent': 100.0, 'last_update': '2026-08-30T14:29:26Z', 'market_hours': 'closed'}}
+major_indexes_meta: {}
