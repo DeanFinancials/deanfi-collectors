@@ -377,6 +377,7 @@ def calculate_statistics(prices: pd.Series) -> Dict:
     Returns:
         Dict with statistical metrics
     """
+    prices = prices[pd.notna(prices) & np.isfinite(prices)]
     if len(prices) < 2:
         return {}
     

@@ -27,6 +27,21 @@ def test_return_and_52_week_metrics_ignore_non_finite_closes():
     assert week_52_metrics["distance_from_52w_high_percent"] == 0.0
 
 
+def test_statistics_ignore_non_finite_closes():
+    prices = pd.Series(
+        [100.0, 101.0, np.nan],
+        index=pd.date_range("2025-01-01", periods=3),
+    )
+
+    statistics = utils.calculate_statistics(prices)
+
+    assert statistics["period_return_percent"] == 1.0
+    assert all(
+        value is None or not isinstance(value, float) or np.isfinite(value)
+        for value in statistics.values()
+    )
+
+
 def test_save_json_rejects_non_finite_values(tmp_path):
     output = tmp_path / "snapshot.json"
 
