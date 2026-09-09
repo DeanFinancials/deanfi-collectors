@@ -4,9 +4,6 @@ on:
   schedule:
     - cron: '30 16 * * 1-5'    # ~noon ET (11:30am EST / 12:30pm EDT)
     - cron: '0 2 * * 2-6'     # ~9pm ET (9pm EST / 10pm EDT)
-  push:
-    branches: [main]
-    paths: ['.github/workflows/options-whales.yml']
   workflow_dispatch:
     inputs:
       test_mode:
@@ -55,6 +52,9 @@ jobs:
       
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Test publication retry guard
+        run: python -m pytest tests/test_options_publication.py -q
       
       - name: Fetch options whale trades
         run: |
@@ -109,7 +109,33 @@ jobs:
           name: options-whales-${{ github.run_id }}
           path: optionswhales
 
+      - name: Check snapshot generation time
+        id: snapshot
+        run: |
+          python3 <<'PYTHON'
+          import json, os
+          from datetime import datetime
+          from pathlib import Path
+
+          summary = json.loads(Path('optionswhales/options_whale_summary.json').read_text())
+          generated = datetime.fromisoformat(summary['metadata']['generated_at'].replace('Z', '+00:00'))
+          if generated.tzinfo is None:
+              raise ValueError('Options snapshot timestamp must include a timezone')
+          fp = Path('data-cache/data_freshness.json')
+          freshness = json.loads(fp.read_text()) if fp.exists() else {}
+          previous = freshness.get('sections', {}).get('options-whales', {}).get('last_updated')
+          try:
+              current = datetime.fromisoformat(previous.replace('Z', '+00:00'))
+              publish = generated > current
+          except (AttributeError, TypeError, ValueError):
+              publish = True
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"publish={str(publish).lower()}\n")
+          print('Publishing newer options snapshot' if publish else 'Keeping newer or equal published snapshot')
+          PYTHON
+
       - name: Copy output to data repo
+        if: steps.snapshot.outputs.publish == 'true'
         run: |
           mkdir -p data-cache/options-whales
           cp optionswhales/*.json data-cache/options-whales/
@@ -117,6 +143,7 @@ jobs:
           ls -la data-cache/options-whales/
 
       - name: Update data freshness
+        if: steps.snapshot.outputs.publish == 'true'
         run: |
           python3 << 'EOF'
           import json
@@ -143,6 +170,7 @@ jobs:
           EOF
 
       - name: Commit and push to data repo
+        if: steps.snapshot.outputs.publish == 'true'
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
