@@ -18,7 +18,7 @@ def collection_due(now, freshness):
         )).total_seconds() for section in SECTIONS]
         if all(0 <= age < 10 * 60 for age in ages):
             return False, 'all intraday sections were published within 10 minutes'
-    except (KeyError, TypeError, ValueError):
+    except (KeyError, TypeError, ValueError, AttributeError):
         pass
     return True, 'collection is due'
 

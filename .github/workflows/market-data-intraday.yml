@@ -3,13 +3,13 @@ run-name: Market data (${{ inputs.source || github.event_name }}) ${{ inputs.sch
 
 on:
   schedule:
-    - cron: '7,22,37,52 12-21 * * 1-5'  # Market-hours guard handles EDT/EST
+    - cron: '7,22,37,52 8-21 * * 1-5'  # Early bootstrap and backup; handoffs maintain cadence
   workflow_dispatch:
     inputs:
       source:
         description: Trigger source
         type: choice
-        options: [manual, cloudflare]
+        options: [manual, handoff]
         default: manual
       scheduled_at:
         description: Scheduler event time (UTC)
@@ -25,10 +25,14 @@ on:
       - 'shared/cache_manager.py'
       - 'shared/yf_retry.py'
       - 'scripts/check_market_collection.py'
+      - 'scheduler/**'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
+
+permissions:
+  contents: read
 
 jobs:
   fetch-and-publish:
@@ -201,3 +205,33 @@ jobs:
           git commit -m "chore: update market data (15-min) - $(date -u +'%Y-%m-%d %H:%M UTC')"
           git pull --rebase origin main
           git push origin main
+
+  schedule-next:
+    name: Schedule next intraday collection
+    needs: fetch-and-publish
+    if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && vars.MARKET_INTRADAY_CHAIN_DISABLED != 'true' }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write
+    # The data-repository lock belongs only to fetch-and-publish, not this timer.
+    concurrency:
+      group: market-data-next-run
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: scheduler
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Test handoff logic
+        run: node --test scheduler/next-run.test.mjs
+      - name: Wait for next interval and dispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MARKET_INTRADAY_CHAIN_DISABLED: ${{ vars.MARKET_INTRADAY_CHAIN_DISABLED }}
+        run: node scheduler/next-run.mjs

@@ -1,65 +1,53 @@
-# Market collection scheduler
+# Intraday collection handoffs
 
-Cloudflare Cron Triggers dispatch `market-data-intraday.yml` on `main` at minutes
-7, 22, 37, and 52 during the existing weekday collection window, 08:00 to 17:00
-America/New_York. The UTC cron covers daylight saving changes. GitHub's original
-cron remains a backup because its scheduled events have arrived hours apart.
+GitHub's scheduled events can arrive hours late or be dropped. After each
+intraday collector run, a separate job dispatches the next run directly through
+the GitHub API. This keeps an active session moving without waiting for another
+cron event. No external scheduler or additional secret is required.
 
-The Worker only starts the existing collector. Data collection, validation,
-publication to deanfi-data, and the subsequent R2 sync remain in their current
-workflows. No public HTTP endpoint is enabled. No third party runtime dependencies
-are needed.
+## Operation
 
-## Deployment
+- Cron runs remain as early daily bootstrap and recovery attempts. Handoffs run
+  weekdays from 06:00 to 17:00 America/New_York, including daylight saving time.
+  Actual data collection retains its existing 08:00 to 17:00 window.
+- The next run targets 15 minutes after the current run was created. A timer
+  waits at most 13 minutes to fit the ubuntu-slim runner's 15-minute job limit.
+  Quick skipped collections may therefore hand off slightly sooner.
+- A newer cron, push, manual, or handoff run takes ownership. The timer checks
+  again immediately before dispatch to suppress overlapping chains.
+- Collection and timers have separate concurrency groups. Waiting never holds
+  the shared deanfi-data repository write lock. A recent-publication guard skips
+  collection when all four intraday sections were updated within ten minutes.
+- The timer runs after collection failures too, so a transient source error
+  does not stop the next attempt. It stops at session end, on cancellation, or
+  when its run belongs to an earlier New York date.
+- Only the timer job receives `actions: write`; it dispatches the fixed main
+  branch workflow using its short-lived `GITHUB_TOKEN`. No data-repository token
+  is exposed to the scheduler.
 
-`Deploy Market Scheduler` runs after scheduler changes on main or by manual
-dispatch. It runs the Node tests, checks access, uploads the Worker and its secret
-binding, sets the cron, and reads the schedule back to verify it.
+Set the repository variable `MARKET_INTRADAY_CHAIN_DISABLED=true` to stop
+handoffs. Cron and manual collection remain available. Remove the variable or
+set it to `false`, then manually run `Market Data Collection (15-min)` on main
+to restart immediately during the session. The next cron run also restarts it.
 
-Required GitHub secrets in this repository:
+## Limits and cost
 
-* `CLOUDFLARE_API_TOKEN`: account token with Workers Scripts Edit permission.
-* `CLOUDFLARE_ACCOUNT_ID`: existing DeanFi account.
-* `MARKET_SCHEDULER_GITHUB_TOKEN`: GitHub token with Actions read/write permission
-  for DeanFinancials/deanfi-collectors. If absent, deployment uses the existing
-  `DATA_REPO_TOKEN`, which must also be able to dispatch that workflow.
+GitHub still controls runner availability and the first cron event of each day.
+This fixes dependence on cron for every intraday interval, but cannot guarantee
+execution during a GitHub outage. An API failure ends that handoff with a visible
+failed job; the next cron or manual run recovers the chain. Dispatches are not
+blindly retried after ambiguous network failures.
 
-The GitHub token is uploaded directly as a Cloudflare encrypted secret binding;
-it is never committed, written to deployment files, or printed in logs. Rotating
-the GitHub secret requires rerunning deployment to update the Worker binding.
+Waiting consumes Actions minutes. The timer uses the lower-cost ubuntu-slim
+runner. At $0.002/minute, an upper estimate for an 11-hour weekday session is
+about $30/month for 22 weekdays, before included minutes and small per-job
+rounding differences. Collection jobs consume their usual minutes separately.
+Check GitHub's current runner pricing and the organization's spending limits.
 
-The managed Worker is `deanfi-market-scheduler`. `deploy.mjs` owns its cron and
-configuration. To roll back, remove this Worker's Cron Trigger in Cloudflare.
-The original GitHub schedule continues operating. Do not delete or alter the
-separate contact email Worker.
+## Validation
 
-## Duplicate protection and failures
-
-Before dispatching, the Worker checks existing runs and skips active collectors
-or runs created within 12 minutes. It reports authentication, API failures, and
-collectors queued or active longer than 30 minutes as errors in Cloudflare logs.
-It does not retry an ambiguous dispatch request, avoiding duplicate starts.
-
-After acquiring the existing shared data repository concurrency lock, the
-collector checks its freshly checked out freshness file. If all four intraday
-sections were published within 10 minutes, it skips redundant collection.
-Missing, stale, invalid, or future timestamps do not suppress collection.
-
-GitHub runner availability and upstream API availability can still delay jobs.
-The dashboard freshness probe retains its existing 65 minute intraday threshold.
-The Worker removes reliance on GitHub cron delivery; it does not hide stale data.
-
-## Verification
-
-Run `node --test scheduler/worker.test.mjs` and
-`python -m pytest tests/test_market_collection_schedule.py -q`.
-Tests cover dispatch, duplicate suppression, stalled runs, API rejection, New York
-time boundaries, daylight saving changes, weekends, and missing freshness data.
-
-After deployment, allow up to 15 minutes for Cloudflare Cron Trigger propagation.
-Verify two automatic runs titled `Market data (cloudflare)` approximately 15
-minutes apart, successful data commits and R2 syncs, then the website freshness
-probe. A deployment success alone is not confirmation of automatic collection.
-
-References: [GitHub schedule limitations](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
-and [Cloudflare Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+Run `node --test scheduler/next-run.test.mjs` for handoff, duplicate, API error,
+disable-switch, close-of-session, and daylight-saving boundary tests. Run
+`python -m pytest tests/test_market_collection_schedule.py -q` for collection
+hours and freshness guards. In Actions, verify successive `Market data (handoff)`
+runs, successful data publication, and the existing deanfi-data R2 sync workflow.

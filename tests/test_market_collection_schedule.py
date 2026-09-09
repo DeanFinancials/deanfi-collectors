@@ -30,6 +30,13 @@ def test_one_stale_or_missing_section_still_collects():
     assert collection_due(NOW, {})[0] is True
 
 
+@pytest.mark.parametrize('timestamp', [None, 123, 'invalid', '2026-09-09T18:50:00'])
+def test_invalid_timestamps_do_not_suppress_collection(timestamp):
+    data = freshness(5)
+    data['sections']['major-indexes']['last_updated'] = timestamp
+    assert collection_due(NOW, data)[0] is True
+
+
 @pytest.mark.parametrize('date', ['2026-09-12T18:00:00+00:00', '2026-09-09T21:00:00+00:00',
                                  '2026-12-09T12:59:00+00:00'])
 def test_weekends_and_closed_hours_do_not_collect(date):
