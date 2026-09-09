@@ -1,9 +1,20 @@
 name: Market Data Collection (15-min)
+run-name: Market data (${{ inputs.source || github.event_name }}) ${{ inputs.scheduled_at }}
 
 on:
   schedule:
     - cron: '7,22,37,52 12-21 * * 1-5'  # Market-hours guard handles EDT/EST
   workflow_dispatch:
+    inputs:
+      source:
+        description: Trigger source
+        type: choice
+        options: [manual, cloudflare]
+        default: manual
+      scheduled_at:
+        description: Scheduler event time (UTC)
+        type: string
+        required: false
   # Exercise collector reliability fixes immediately on main.
   push:
     branches: [main]
@@ -13,6 +24,7 @@ on:
       - 'majorindexes/**'
       - 'shared/cache_manager.py'
       - 'shared/yf_retry.py'
+      - 'scripts/check_market_collection.py'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -48,23 +60,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Check market hours
+      - name: Check market hours and recent publication
         id: hours_check
-        run: |
-          python3 << 'PY'
-          from datetime import datetime
-          from zoneinfo import ZoneInfo
-          import os
-
-          et = datetime.now(ZoneInfo('America/New_York'))
-          in_hours = 8 <= et.hour < 17
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f'in_market_hours={str(in_hours).lower()}\n')
-          print(f"ET time: {et:%Y-%m-%d %H:%M %Z}; collector active={in_hours}")
-          PY
+        run: python scripts/check_market_collection.py
 
       - name: Test download reliability
-        run: python -m pytest tests/test_cache_manager.py tests/test_yf_helpers.py -q
+        run: python -m pytest tests/test_cache_manager.py tests/test_yf_helpers.py tests/test_market_collection_schedule.py -q
 
       - name: Get cache key
         if: steps.hours_check.outputs.in_market_hours == 'true'
