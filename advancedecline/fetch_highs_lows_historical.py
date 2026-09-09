@@ -56,7 +56,7 @@ def download_market_data(tickers, period="1y", cache_dir=None):
         data = fetcher.fetch_prices(
             tickers=tickers,
             period=period,
-            cache_name="spx_highs_lows_historical"
+            cache_name="spx_daily_breadth", reuse_within_run=True
         )
     else:
         print(f"Downloading {period} of data for {len(tickers)} stocks...", file=sys.stderr)

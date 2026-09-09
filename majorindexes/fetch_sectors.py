@@ -89,6 +89,7 @@ def _batch_download_sectors(symbols, period: str = "1y"):
     """
     df = with_429_retry(
         yf.download,
+        retry_empty=True,
         tickers=symbols,
         period=period,
         group_by="ticker",

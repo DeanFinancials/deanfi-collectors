@@ -95,7 +95,7 @@ def _download_chunked(
 def download_market_data(tickers: list[str], *, period: str, cache_dir: str | None) -> pd.DataFrame:
     if cache_dir:
         fetcher = CachedDataFetcher(cache_dir=cache_dir)
-        return fetcher.fetch_prices(tickers=tickers, period=period, cache_name="spx_volume_breadth")
+        return fetcher.fetch_prices(tickers=tickers, period=period, cache_name="spx_daily_breadth", reuse_within_run=True)
 
     return _download_chunked(tickers, period=period)
 

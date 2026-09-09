@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: '7,22,37,52 12-21 * * 1-5'  # Market-hours guard handles EDT/EST
   workflow_dispatch:
+  # Exercise collector reliability fixes immediately on main.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/market-data-intraday.yml'
+      - 'advancedecline/**'
+      - 'majorindexes/**'
+      - 'shared/cache_manager.py'
+      - 'shared/yf_retry.py'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -53,6 +62,9 @@ jobs:
               f.write(f'in_market_hours={str(in_hours).lower()}\n')
           print(f"ET time: {et:%Y-%m-%d %H:%M %Z}; collector active={in_hours}")
           PY
+
+      - name: Test download reliability
+        run: python -m pytest tests/test_cache_manager.py tests/test_yf_helpers.py -q
 
       - name: Get cache key
         if: steps.hours_check.outputs.in_market_hours == 'true'

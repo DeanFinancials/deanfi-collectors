@@ -55,7 +55,7 @@ def download_market_data(tickers, period="1y", cache_dir=None):
         data = fetcher.fetch_prices(
             tickers=tickers,
             period=period,
-            cache_name="spx_ad_line_historical"
+            cache_name="spx_daily_breadth", reuse_within_run=True
         )
         return data['Close'] if not data.empty else data
     else:
@@ -185,7 +185,7 @@ def main():
     tickers = fetch_spx_tickers()
     
     # Download market data
-    close_prices = download_market_data(tickers, period=config['download_period'])
+    close_prices = download_market_data(tickers, period=config['download_period'], cache_dir=args.cache_dir)
     
     # Calculate A/D line
     ad_data = calculate_ad_line_historical(close_prices)

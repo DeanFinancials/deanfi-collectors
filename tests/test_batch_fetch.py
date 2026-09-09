@@ -14,7 +14,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -275,8 +275,9 @@ def _load_target():
 
 @pytest.fixture()
 def mod_and_fakes():
-    sys.modules.pop("fetch_us_major", None)
-    return _load_target()
+    with patch.dict(sys.modules):
+        sys.modules.pop("fetch_us_major", None)
+        yield _load_target()
 
 
 # ---------------------------------------------------------------------------
@@ -568,8 +569,9 @@ def _load_sectors_target():
 
 @pytest.fixture()
 def mod_and_fakes_sectors():
-    sys.modules.pop("fetch_sectors", None)
-    return _load_sectors_target()
+    with patch.dict(sys.modules):
+        sys.modules.pop("fetch_sectors", None)
+        yield _load_sectors_target()
 
 
 class TestBatchDownloadSectors:

@@ -26,12 +26,15 @@ Usage:
 """
 
 import json
+import hashlib
+import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple
 import pandas as pd
 import yfinance as yf
+from shared.yf_retry import with_429_retry
 
 # Cache settings
 DEFAULT_MAX_AGE_HOURS = 168  # 1 week
@@ -108,7 +111,8 @@ class CachedDataFetcher:
         end_date: str = None,
         cache_name: str = "prices",
         period: str = None,
-        force_refresh: bool = False
+        force_refresh: bool = False,
+        reuse_within_run: bool = False,
     ) -> pd.DataFrame:
         """
         Fetch price data with intelligent caching.
@@ -120,12 +124,32 @@ class CachedDataFetcher:
             cache_name: Name for cache files
             period: yfinance period (e.g., '1y', '6mo'), overrides dates if provided
             force_refresh: Force full rebuild ignoring cache
+            reuse_within_run: Reuse an identical successful request in this CI attempt
             
         Returns:
             DataFrame with OHLCV data for all tickers
         """
         cache_file = self.cache_dir / f"{cache_name}.parquet"
         metadata_file = self.cache_dir / f"{cache_name}_metadata.json"
+
+        # A restored cache from another run must still be refreshed. Sharing only
+        # identical requests within one attempt avoids five S&P 500 downloads.
+        run_id = os.environ.get("GITHUB_RUN_ID")
+        self._run_id = f"{run_id}:{os.environ.get('GITHUB_RUN_ATTEMPT', '1')}" if run_id else None
+        self._request_signature = hashlib.sha256(json.dumps(
+            [sorted(set(tickers)), start_date, end_date, period]
+        ).encode()).hexdigest()
+        if reuse_within_run and self._run_id and not force_refresh and metadata_file.exists():
+            try:
+                saved = json.loads(metadata_file.read_text())
+                if (saved.get("run_id") == self._run_id
+                        and saved.get("request_signature") == self._request_signature):
+                    cached = self._load_cache(cache_file)
+                    if cached is not None and not cached.empty:
+                        print(f"Reusing {cache_name} refreshed in this CI attempt", file=sys.stderr)
+                        return cached
+            except (OSError, ValueError):
+                pass
         
         # Load existing metadata
         metadata = self._load_metadata(metadata_file) if not force_refresh else None
@@ -225,12 +249,14 @@ class CachedDataFetcher:
     def _download_with_period(self, tickers: list, period: str):
         """Download data using yfinance period parameter."""
         try:
-            data = yf.download(
+            data = with_429_retry(
+                yf.download,
                 tickers,
+                retry_empty=True,
                 period=period,
                 progress=False,
                 auto_adjust=True,
-                threads=True
+                threads=4
             )
             print(f"✓ Downloaded {period} data for {len(tickers)} symbols", file=sys.stderr)
             return data
@@ -242,13 +268,15 @@ class CachedDataFetcher:
         """Download data using start/end dates."""
         try:
             print(f"Downloading data for {len(tickers)} symbols from {start}...", file=sys.stderr)
-            data = yf.download(
+            data = with_429_retry(
+                yf.download,
                 tickers,
+                retry_empty=True,
                 start=start,
                 end=end,
                 progress=False,
                 auto_adjust=True,
-                threads=True
+                threads=4
             )
             print(f"✓ Downloaded data for {len(tickers)} symbols", file=sys.stderr)
             return data
@@ -357,6 +385,9 @@ class CachedDataFetcher:
                 source="yfinance"
             )
             metadata_file.parent.mkdir(parents=True, exist_ok=True)
-            metadata_file.write_text(json.dumps(metadata.to_dict(), indent=2))
+            payload = metadata.to_dict()
+            payload['run_id'] = self._run_id
+            payload['request_signature'] = self._request_signature
+            metadata_file.write_text(json.dumps(payload, indent=2))
         except Exception as e:
             print(f"Warning: Could not save cache metadata: {e}", file=sys.stderr)

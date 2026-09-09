@@ -16,7 +16,7 @@ import math
 import sys
 import types
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -70,7 +70,7 @@ def _make_fake_cache_manager():
         def __init__(self, *, cache_dir):
             self.cache_dir = cache_dir
 
-        def fetch_prices(self, *, tickers, period, cache_name):
+        def fetch_prices(self, *, tickers, period, cache_name, reuse_within_run=False):
             result = FakeDF("cached")
             result.from_cache = True
             return result
@@ -141,8 +141,9 @@ def _load_target():
 
 @pytest.fixture()
 def mod_and_fakes():
-    sys.modules.pop("fetch_volume_metrics_historical", None)
-    return _load_target()
+    with patch.dict(sys.modules):
+        sys.modules.pop("fetch_volume_metrics_historical", None)
+        yield _load_target()
 
 
 # ---------------------------------------------------------------------------

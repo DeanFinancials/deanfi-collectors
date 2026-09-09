@@ -86,6 +86,7 @@ def fetch_latest_etf_prices(tickers: List[str]) -> Dict[str, Dict[str, Optional[
     # Use 5m bars for reliability and lower load; updated often enough for a 10-min cadence.
     df = with_429_retry(
         yf.download,
+        retry_empty=True,
         tickers=tickers,
         period="2d",
         interval="5m",
@@ -189,6 +190,7 @@ def _batch_download_indices(symbols: List[str], period: str = "1y") -> Dict[str,
     """
     df = with_429_retry(
         yf.download,
+        retry_empty=True,
         tickers=symbols,
         period=period,
         group_by="ticker",
