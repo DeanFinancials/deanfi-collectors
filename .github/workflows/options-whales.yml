@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '30 16 * * 1-5'    # ~noon ET (11:30am EST / 12:30pm EDT)
     - cron: '0 2 * * 2-6'     # ~9pm ET (9pm EST / 10pm EDT)
+  push:
+    branches: [main]
+    paths: ['.github/workflows/options-whales.yml']
   workflow_dispatch:
     inputs:
       test_mode:
@@ -20,33 +23,29 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
-  DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
-  ALPACA_API_KEY: "${{ secrets.ALPACA_API_KEY }}"
-  ALPACA_API_SECRET: "${{ secrets.ALPACA_API_SECRET }}"
+
+permissions:
+  contents: read
 
 jobs:
   fetch-options-whales:
     runs-on: ubuntu-latest
-    # Full S&P 500 option sweeps can drift when Alpaca responses are slow.
-    # Keep enough headroom for collection plus checkout/publish steps.
+    # Slow API scans must not hold the shared data publication lock.
     timeout-minutes: 45
 
-    # Queue all data collectors to prevent git conflicts when writing to deanfi-data repo
     concurrency:
-      group: deanfi-data-repo
+      group: options-whales-collection
       queue: max
       cancel-in-progress: false
     
+    env:
+      ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+      ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+
     steps:
       - name: Checkout collectors repo
         uses: actions/checkout@v5
       
-      - name: Checkout data repo
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ env.DATA_REPO }}
-          token: ${{ secrets.DATA_REPO_TOKEN }}
-          path: data-cache
       
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -78,21 +77,53 @@ jobs:
           $CMD
           echo "✅ Options whale collection complete"
       
+      - name: Preserve collected outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: options-whales-${{ github.run_id }}
+          path: optionswhales/*.json
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  publish-options-whales:
+    needs: fetch-options-whales
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Only the short publication job serializes with other data writers.
+    concurrency:
+      group: deanfi-data-repo
+      queue: max
+      cancel-in-progress: false
+    steps:
+      - name: Checkout data repo
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ env.DATA_REPO }}
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-cache
+
+      - name: Restore collected outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: options-whales-${{ github.run_id }}
+          path: optionswhales
+
       - name: Copy output to data repo
         run: |
           mkdir -p data-cache/options-whales
-          cp optionswhales/*.json data-cache/options-whales/ 2>/dev/null || true
+          cp optionswhales/*.json data-cache/options-whales/
           echo "📦 Output files:"
           ls -la data-cache/options-whales/
 
       - name: Update data freshness
         run: |
           python3 << 'EOF'
-          import json, os
-          from datetime import datetime, timezone
+          import json
           from pathlib import Path
 
-          now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          summary = json.loads(Path("optionswhales/options_whale_summary.json").read_text())
+          now = summary["metadata"]["generated_at"]
           fp = Path('data-cache/data_freshness.json')
           data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
 
