@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { handoffPlan, scheduleNext, schedulerWindow } from './next-run.mjs';
+import { handoffPlan, scheduleNext, isCollectionWindow } from './next-run.mjs';
 
 const START = new Date('2026-09-09T18:00:00Z');
 const current = { id: 100, created_at: START.toISOString() };
@@ -31,28 +31,32 @@ test('ties use run ID and older runs do not block handoff', () => {
   assert.equal(handoffPlan(at(3), current, [{ ...current, id: 99 }]).status, 'schedule');
 });
 
-test('stale previous-day runs cannot restart a new session', () => {
-  assert.equal(handoffPlan(new Date('2026-09-10T18:00Z'), current, []).status, 'expired-run');
+test('a latest run can recover across dates without waiting for cron', () => {
+  assert.equal(handoffPlan(new Date('2026-09-10T18:00Z'), current, []).status, 'schedule');
 });
 
-test('weekends, daylight saving, bootstrap, and close boundaries are respected', () => {
-  for (const date of ['2026-09-09T10:00Z', '2026-09-09T20:59Z',
-    '2026-12-09T11:00Z', '2026-12-09T21:59Z']) {
-    assert.equal(schedulerWindow(new Date(date)).active, true, date);
+test('collection respects weekends, daylight saving, and 8 AM to 5 PM boundaries', () => {
+  for (const date of ['2026-09-09T12:00Z', '2026-09-09T20:59Z',
+    '2026-12-09T13:00Z', '2026-12-09T21:59Z']) {
+    assert.equal(isCollectionWindow(new Date(date)), true, date);
   }
-  for (const date of ['2026-09-09T09:59Z', '2026-09-09T21:00Z',
-    '2026-12-09T10:59Z', '2026-12-09T22:00Z', '2026-09-12T18:00Z']) {
-    assert.equal(schedulerWindow(new Date(date)).active, false, date);
+  for (const date of ['2026-09-09T11:59Z', '2026-09-09T21:00Z',
+    '2026-12-09T12:59Z', '2026-12-09T22:00Z', '2026-09-12T18:00Z']) {
+    assert.equal(isCollectionWindow(new Date(date)), false, date);
   }
 });
 
-test('a target after the close is never dispatched', () => {
+test('handoffs continue after the close and across midnight and weekends', () => {
   const late = { id: 100, created_at: '2026-09-09T20:52:00Z' };
-  assert.equal(handoffPlan(new Date('2026-09-09T20:55Z'), late, []).status, 'session-finished');
+  assert.equal(handoffPlan(new Date('2026-09-09T20:55Z'), late, []).status, 'schedule');
+  for (const date of ['2026-09-10T03:58Z', '2026-09-12T18:00Z']) {
+    const run = { id: 100, created_at: date };
+    assert.equal(handoffPlan(new Date(date), run, []).status, 'schedule');
+  }
 });
 
-function fakeApi({ newRun = false, dispatchStatus = 204 } = {}) {
-  let clock = at(3);
+function fakeApi({ newRun = false, dispatchStatus = 204, run = current } = {}) {
+  let clock = new Date(Date.parse(run.created_at) + 3 * 60000);
   let reads = 0;
   const calls = [];
   return {
@@ -60,11 +64,11 @@ function fakeApi({ newRun = false, dispatchStatus = 204 } = {}) {
     log: () => {},
     fetchFn: async (url, options) => {
       calls.push({ url, options });
-      if (url.endsWith('/runs/100')) return Response.json(current);
+      if (url.endsWith('/runs/100')) return Response.json(run);
       if (options.method === 'POST') return new Response(null, { status: dispatchStatus });
       reads += 1;
       return Response.json({ workflow_runs: newRun && reads === 2
-        ? [{ id: 101, created_at: at(10).toISOString() }, current] : [current] });
+        ? [{ id: 101, created_at: at(10).toISOString() }, current] : [run] });
     },
   };
 }
@@ -77,7 +81,7 @@ test('waits and dispatches once using native token and fixed main workflow', asy
   assert.equal(posts.length, 1);
   assert.match(posts[0].url, /market-data-intraday.yml\/dispatches$/);
   assert.deepEqual(JSON.parse(posts[0].options.body), {
-    ref: 'main', inputs: { source: 'handoff', scheduled_at: at(15).toISOString() },
+    ref: 'main', inputs: { source: 'handoff', scheduled_at: at(15).toISOString(), collect_data: true },
   });
   assert.equal(posts[0].options.headers.Authorization, 'Bearer test-token');
   assert.equal(posts[0].options.redirect, 'error');
@@ -106,3 +110,17 @@ test('missing permissions, malformed responses and invalid timestamps fail close
     fetchFn: async () => new Response(null, { status: 403 }) }), /read failed/);
   assert.throws(() => handoffPlan(at(3), { ...current, created_at: 'invalid' }, []), /Invalid/);
 });
+
+for (const [created, collect] of [
+  ['2026-09-09T20:52:00Z', false],
+  ['2026-09-10T03:52:00Z', false],
+  ['2026-09-12T17:00:00Z', false],
+  ['2026-09-10T11:52:00Z', true],
+]) {
+  test(`handoff at ${created} continues with collect_data=${collect}`, async () => {
+    const api = fakeApi({ run: { id: 100, created_at: created } });
+    assert.equal((await scheduleNext(env, api)).status, 'dispatched');
+    const post = api.calls.find(({ options }) => options.method === 'POST');
+    assert.equal(JSON.parse(post.options.body).inputs.collect_data, collect);
+  });
+}

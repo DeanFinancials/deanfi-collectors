@@ -6,24 +6,18 @@ const API = `https://api.github.com/repos/${REPO}`;
 const INTERVAL_MS = 15 * 60 * 1000;
 const MAX_WAIT_MS = 13 * 60 * 1000;
 
-export function schedulerWindow(date) {
+export function isCollectionWindow(date) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York', weekday: 'short', hour: '2-digit',
     year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23',
   }).formatToParts(date).map(({ type, value }) => [type, value]));
-  return {
-    active: !['Sat', 'Sun'].includes(parts.weekday)
-      && Number(parts.hour) >= 6 && Number(parts.hour) < 17,
-    day: `${parts.year}-${parts.month}-${parts.day}`,
-  };
+  return !['Sat', 'Sun'].includes(parts.weekday)
+    && Number(parts.hour) >= 8 && Number(parts.hour) < 17;
 }
 
 export function handoffPlan(now, current, runs) {
-  const window = schedulerWindow(now);
-  if (!window.active) return { status: 'outside-window' };
   const created = new Date(current.created_at);
   if (!Number.isFinite(created.getTime())) throw new Error('Invalid current run timestamp');
-  if (schedulerWindow(created).day !== window.day) return { status: 'expired-run' };
   if (runs.some((run) => String(run.id) !== String(current.id)
     && (Date.parse(run.created_at) > created.getTime()
       || (run.created_at === current.created_at && Number(run.id) > Number(current.id))))) {
@@ -32,9 +26,6 @@ export function handoffPlan(now, current, runs) {
   const due = new Date(Math.max(now.getTime(), Math.min(
     created.getTime() + INTERVAL_MS, now.getTime() + MAX_WAIT_MS,
   )));
-  if (!schedulerWindow(due).active || schedulerWindow(due).day !== window.day) {
-    return { status: 'session-finished' };
-  }
   return { status: 'schedule', due };
 }
 
@@ -45,7 +36,6 @@ export async function scheduleNext(env, {
   if (env.GITHUB_REF !== 'refs/heads/main' || env.MARKET_INTRADAY_CHAIN_DISABLED === 'true') {
     return { status: 'disabled' };
   }
-  if (!schedulerWindow(now()).active) return { status: 'outside-window' };
   if (env.GITHUB_REPOSITORY !== REPO) throw new Error('Unexpected repository');
   if (!env.GH_TOKEN || !/^\d+$/.test(env.GITHUB_RUN_ID || '')) {
     throw new Error('Missing scheduler authentication or run ID');
@@ -80,7 +70,7 @@ export async function scheduleNext(env, {
   const response = await fetchFn(`${API}/actions/workflows/${WORKFLOW}/dispatches`, {
     method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify({ ref: 'main', inputs: {
-      source: 'handoff', scheduled_at: due.toISOString(),
+      source: 'handoff', scheduled_at: due.toISOString(), collect_data: isCollectionWindow(now()),
     } }),
     signal: AbortSignal.timeout(15000), redirect: 'error',
   });

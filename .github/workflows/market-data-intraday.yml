@@ -15,6 +15,10 @@ on:
         description: Scheduler event time (UTC)
         type: string
         required: false
+      collect_data:
+        description: Collect data (handoffs disable this outside market hours)
+        type: boolean
+        default: true
   # Exercise collector reliability fixes immediately on main.
   push:
     branches: [main]
@@ -36,6 +40,7 @@ permissions:
 
 jobs:
   fetch-and-publish:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.source != 'handoff' || inputs.collect_data }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
 
