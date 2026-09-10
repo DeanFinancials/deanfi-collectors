@@ -38,16 +38,23 @@ to restart immediately. The next cron run also restarts it.
 ## Limits and cost
 
 GitHub still controls runner availability. The continuous timer removes normal
-daily cron dependence, but cannot guarantee execution during a GitHub outage. An API failure ends that handoff with a visible
+daily cron dependence, but cannot guarantee execution during a GitHub outage.
+An API failure ends that handoff with a visible
 failed job; the next cron or manual run recovers the chain. Dispatches are not
 blindly retried after ambiguous network failures.
 
-Waiting consumes Actions minutes. The timer uses the lower-cost ubuntu-slim
-runner. At $0.002/minute, continuous operation is approximately $90/month for
-31 days, before included minutes and per-job rounding differences. Collection
-jobs consume their usual minutes separately; outside collection hours those
-jobs are skipped. This cost buys independence from delayed daily cron startup.
-Check GitHub's current runner pricing and the organization's spending limits.
+The timer uses the standard ubuntu-slim runner. This repository is public, so
+standard GitHub-hosted runner minutes are free under GitHub's current billing
+rules. The timer does not create artifacts or caches. Existing collection
+artifact and cache storage remain subject to their normal allowances.
+
+If the repository becomes private, continuous timer operation at $0.002/minute
+would be approximately $90/month for 31 days, before included minutes and
+per-job rounding. Collection jobs would consume their usual minutes separately;
+outside collection hours those jobs are skipped.
+
+See [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+and [runner pricing](https://docs.github.com/en/billing/reference/actions-runner-pricing).
 
 ## Validation
 
