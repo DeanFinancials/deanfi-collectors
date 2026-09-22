@@ -29,6 +29,8 @@ on:
       - 'shared/cache_manager.py'
       - 'shared/yf_retry.py'
       - 'scripts/check_market_collection.py'
+      - 'scripts/publish_market_data.py'
+      - 'tests/test_market_publication.py'
       - 'scheduler/**'
 
 env:
@@ -74,7 +76,7 @@ jobs:
         run: python scripts/check_market_collection.py
 
       - name: Test download reliability
-        run: python -m pytest tests/test_cache_manager.py tests/test_yf_helpers.py tests/test_market_collection_schedule.py -q
+        run: python -m pytest tests/test_cache_manager.py tests/test_yf_helpers.py tests/test_market_collection_schedule.py tests/test_market_publication.py -q
 
       - name: Get cache key
         if: steps.hours_check.outputs.in_market_hours == 'true'
@@ -207,9 +209,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "chore: update market data (15-min) - $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git pull --rebase origin main
-          git push origin main
+          python ../scripts/publish_market_data.py "chore: update market data (15-min) - $(date -u +'%Y-%m-%d %H:%M UTC')"
 
   schedule-next:
     name: Schedule next intraday collection
