@@ -87,6 +87,46 @@ def test_non_finite_number_fails(git_repo):
     assert "non-standard numeric constant NaN" in combined
 
 
+@pytest.mark.parametrize('price,change', [(None, None), (100, None), (0, 1)])
+def test_populated_sector_objects_with_invalid_prices_fail(git_repo, price, change):
+    path = 'major-indexes/us_sector_indices.json'
+    _commit_file(git_repo, path, {'sectors': {'XLK': {'current_price': 100, 'daily_change_percent': 1}}})
+    _write_file(git_repo, path, {'sectors': {'XLK': {'current_price': price, 'daily_change_percent': change}}})
+    result = _run_validator(git_repo, [path])
+    assert result.returncode == 1
+    assert 'no usable sector price/return' in result.stderr
+
+
+def test_flat_sector_return_is_valid(git_repo):
+    path = 'major-indexes/us_sector_indices.json'
+    _write_file(git_repo, path, {'sectors': {'XLK': {'current_price': 100, 'daily_change_percent': 0}}})
+    assert _run_validator(git_repo, [path]).returncode == 0
+
+
+@pytest.mark.parametrize('total,advances,declines', [(0, 0, 0), (503, 0, 0), (503, 291, 213)])
+def test_empty_or_inconsistent_breadth_fails(git_repo, total, advances, declines):
+    path = 'advance-decline/daily_breadth.json'
+    _write_file(git_repo, path, {'data': {'advances_declines': {
+        'total_stocks': total, 'advances': advances, 'declines': declines, 'unchanged': 0,
+    }}})
+    assert _run_validator(git_repo, [path]).returncode == 1
+
+
+def test_observed_unchanged_breadth_passes(git_repo):
+    path = 'advance-decline/daily_breadth.json'
+    _write_file(git_repo, path, {'data': {'advances_declines': {
+        'total_stocks': 503, 'advances': 0, 'declines': 0, 'unchanged': 503,
+    }}})
+    assert _run_validator(git_repo, [path]).returncode == 0
+
+
+def test_malformed_json_fails(git_repo):
+    path = 'major-indexes/us_sector_indices.json'
+    _write_file(git_repo, path, {})
+    (git_repo / path).write_text('{')
+    assert _run_validator(git_repo, [path]).returncode == 1
+
+
 def test_head_was_already_empty_passes(git_repo):
     path = "major-indexes/us_major_indices.json"
     _commit_file(git_repo, path, {"indices": {}})

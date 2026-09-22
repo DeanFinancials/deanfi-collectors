@@ -55,3 +55,20 @@ def test_save_json_emits_browser_parseable_json(tmp_path):
     utils.save_json({"percent": None, "value": np.float64(1.25)}, str(output))
 
     assert json.loads(output.read_text()) == {"percent": None, "value": 1.25}
+
+
+@pytest.mark.parametrize('closes', [[100, np.nan], [np.nan, 101], [100, np.inf], [0, 101]])
+def test_current_snapshot_rejects_unusable_closes(closes):
+    frame = pd.DataFrame({'Close': closes})
+    with pytest.raises(ValueError, match='closing prices must be finite and positive'):
+        utils.get_current_snapshot(frame)
+
+
+def test_current_snapshot_accepts_unchanged_prices():
+    frame = pd.DataFrame({
+        'Close': [100, 100], 'Open': [99, 100], 'High': [101, 101],
+        'Low': [98, 99], 'Volume': [1000, 1200],
+    })
+    snapshot = utils.get_current_snapshot(frame)
+    assert snapshot['current_price'] == 100
+    assert snapshot['daily_change_percent'] == 0

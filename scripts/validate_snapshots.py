@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import subprocess
 import sys
 from pathlib import Path
@@ -25,6 +26,7 @@ from pathlib import Path
 # Its body shape differs (single-ticker SPY snapshot) so an empty `indices`
 # dict can be a normal edge case. The Task 2 per-script guard covers it.
 DEFAULT_FILES = [
+    "advance-decline/daily_breadth.json",
     "major-indexes/us_major_indices.json",
     "major-indexes/us_sector_indices.json",
     "major-indexes/us_growth_value_indices.json",
@@ -81,10 +83,17 @@ def _validate_file(repo_dir: Path, rel_path: str) -> str | None:
             parse_constant=_reject_non_finite,
         )
     except (OSError, json.JSONDecodeError) as exc:
-        print(f"⏭  {rel_path}: unreadable ({exc}), skipping")
-        return None
+        msg = f"❌ {rel_path}: unreadable ({exc}); refusing commit"
+        print(msg, file=sys.stderr)
+        return msg
     except ValueError as exc:
         msg = f"❌ {rel_path}: invalid JSON ({exc})"
+        print(msg, file=sys.stderr)
+        return msg
+
+    failure = _validate_observations(rel_path, new_payload)
+    if failure:
+        msg = f"❌ {rel_path}: {failure}; refusing commit"
         print(msg, file=sys.stderr)
         return msg
 
@@ -115,6 +124,30 @@ def _validate_file(repo_dir: Path, rel_path: str) -> str | None:
     return None
 
 
+def _finite_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _validate_observations(rel_path, payload):
+    if not isinstance(payload, dict):
+        return 'snapshot must be an object'
+    if rel_path == 'major-indexes/us_sector_indices.json':
+        sectors = payload.get('sectors', {})
+        for symbol, row in sectors.items():
+            price = row.get('current_price') if isinstance(row, dict) else None
+            change = row.get('daily_change_percent') if isinstance(row, dict) else None
+            if not _finite_number(price) or price <= 0 or not _finite_number(change):
+                return f'{symbol} has no usable sector price/return'
+    if rel_path == 'advance-decline/daily_breadth.json':
+        counts = payload.get('data', {}).get('advances_declines', {})
+        values = [counts.get(key) for key in ('advances', 'declines', 'unchanged')]
+        total = counts.get('total_stocks')
+        if (not all(_finite_number(value) and value >= 0 for value in values)
+                or not _finite_number(total) or total <= 0 or not 0 < sum(values) <= total):
+            return 'breadth has no usable observations or inconsistent counts'
+    return None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--files", nargs="+", default=None,
@@ -134,12 +167,11 @@ def main(argv=None):
 
     if failures:
         print(
-            f"❌ {len(failures)} file(s) would empty out previously-populated "
-            "data; refusing commit.",
+            f"❌ {len(failures)} file(s) failed snapshot validation; refusing commit.",
             file=sys.stderr,
         )
         return 1
-    print("✅ Snapshot validator: no empty-overwrite detected")
+    print("✅ Snapshot validator: usable observations and no empty-overwrite detected")
     return 0
 
 

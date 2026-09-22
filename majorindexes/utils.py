@@ -697,6 +697,9 @@ def get_current_snapshot(df: pd.DataFrame) -> Dict:
     
     current_price = safe_round(latest['Close'], 2)
     previous_close = safe_round(previous['Close'], 2)
+    if any(value is None or not np.isfinite(value) or value <= 0
+           for value in (current_price, previous_close)):
+        raise ValueError('Latest and previous closing prices must be finite and positive')
     
     # Daily change
     daily_change = safe_round(current_price - previous_close, 2) if current_price and previous_close else None

@@ -266,10 +266,6 @@ def create_snapshot_json():
     # Single batched yf.download for all 11 sector ETFs (was 11 separate calls).
     symbols = [sector['symbol'] for sector in SECTORS]
     per_ticker_data = _batch_download_sectors(symbols, period="1y")
-    successful_downloads = sum(
-        1 for df in per_ticker_data.values()
-        if df is not None and not getattr(df, "empty", False) and len(df) > 0
-    )
 
     # Fetch sector data from the batched response
     for sector in SECTORS:
@@ -335,7 +331,7 @@ def create_snapshot_json():
     
     output_path = os.path.join(SCRIPT_DIR, SECTOR_CONFIG['output_files']['snapshot'])
     assert_enough_succeeded(
-        successful=successful_downloads,
+        successful=len(snapshot_data['sectors']),
         total=len(SECTORS),
         label="us_sector_indices snapshot",
     )

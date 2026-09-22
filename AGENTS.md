@@ -35,6 +35,11 @@ deanfi-collectors (this repo)
 - `data_freshness.json` written to `deanfi-data` is automatically synced to R2
   by `sync-to-r2.yml`. The website fetches it from
   `https://r2.deanfi.com/data_freshness.json`.
+- A nonempty Yahoo response can still contain null closing prices. Snapshot
+  generation must reject unusable latest/prior closes, and sector success
+  counts must reflect emitted observations. Daily breadth must have usable
+  current/prior close pairs. The commit validator rejects null sector prices,
+  empty breadth observations, and malformed JSON before replacing good data.
 - Worst-case latency from collector run to user seeing data: ~16 minutes
   (10-min collection cycle + ~1 min R2 sync + 5-min React Query staleTime).
 

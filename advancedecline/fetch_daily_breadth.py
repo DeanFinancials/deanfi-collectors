@@ -118,6 +118,14 @@ def calculate_daily_breadth(data, config):
         Dictionary with all breadth metrics
     """
     close_prices = data['Close']
+    if len(close_prices) < 2:
+        raise ValueError('Breadth requires two trading sessions of closing prices')
+    comparable = (
+        np.isfinite(close_prices.iloc[-1]) & (close_prices.iloc[-1] > 0)
+        & np.isfinite(close_prices.iloc[-2]) & (close_prices.iloc[-2] > 0)
+    )
+    if not comparable.any():
+        raise ValueError('No usable current/prior close pairs; refusing empty breadth snapshot')
     volume = data['Volume']
     high_prices = data['High']
     low_prices = data['Low']

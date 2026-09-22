@@ -666,6 +666,25 @@ class TestBatchDownloadSectors:
 
 class TestSectorsAssertEnoughSucceededWiring:
 
+    def test_snapshot_refuses_nonempty_frames_with_unusable_closes(self, mod_and_fakes_sectors, monkeypatch):
+        mod, fakes = mod_and_fakes_sectors
+        frames = {symbol: FakeProcessableTickerDF(symbol, rows=252) for symbol in SECTOR_SYMBOLS}
+        fakes['yf'].download.return_value = FakeBatchDF(frames)
+        save = MagicMock()
+        monkeypatch.setattr(mod, 'save_json', save)
+        monkeypatch.setattr(mod, 'get_current_snapshot', MagicMock(side_effect=ValueError('invalid close')))
+        guard = fakes['guard'].assert_enough_succeeded
+
+        def fail_when_empty(*, successful, total, label):
+            if successful == 0:
+                raise SystemExit(1)
+
+        guard.side_effect = fail_when_empty
+        with pytest.raises(SystemExit):
+            mod.create_snapshot_json()
+        assert guard.call_args.kwargs['successful'] == 0
+        save.assert_not_called()
+
     def test_snapshot_exits_when_all_sector_downloads_empty(self, mod_and_fakes_sectors):
         """An all-empty sector batch trips assert_enough_succeeded before saving."""
         mod, fakes = mod_and_fakes_sectors
