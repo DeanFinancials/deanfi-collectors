@@ -41,3 +41,51 @@ def test_flat_trading_session_is_not_missing_data(breadth_module):
         data, {'new_high_threshold': 0.99, 'new_low_threshold': 1.01})
     assert result['advances_declines']['unchanged'] == 2
     assert result['advances_declines']['total_stocks'] == 2
+
+
+@pytest.mark.parametrize('cached', [False, True])
+def test_download_retries_nonempty_unusable_latest_closes(breadth_module, monkeypatch, cached):
+    from unittest.mock import Mock
+
+    invalid = {'Close': pd.DataFrame({'A': [100.0, 101.0, np.nan]})}
+    valid = {'Close': pd.DataFrame({'A': [100.0, 101.0, 102.0]})}
+    download = Mock(side_effect=[invalid, valid])
+    sleep = Mock()
+    monkeypatch.setattr(breadth_module.time, 'sleep', sleep)
+    if cached:
+        fetcher = Mock(fetch_prices=download)
+        monkeypatch.setattr(breadth_module, 'CachedDataFetcher', Mock(return_value=fetcher))
+    else:
+        monkeypatch.setattr(breadth_module.yf, 'download', download, raising=False)
+    result = breadth_module.download_market_data(['A'], cache_dir='cache' if cached else None)
+    assert result is valid
+    assert download.call_count == 2
+    sleep.assert_called_once_with(30)
+    if cached:
+        assert download.call_args_list[0].kwargs['force_refresh'] is False
+        assert download.call_args_list[1].kwargs['force_refresh'] is True
+
+
+def test_download_exhaustion_still_rejects_bad_snapshot(breadth_module, monkeypatch):
+    from unittest.mock import Mock
+
+    invalid = {'Close': pd.DataFrame({'A': [100.0, 101.0, np.nan]})}
+    download = Mock(return_value=invalid)
+    monkeypatch.setattr(breadth_module.yf, 'download', download, raising=False)
+    monkeypatch.setattr(breadth_module.time, 'sleep', Mock())
+    with pytest.raises(ValueError, match='No usable current/prior close pairs'):
+        breadth_module.download_market_data(['A'])
+    assert download.call_count == 2
+
+
+def test_valid_partial_response_does_not_retry(breadth_module, monkeypatch):
+    from unittest.mock import Mock
+
+    data = {'Close': pd.DataFrame({'A': [100.0, 101.0], 'B': [np.nan, np.nan]})}
+    download = Mock(return_value=data)
+    monkeypatch.setattr(breadth_module.yf, 'download', download, raising=False)
+    sleep = Mock()
+    monkeypatch.setattr(breadth_module.time, 'sleep', sleep)
+    assert breadth_module.download_market_data(['A', 'B']) is data
+    assert download.call_count == 1
+    sleep.assert_not_called()

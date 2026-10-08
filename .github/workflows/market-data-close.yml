@@ -4,11 +4,12 @@ on:
   schedule:
     - cron: '20 21 * * 1-5'  # 5:20pm EDT / 4:20pm EST, safely after the US close year-round
   workflow_dispatch:
-  # One-time bootstrap: creating or intentionally editing this workflow runs it immediately.
-  # Remove this push trigger after the August 2026 recovery is verified.
+  # Verify changes to the safety net and its breadth data quality guard immediately.
   push:
     paths:
       - '.github/workflows/market-data-close.yml'
+      - 'advancedecline/fetch_daily_breadth.py'
+      - 'tests/test_daily_breadth_validity.py'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -44,6 +45,9 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Test breadth data quality guard
+        run: python -m pytest tests/test_daily_breadth_validity.py -q
 
       - name: Create cache directory
         run: mkdir -p ./cache

@@ -44,30 +44,44 @@ def download_market_data(tickers, period="1y", cache_dir=None):
     Returns:
         DataFrame with OHLCV data for all tickers
     """
-    # Use cache if directory provided, otherwise direct download
-    if cache_dir:
-        fetcher = CachedDataFetcher(cache_dir=cache_dir)
-        data = fetcher.fetch_prices(
-            tickers=tickers,
-            period=period,
-            cache_name="spx_daily_breadth", reuse_within_run=True
-        )
-    else:
-        print(f"Downloading {period} of data for {len(tickers)} stocks...", file=sys.stderr)
-        try:
-            data = yf.download(
-                tickers,
+    fetcher = CachedDataFetcher(cache_dir=cache_dir) if cache_dir else None
+    for attempt in range(2):
+        if fetcher:
+            data = fetcher.fetch_prices(
+                tickers=tickers,
                 period=period,
-                progress=False,
-                auto_adjust=True,
-                threads=True
+                cache_name="spx_daily_breadth", reuse_within_run=True,
+                force_refresh=attempt > 0,
             )
-            print(f"✓ Successfully downloaded data for {len(tickers)} stocks", file=sys.stderr)
-        except Exception as e:
-            print(f"✗ Error downloading data: {e}", file=sys.stderr)
-            raise
-    
-    return data
+        else:
+            data = yf.download(
+                tickers, period=period, progress=False,
+                auto_adjust=True, threads=4,
+            )
+        try:
+            validate_breadth_closes(data)
+            return data
+        except ValueError as exc:
+            if attempt == 1:
+                raise
+            print(f"Warning: {exc}; retrying a full breadth download in 30s",
+                  file=sys.stderr)
+            time.sleep(30)
+
+
+def validate_breadth_closes(data):
+    """Reject unusable latest sessions even when older history is nonempty."""
+    if data is None or 'Close' not in data:
+        raise ValueError('Breadth response has no closing prices')
+    close_prices = data['Close']
+    if len(close_prices) < 2:
+        raise ValueError('Breadth requires two trading sessions of closing prices')
+    comparable = (
+        np.isfinite(close_prices.iloc[-1]) & (close_prices.iloc[-1] > 0)
+        & np.isfinite(close_prices.iloc[-2]) & (close_prices.iloc[-2] > 0)
+    )
+    if not comparable.any():
+        raise ValueError('No usable current/prior close pairs; refusing empty breadth snapshot')
 
 
 def load_latest_ad_line():
@@ -117,15 +131,8 @@ def calculate_daily_breadth(data, config):
     Returns:
         Dictionary with all breadth metrics
     """
+    validate_breadth_closes(data)
     close_prices = data['Close']
-    if len(close_prices) < 2:
-        raise ValueError('Breadth requires two trading sessions of closing prices')
-    comparable = (
-        np.isfinite(close_prices.iloc[-1]) & (close_prices.iloc[-1] > 0)
-        & np.isfinite(close_prices.iloc[-2]) & (close_prices.iloc[-2] > 0)
-    )
-    if not comparable.any():
-        raise ValueError('No usable current/prior close pairs; refusing empty breadth snapshot')
     volume = data['Volume']
     high_prices = data['High']
     low_prices = data['Low']
