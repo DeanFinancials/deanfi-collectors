@@ -15,6 +15,10 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
 
+# Pushes to deanfi-data use DATA_REPO_TOKEN; GITHUB_TOKEN only reads this repo.
+permissions:
+  contents: read
+
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
@@ -28,17 +32,17 @@ jobs:
 
     steps:
       - name: Checkout collectors repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
 
       - name: Checkout data repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
           repository: ${{ env.DATA_REPO }}
           token: ${{ secrets.DATA_REPO_TOKEN }}
           path: data-cache
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -82,6 +86,9 @@ jobs:
 
       - name: Fetch implied volatility
         continue-on-error: true
+        env:
+          # Last published snapshots: missing pre/after-hours IV is carried forward (flagged stale).
+          IV_PRIOR_SNAPSHOT_DIR: ${{ github.workspace }}/data-cache/implied-volatility
         run: |
           cd impliedvol
           python fetch_vix_options.py || true

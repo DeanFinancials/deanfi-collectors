@@ -350,6 +350,86 @@ def filter_options_by_dte(ticker: yf.Ticker,
         return None
 
 
+# Pre-market and after-hours chains often have no live two-sided quote, so
+# average_iv is missing. Carry the last good value forward from the published
+# snapshot, flagged stale, for at most this long after the value was observed.
+IV_CARRY_FORWARD_MAX_AGE = timedelta(days=4)
+PRIOR_SNAPSHOT_DIR_ENV = 'IV_PRIOR_SNAPSHOT_DIR'
+
+
+def load_prior_snapshot(filename: str, prior_dir: Optional[str] = None) -> Dict:
+    """Return the ``data`` map of the last published snapshot, or ``{}``.
+
+    ``prior_dir`` defaults to ``$IV_PRIOR_SNAPSHOT_DIR`` (the workflow points it
+    at the deanfi-data checkout). Missing or malformed files disable carry-forward.
+    """
+    import json
+    import os
+    from pathlib import Path
+
+    directory = prior_dir or os.environ.get(PRIOR_SNAPSHOT_DIR_ENV)
+    if not directory:
+        return {}
+    try:
+        payload = json.loads((Path(directory) / filename).read_text())
+    except (OSError, ValueError):
+        return {}
+    data = payload.get('data') if isinstance(payload, dict) else None
+    return data if isinstance(data, dict) else {}
+
+
+def _parse_iso(value) -> Optional[datetime]:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=ET)
+
+
+def apply_iv_carry_forward(snapshot: Dict, prior: Optional[Dict],
+                           now: Optional[datetime] = None) -> Dict:
+    """Fill a missing ``average_iv`` from ``prior`` and record freshness.
+
+    Sets ``iv_stale`` and ``iv_as_of`` on every snapshot:
+    - fresh value: ``iv_stale`` False, ``iv_as_of`` = this snapshot's timestamp
+    - carried value: ``iv_stale`` True, ``iv_as_of`` = when the value was observed,
+      ``iv_basis`` = ``carried_forward`` (original basis in ``iv_carried_basis``)
+    - nothing usable: ``average_iv`` stays None, ``iv_as_of`` None
+
+    The prior value must be plausible and observed within
+    :data:`IV_CARRY_FORWARD_MAX_AGE`; ``iv_as_of`` carries through repeated
+    carry-forwards, so a value is never extended past that age.
+    """
+    if snapshot.get('average_iv') is not None:
+        snapshot['iv_stale'] = False
+        snapshot['iv_as_of'] = snapshot.get('timestamp')
+        return snapshot
+
+    snapshot['iv_stale'] = False
+    snapshot['iv_as_of'] = None
+    prior = prior if isinstance(prior, dict) else {}
+    prior_iv = _as_float(prior.get('average_iv'))
+    as_of_text = prior.get('iv_as_of') or prior.get('timestamp')
+    as_of = _parse_iso(as_of_text)
+    current = now or datetime.now(ET)
+    if (prior_iv is None or not (MIN_PLAUSIBLE_IV <= prior_iv <= MAX_PLAUSIBLE_IV)
+            or as_of is None or current - as_of > IV_CARRY_FORWARD_MAX_AGE):
+        return snapshot
+
+    snapshot['average_iv'] = round(prior_iv, 6)
+    snapshot['iv_carried_basis'] = (
+        prior.get('iv_carried_basis') if prior.get('iv_basis') == 'carried_forward'
+        else prior.get('iv_basis')
+    )
+    snapshot['iv_basis'] = 'carried_forward'
+    snapshot['iv_stale'] = True
+    snapshot['iv_as_of'] = as_of_text
+    print(f"ℹ️  {snapshot.get('symbol', '?')}: carrying forward average_iv {prior_iv:.4f} from {as_of_text}")
+    return snapshot
+
+
 def get_option_snapshot(symbol: str,
                        min_dte: int = 7,
                        max_dte: int = 60,

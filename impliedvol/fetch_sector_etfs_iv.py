@@ -24,7 +24,9 @@ from utils import (
     classify_iv_level,
     format_iv_percentage,
     serialize_for_json,
-    get_iv_historical_reference
+    get_iv_historical_reference,
+    apply_iv_carry_forward,
+    load_prior_snapshot,
 )
 
 # Load config
@@ -53,6 +55,7 @@ def fetch_sector_etfs_snapshot():
     
     results = {}
     success_count = 0
+    prior_data = load_prior_snapshot(OUTPUT_CONFIG['snapshot'])
     
     for symbol, info in SECTOR_ETFS.items():
         print(f"Fetching {symbol} ({info['sector']})...", end=' ')
@@ -70,6 +73,8 @@ def fetch_sector_etfs_snapshot():
             snapshot['name'] = info['name']
             snapshot['description'] = info['description']
             
+            apply_iv_carry_forward(snapshot, prior_data.get(symbol))
+
             # Format IV percentages for display
             snapshot['average_iv_formatted'] = format_iv_percentage(snapshot['average_iv'])
             snapshot['iv_level'] = classify_iv_level(snapshot['average_iv'])
@@ -115,6 +120,8 @@ def fetch_sector_etfs_snapshot():
                 'expiration_date': 'Option expiration date used',
                 'days_to_expiration': 'Days until expiration',
                 'average_iv': 'Average of ATM call and put implied volatility',
+                'iv_stale': 'True when average_iv is carried forward from an earlier snapshot (no live quote now)',
+                'iv_as_of': 'When average_iv was observed (null when unavailable)',
                 'average_iv_formatted': 'IV as percentage (e.g., 25.50%)',
                 'iv_level': 'Classification: Low, Normal, Elevated, High, Extreme',
                 'atm_call': 'ATM call option details (strike, IV, prices, liquidity)',
