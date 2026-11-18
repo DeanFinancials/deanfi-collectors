@@ -60,7 +60,7 @@ GitHub cron can run hours late or be dropped, so `market-data-intraday.yml` chai
 
 ## Price cache
 
-yfinance price history is cached as parquet by `shared/cache_manager.py` (`CachedDataFetcher`): under 24 hours old it re-downloads the last 5 trading days, 24–168 hours the last 10, older than that a full rebuild. In CI the cache directory is persisted with `actions/cache` in `market-data-intraday.yml` (keyed per day and run). It is never committed to `deanfi-data`; do not add `cache/` to any `git add` line.
+yfinance price history is cached as parquet by `shared/cache_manager.py` (`CachedDataFetcher`): under 24 hours old it re-downloads the last 5 trading days, 24–168 hours the last 10, older than that a full rebuild. In CI the cache directory is persisted with `actions/cache` in `market-data-intraday.yml` and `market-data-close.yml`, which share one key scheme (`market-data-cache-<UTC date>-<run id>`, restoring the newest same-day cache, else the newest overall): the close run starts from the day's intraday cache, and its saved cache, holding the closing bars, warms the next morning's first intraday run. A job that passes `--cache-dir` must restore it first (`tests/test_workflow_price_cache.py`). It is never committed to `deanfi-data`; do not add `cache/` to any `git add` line.
 
 ## Data-quality guards
 

@@ -53,6 +53,22 @@ jobs:
       - name: Test breadth data quality guard
         run: python -m pytest tests/test_daily_breadth_validity.py -q
 
+      # Same key scheme as market-data-intraday.yml: restore the day's newest
+      # intraday cache, and save this run's cache (with the closing bars) on
+      # success so the next morning's first intraday run starts warm.
+      - name: Get cache key
+        id: cache_key
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore rolling market cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ./cache
+          key: market-data-cache-${{ steps.cache_key.outputs.date }}-${{ github.run_id }}
+          restore-keys: |
+            market-data-cache-${{ steps.cache_key.outputs.date }}-
+            market-data-cache-
+
       - name: Create cache directory
         run: mkdir -p ./cache
 
