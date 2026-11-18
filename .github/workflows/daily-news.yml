@@ -18,6 +18,10 @@ env:
   DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
   MARKET_PULSE_WEEKLY_OVERRIDE: "${{ github.event.inputs.weekly_override || 'false' }}"
 
+# Pushes to deanfi-data use DATA_REPO_TOKEN; GITHUB_TOKEN only reads this repo.
+permissions:
+  contents: read
+
 jobs:
   fetch-and-publish:
     runs-on: ubuntu-latest
@@ -31,17 +35,17 @@ jobs:
 
     steps:
       - name: Checkout collectors repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
 
       - name: Checkout data repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
           repository: ${{ env.DATA_REPO }}
           token: ${{ secrets.DATA_REPO_TOKEN }}
           path: data-cache
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -111,4 +115,21 @@ jobs:
             git pull --rebase origin main
             git push
             echo "Data pushed to deanfi-data repository"
+          fi
+
+      # Combine's own cron is late by hours and has started only 9-13 minutes after
+      # this job, so start it as soon as the catalysts are pushed. Scheduled runs only:
+      # a manual mid-day run must not produce a Market Pulse input for a session that
+      # has not closed. Combine's cron stays as a fallback. DATA_REPO_TOKEN needs
+      # Actions: Read and write on deanfi-data for this.
+      - name: Trigger combine-daily-snapshots
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: |
+          if gh workflow run combine-daily-snapshots.yml --repo "$DATA_REPO" --ref main; then
+            echo "Dispatched $DATA_REPO combine-daily-snapshots.yml" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning title=Combine not dispatched::Combine's scheduled run remains the fallback."
           fi
