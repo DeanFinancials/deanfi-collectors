@@ -43,3 +43,19 @@ def test_seeded_month_doc_supplies_prior_point_for_flow():
 
 def test_empty_output_dir_has_no_prior_point():
     assert fff.get_prev_point({"data": {}}, None, "SPY", "2026-11-18") is None
+
+
+def test_manual_test_mode_never_publishes_to_data_repo():
+    workflow = yaml.safe_load(WORKFLOW.read_text())
+    publish_expr = workflow["env"]["PUBLISH"]
+    assert "github.event_name == 'schedule'" in publish_expr
+    assert "inputs.mode == 'full'" in publish_expr
+
+    steps = {step.get("name", ""): step for step in _steps()}
+    for name in ("Copy to data repo", "Update data freshness", "Commit and push"):
+        assert steps[name].get("if") == "env.PUBLISH == 'true'", name
+
+    artifact = steps["Upload test-mode outputs as artifact"]
+    assert artifact.get("if") == "env.PUBLISH != 'true'"
+    assert artifact["uses"].startswith("actions/upload-artifact@")
+    assert "etffundflows/output" in artifact["with"]["path"]

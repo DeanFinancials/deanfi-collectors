@@ -2,11 +2,8 @@ name: ETF Fund Flows (Daily)
 
 on:
   schedule:
-  # Weeknights after US market close.
-  # 4:45pm EST = 21:45 UTC (Mon-Fri)
+  # Weeknights after US market close: 21:45 UTC is 4:45pm EST / 5:45pm EDT, after the close year-round.
   - cron: '45 21 * * 1-5'
-  # EDT variant (uncomment during daylight saving time)
-  # - cron: '45 20 * * 1-5'
   workflow_dispatch:
     inputs:
       mode:
@@ -27,6 +24,14 @@ env:
   ALPHA_VANTAGE_API_KEY: "${{ secrets.ALPHA_VANTAGE_API_KEY }}"
   DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
   DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
+  # Only scheduled runs and manual "full" runs publish. A manual "test" run
+  # covers a handful of tickers; publishing it would rebuild that date's
+  # aggregates (and tickers_total) from those tickers alone.
+  PUBLISH: "${{ github.event_name == 'schedule' || github.event.inputs.mode == 'full' }}"
+
+# Pushes to deanfi-data use DATA_REPO_TOKEN; GITHUB_TOKEN only reads this repo.
+permissions:
+  contents: read
 
 jobs:
   fetch-and-publish:
@@ -40,17 +45,17 @@ jobs:
 
     steps:
       - name: Checkout collectors repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
 
       - name: Checkout data repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
           repository: ${{ env.DATA_REPO }}
           token: ${{ secrets.DATA_REPO_TOKEN }}
           path: data-cache
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -90,13 +95,24 @@ jobs:
             fi
           fi
 
+      - name: Upload test-mode outputs as artifact
+        if: env.PUBLISH != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: etf-fund-flows-test-output
+          path: etffundflows/output/*.json
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Copy to data repo
+        if: env.PUBLISH == 'true'
         run: |
           mkdir -p data-cache/etf-fund-flows
           cp etffundflows/output/*.json data-cache/etf-fund-flows/ 2>/dev/null || true
           echo "✅ ETF fund flows files copied (missing outputs skipped)"
 
       - name: Update data freshness
+        if: env.PUBLISH == 'true'
         run: |
           python3 << 'EOF'
           import json, os
@@ -120,6 +136,7 @@ jobs:
           EOF
 
       - name: Commit and push
+        if: env.PUBLISH == 'true'
         run: |
           cd data-cache
           git config user.name "github-actions[bot]"
