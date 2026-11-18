@@ -5,7 +5,9 @@ on:
     - cron: '20 21 * * 1-5'  # 5:20pm EDT / 4:20pm EST, safely after the US close year-round
   workflow_dispatch:
   # Verify changes to the safety net and its breadth data quality guard immediately.
+  # Main only: other branches (e.g. Dependabot) get no secrets, so the publish step would fail.
   push:
+    branches: [main]
     paths:
       - '.github/workflows/market-data-close.yml'
       - 'advancedecline/fetch_daily_breadth.py'
