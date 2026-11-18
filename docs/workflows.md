@@ -22,8 +22,9 @@ Cron is UTC. ET equivalents drift by an hour with daylight saving time unless no
 | `support-resistence.yml` | `0 9 * * 1-5`, `0 10 * * 1-5` | weekdays 5am ET (DST-gated) | 5 gate + 15 | supportresistence |
 | `education-facts.yml` | `0 4 * * 4` | weekly, Wed night | 15 | education/facts.json |
 | `gsc-topics.yml` | `15 4 * * 1,4` | Sun and Wed nights | 10 | education/topics.json |
+| `ci.yml` | none (every push and pull request) | n/a | 15 | nothing: runs `python3 -m pytest -q`, `python3 -m pytest -q dailynews/tests` and `node --test scheduler/next-run.test.mjs` |
 
-All workflows also accept `workflow_dispatch`. Notable inputs: `sp-growth.yml` (`universe`: both, sp100-only, sp500-only), `etf-fund-flows.yml` (`mode`: test or full; only scheduled and `full` runs publish; `tickers` for test mode, comma-separated symbols of letters, digits, `.` and `-`), `options-whales.yml` (`lookback_days`: 1–60 trading days; `test_mode`), `stock-whales.yml` (`test_mode`), `daily-news.yml` (`weekly_override` forces weekly-wrap mode, 5 catalysts). Pushes that touch the market collectors, their guards or the workflow files also trigger `market-data-intraday.yml` (main only) and `market-data-close.yml` (see each file's `push.paths`).
+All workflows except `ci.yml` also accept `workflow_dispatch`. Notable inputs: `sp-growth.yml` (`universe`: both, sp100-only, sp500-only), `etf-fund-flows.yml` (`mode`: test or full; only scheduled and `full` runs publish; `tickers` for test mode, comma-separated symbols of letters, digits, `.` and `-`), `options-whales.yml` (`lookback_days`: 1–60 trading days; `test_mode`), `stock-whales.yml` (`test_mode`), `daily-news.yml` (`weekly_override` forces weekly-wrap mode, 5 catalysts). Pushes that touch the market collectors, their guards or the workflow files also trigger `market-data-intraday.yml` (main only) and `market-data-close.yml` (see each file's `push.paths`).
 
 ## Secrets and variables
 

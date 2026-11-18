@@ -20,7 +20,7 @@ Collectors need the API keys listed in [docs/workflows.md](../docs/workflows.md#
 4. Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages and the PR title, for example `fix(majorindexes): skip null closes`.
 5. Open a pull request describing what changed, why, and how you tested it. Include a sample of any new or changed JSON output.
 
-Forks do not receive this repository's secrets, so workflows that publish to `deanfi-data` will not run from a fork.
+`ci.yml` runs the same suites (plus `python3 -m pytest -q dailynews/tests`) on every push and pull request, forks included; it needs no secrets. Forks do not receive this repository's secrets, so workflows that publish to `deanfi-data` will not run from a fork.
 
 ## Rules that matter most
 
