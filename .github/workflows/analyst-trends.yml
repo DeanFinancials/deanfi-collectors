@@ -2,10 +2,10 @@ name: Analyst Trends Collection
 
 on:
   schedule:
-    # Weeknights at 10:00pm Eastern (03:00 UTC Tue-Sat) so trends refresh before the next session
-    # GitHub Actions cron runs in UTC; 03:00 UTC corresponds to 10:00pm EST (roughly Nov–Mar)
-    - cron: '0 3 * * 2-6'
-    # - cron: '0 2 * * 2-6'  # Optional: run at 11:00pm EDT (02:00 UTC) during Daylight Saving Time (roughly Mar–Nov)
+    # Weeknights at 10:00pm New York time so trends refresh before the next session.
+    # Both UTC hours run (Tue-Sat UTC = Mon-Fri evening ET); the dst-gate job keeps the one that is 10pm today.
+    - cron: '0 2 * * 2-6'  # 10:00pm EDT
+    - cron: '0 3 * * 2-6'  # 10:00pm EST
   workflow_dispatch:
 
 env:
@@ -19,7 +19,30 @@ permissions:
   contents: read
 
 jobs:
+  # Cron is UTC, so both the EST and EDT hours are scheduled; this gate lets
+  # only the run scheduled for 10pm New York time through. The other run
+  # skips the publish job and succeeds without touching deanfi-data.
+  dst-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.gate.outputs.proceed }}
+    steps:
+      - name: Checkout gate script
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+
+      - name: Run only at 10pm New York time
+        id: gate
+        env:
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+        run: python3 scripts/ny_hour_gate.py --local-hour 22
+
   fetch-and-publish:
+    needs: dst-gate
+    if: needs.dst-gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

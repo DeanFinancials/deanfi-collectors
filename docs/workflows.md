@@ -4,7 +4,7 @@ GitHub Actions in `.github/workflows/` run every collector and publish to `deanf
 
 ## Inventory
 
-Cron is UTC. ET equivalents drift by an hour with daylight saving time unless noted; GitHub often starts scheduled runs late.
+Cron is UTC. ET equivalents drift by an hour with daylight saving time unless noted; GitHub often starts scheduled runs late. Rows marked DST-gated list both UTC crons and run once at the stated New York time year-round (see `docs/architecture.md`).
 
 | Workflow | Cron (UTC) | Roughly (ET) | Timeout (min) | Publishes |
 |---|---|---|---|---|
@@ -13,13 +13,13 @@ Cron is UTC. ET equivalents drift by an hour with daylight saving time unless no
 | `economy-indicators.yml` | `0 14 * * 1-5`, `0 17 * * 1-5` | 9am & 12pm EST / 10am & 1pm EDT | 10 | economy-breadth, consumer-credit, housing-affordability |
 | `etf-fund-flows.yml` | `45 21 * * 1-5` | after the close | 15 | etf-fund-flows |
 | `daily-news.yml` | `30 22 * * 1-5` | after the close (often starts hours late) | 15 | daily-news, then dispatches deanfi-data combine-daily-snapshots.yml |
-| `analyst-trends.yml` | `0 3 * * 2-6` | weeknights ~10pm EST | 10 | analyst-trends |
+| `analyst-trends.yml` | `0 2 * * 2-6`, `0 3 * * 2-6` | weeknights 10pm ET (DST-gated) | 5 gate + 10 | analyst-trends |
 | `earnings-calendar.yml` | `45 3 * * 2-6` | weeknights | 20 | earnings-calendar |
 | `earnings-surprises.yml` | `5 4 * * 2-6` | weeknights | 20 | earnings-surprises |
 | `sp-growth.yml` | `15 4 * * 2-6` | weeknights | 30 | sp100growth, sp500growth |
 | `options-whales.yml` | `30 16 * * 1-5`, `0 2 * * 2-6` | ~midday and ~9pm | 45 collect + 5 publish | options-whales |
 | `stock-whales.yml` | `30 17 * * 1-5`, `30 2 * * 2-6` | ~12:30pm and ~9:30pm | 20 | stock-whales |
-| `support-resistence.yml` | `0 10 * * 1-5` | 5am EST / 6am EDT | 15 | supportresistence |
+| `support-resistence.yml` | `0 9 * * 1-5`, `0 10 * * 1-5` | weekdays 5am ET (DST-gated) | 5 gate + 15 | supportresistence |
 | `education-facts.yml` | `0 4 * * 4` | weekly, Wed night | 15 | education/facts.json |
 | `gsc-topics.yml` | `15 4 * * 1,4` | Sun and Wed nights | 10 | education/topics.json |
 
@@ -47,6 +47,7 @@ yfinance needs no key. `GITHUB_TOKEN` is read-only on this repo except for the i
 
 - Copy an existing single-collector workflow (for example `support-resistence.yml`) and keep its structure: both checkouts into the same paths, Python 3.11, the `deanfi-data-repo` concurrency block, a `timeout-minutes`, a `data_freshness.json` update and the commit step from `docs/architecture.md`.
 - Pass `workflow_dispatch` inputs to scripts through `env:` and validate them there; never write `${{ inputs.* }}` inside a `run:` script (`tests/test_workflow_inputs.py`).
+- For a fixed New York time, schedule both UTC hours and gate the job with `scripts/ny_hour_gate.py` as `analyst-trends.yml` does; do not hand-toggle commented-out crons.
 - Pin every third-party action to a full commit SHA with a version comment; `tests/test_workflow_action_pinning.py` enforces this and Dependabot (`.github/dependabot.yml`) groups the updates.
 - `git add` only your section's paths and `data_freshness.json`, never `cache/`.
 - Add the collector to `docs/collectors.md` and the workflow and its secrets to this page.

@@ -2,9 +2,9 @@ name: Support / Resistence Collection
 
 on:
   schedule:
-    # 5:00 AM ET - EST: 10:00 UTC, EDT: 09:00 UTC
-    - cron: '0 10 * * 1-5'  # EST (Nov-Mar)
-    # - cron: '0 9 * * 1-5'  # EDT (Mar-Nov) - uncomment when observing daylight saving time
+    # Weekdays at 5:00am New York time. Both UTC hours run; the dst-gate job keeps the one that is 5am today.
+    - cron: '0 9 * * 1-5'   # 5:00am EDT
+    - cron: '0 10 * * 1-5'  # 5:00am EST
   workflow_dispatch:
 
 env:
@@ -19,7 +19,30 @@ permissions:
   contents: read
 
 jobs:
+  # Cron is UTC, so both the EST and EDT hours are scheduled; this gate lets
+  # only the run scheduled for 5am New York time through. The other run
+  # skips the publish job and succeeds without touching deanfi-data.
+  dst-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.gate.outputs.proceed }}
+    steps:
+      - name: Checkout gate script
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+
+      - name: Run only at 5am New York time
+        id: gate
+        env:
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+        run: python3 scripts/ny_hour_gate.py --local-hour 5
+
   fetch-support-resistence:
+    needs: dst-gate
+    if: needs.dst-gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

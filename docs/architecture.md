@@ -36,6 +36,7 @@ Exceptions:
 - `options-whales.yml` collects in one job (its own concurrency group, uploads an artifact) and publishes in a short second job that holds the `deanfi-data-repo` lock.
 - `education-facts.yml`, `gsc-topics.yml` and `etf-fund-flows.yml` are fail-closed (no `continue-on-error`): a failed source fails the job, every publish step is skipped, and the last good file stays in place.
 - `etf-fund-flows.yml` seeds `etffundflows/output/` with the published month files before generating, because each day's flow needs the prior session's AUM and NAV. A first run with nothing to seed is not a failure (tickers get `missing_prior_day`). Since the seeded files are always present, it refreshes `last_updated` only when the copy actually changed `etf-fund-flows/` in deanfi-data.
+- `analyst-trends.yml` and `support-resistence.yml` run at a fixed New York time year-round: both UTC crons fire, and a `dst-gate` job (`scripts/ny_hour_gate.py`) passes only the run scheduled for the intended local hour, judged by the cron that fired so late starts still count. The other run skips the publish job and succeeds without touching deanfi-data or the lock. Manual runs always proceed.
 
 Failure isolation differs by workflow. Economy, analyst trends and similar multi-script workflows mark collector steps `continue-on-error: true` and copy with `2>/dev/null || true`, so one failed source still publishes the rest. The market-data workflows run breadth, index and mean-reversion steps with `set -euo pipefail` (any failure aborts the publish); only implied volatility is best-effort.
 
@@ -50,7 +51,7 @@ concurrency:
   cancel-in-progress: false
 ```
 
-This serialises pushes. `queue: max` keeps every pending run queued; without it GitHub keeps only one pending run and cancels older ones. Because a hung job blocks the whole queue, every job sets `timeout-minutes` (see `docs/workflows.md`). Jobs that do not push (the intraday `schedule-next` timer, the options-whales collect job) use their own groups so they never hold the lock.
+This serialises pushes. `queue: max` keeps every pending run queued; without it GitHub keeps only one pending run and cancels older ones. Because a hung job blocks the whole queue, every job sets `timeout-minutes` (see `docs/workflows.md`). Jobs that do not push (the intraday `schedule-next` timer, the options-whales collect job) use their own groups so they never hold the lock; the `dst-gate` jobs take no lock.
 
 ## Intraday scheduling
 
