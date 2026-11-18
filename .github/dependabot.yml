@@ -1,0 +1,12 @@
+# GitHub Actions are pinned to commit SHAs (with a trailing "# <tag>" comment).
+# Dependabot bumps those pins; all action updates arrive as one grouped PR a month.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
