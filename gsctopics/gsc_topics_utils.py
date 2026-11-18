@@ -4,7 +4,6 @@ Shared utilities for the GSC topics collector.
 Provides schema constants, validation, slug generation, category assignment,
 opportunity scoring, atomic file write, and config loading.
 """
-import datetime
 import json
 import logging
 import os
@@ -138,37 +137,6 @@ def write_topics(topics: list, output_path: str) -> None:
     with open(tmp, "w") as f:
         json.dump(topics, f, indent=2)
     os.replace(tmp, output_path)
-
-
-def check_topics_freshness(
-    topics: list,
-    threshold_days: int = 14,
-    today: datetime.date = None,
-) -> bool:
-    """
-    Return True if the newest non-consumed entry's added_at is within threshold_days.
-
-    Returns False (stale) when the newest non-consumed added_at > threshold_days ago.
-    Used by the CI schema-contract step and the daily freshness probe.
-    An empty non-consumed list is treated as fresh (no entries to check).
-    """
-    if today is None:
-        today = datetime.date.today()
-    non_consumed = [t for t in topics if t.get("status") != "consumed"]
-    if not non_consumed:
-        return True
-    dates = []
-    for t in non_consumed:
-        added_at = t.get("added_at")
-        if added_at:
-            try:
-                dates.append(datetime.date.fromisoformat(added_at))
-            except ValueError:
-                pass
-    if not dates:
-        return True
-    newest = max(dates)
-    return (today - newest).days <= threshold_days
 
 
 def load_config(config_path: str = None) -> dict:
