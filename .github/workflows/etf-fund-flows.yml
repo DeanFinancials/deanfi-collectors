@@ -58,6 +58,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # Flows need the prior session's AUM/NAV. The script upserts into the
+      # month files in etffundflows/output/, so seed them from deanfi-data;
+      # without this every run starts empty, writes a one-day file with
+      # missing_prior_day on every ticker, and overwrites the history.
+      - name: Seed existing monthly outputs from data repo
+        run: |
+          mkdir -p etffundflows/output
+          cp data-cache/etf-fund-flows/etf_fund_flows_*.json etffundflows/output/ 2>/dev/null || true
+          ls etffundflows/output | tail -8
+
       - name: Generate ETF fund flows
         continue-on-error: true
         run: |
