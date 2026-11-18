@@ -1,7 +1,9 @@
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts import publish_market_data as publisher
 
@@ -133,3 +135,24 @@ def test_invalid_snapshot_cannot_be_published(repos):
     with pytest.raises(subprocess.CalledProcessError):
         publisher.publish(local, 'market')
     assert remote_json(remote, SNAPSHOT)['indices']['SPY']['price'] == 100
+
+
+WORKFLOWS = sorted((Path(__file__).parents[1] / '.github/workflows').glob('*.yml'))
+
+
+def _publishing_jobs():
+    for path in WORKFLOWS:
+        for name, job in yaml.safe_load(path.read_text())['jobs'].items():
+            scripts = ' '.join(str(step.get('run', '')) for step in job.get('steps', []))
+            if 'git push' in scripts or 'publish_market_data' in scripts:
+                yield pytest.param(job, id=f'{path.name}:{name}')
+
+
+@pytest.mark.parametrize('job', list(_publishing_jobs()))
+def test_data_repo_pushes_are_serialized_and_never_cancelled(job):
+    """Parallel or cancelled pushes to deanfi-data race and can drop another collector's output."""
+    concurrency = job.get('concurrency') or {}
+    assert concurrency.get('group') == 'deanfi-data-repo'
+    assert concurrency.get('cancel-in-progress') is False
+    assert concurrency.get('queue') == 'max'  # default queue replaces older pending publishes
+    assert job.get('timeout-minutes'), 'a hung job would hold the shared group indefinitely'

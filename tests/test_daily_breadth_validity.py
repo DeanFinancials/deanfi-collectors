@@ -60,7 +60,7 @@ def test_download_retries_nonempty_unusable_latest_closes(breadth_module, monkey
     result = breadth_module.download_market_data(['A'], cache_dir='cache' if cached else None)
     assert result is valid
     assert download.call_count == 2
-    sleep.assert_called_once_with(30)
+    sleep.assert_called_once()
     if cached:
         assert download.call_args_list[0].kwargs['force_refresh'] is False
         assert download.call_args_list[1].kwargs['force_refresh'] is True

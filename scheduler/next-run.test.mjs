@@ -31,10 +31,6 @@ test('ties use run ID and older runs do not block handoff', () => {
   assert.equal(handoffPlan(at(3), current, [{ ...current, id: 99 }]).status, 'schedule');
 });
 
-test('a latest run can recover across dates without waiting for cron', () => {
-  assert.equal(handoffPlan(new Date('2026-09-10T18:00Z'), current, []).status, 'schedule');
-});
-
 test('collection respects weekends, daylight saving, and 8 AM to 5 PM boundaries', () => {
   for (const date of ['2026-09-09T12:00Z', '2026-09-09T20:59Z',
     '2026-12-09T13:00Z', '2026-12-09T21:59Z']) {
@@ -47,6 +43,7 @@ test('collection respects weekends, daylight saving, and 8 AM to 5 PM boundaries
 });
 
 test('handoffs continue after the close and across midnight and weekends', () => {
+  assert.equal(handoffPlan(new Date('2026-09-10T18:00Z'), current, []).status, 'schedule');
   const late = { id: 100, created_at: '2026-09-09T20:52:00Z' };
   assert.equal(handoffPlan(new Date('2026-09-09T20:55Z'), late, []).status, 'schedule');
   for (const date of ['2026-09-10T03:58Z', '2026-09-12T18:00Z']) {

@@ -1,4 +1,4 @@
-"""Tests for deterministic catalyst assembly (Phase 2)."""
+"""Tests for deterministic catalyst assembly."""
 
 import json
 from datetime import datetime, timezone

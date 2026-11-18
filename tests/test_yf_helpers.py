@@ -1,8 +1,7 @@
 """Tests for shared.yf_retry and shared.yf_session helpers.
 
 The modules are loaded directly via importlib to bypass shared/__init__.py,
-which eagerly imports heavy dependencies (pandas, yfinance) that are not
-required to exercise these tiny helpers.
+which eagerly imports yfinance and the cache layer.
 """
 
 from __future__ import annotations
@@ -10,7 +9,9 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
+from unittest.mock import Mock
 
+import pandas as pd
 import pytest
 
 _SHARED = Path(__file__).resolve().parent.parent / "shared"
@@ -39,33 +40,13 @@ class FakeRateLimit(Exception):
 # -------------------- with_429_retry --------------------
 
 
-def test_returns_value_on_first_success(monkeypatch):
-    calls = {"n": 0}
-    sleep_calls = {"n": 0}
-
-    monkeypatch.setattr(yf_retry.time, "sleep", lambda _s: sleep_calls.__setitem__("n", sleep_calls["n"] + 1))
-
-    def fn():
-        calls["n"] += 1
-        return 42
-
-    assert with_429_retry(fn) == 42
-    assert calls["n"] == 1
-    assert sleep_calls["n"] == 0
-
-
-def test_retries_on_ratelimit_then_succeeds(monkeypatch):
-    calls = {"n": 0}
+@pytest.mark.parametrize("error", [FakeRateLimit("rate limited"), RuntimeError("HTTP 429 Too Many Requests")],
+                         ids=["ratelimit-class", "429-message"])
+def test_retries_rate_limit_then_succeeds(monkeypatch, error):
     monkeypatch.setattr(yf_retry.time, "sleep", lambda _s: None)
-
-    def fn():
-        calls["n"] += 1
-        if calls["n"] == 1:
-            raise FakeRateLimit("first attempt")
-        return 42
-
+    fn = Mock(side_effect=[error, 42])
     assert with_429_retry(fn) == 42
-    assert calls["n"] == 2
+    assert fn.call_count == 2
 
 
 def test_raises_after_exhausting_retries(monkeypatch):
@@ -94,18 +75,36 @@ def test_does_not_retry_on_other_exception(monkeypatch):
     assert calls["n"] == 1
 
 
-def test_matches_429_in_message(monkeypatch):
-    calls = {"n": 0}
-    monkeypatch.setattr(yf_retry.time, "sleep", lambda _s: None)
+@pytest.mark.parametrize("empty", [None, pd.DataFrame(), pd.DataFrame({"Close": [float("nan")]})],
+                         ids=["none", "empty", "all-nan"])
+def test_swallowed_yahoo_errors_retry_then_recover(monkeypatch, empty):
+    """yfinance swallows some failures and returns empty frames; retry_empty retries them."""
+    sleep = Mock()
+    monkeypatch.setattr(yf_retry.time, "sleep", sleep)
+    valid = pd.DataFrame({"Close": [100.0]})
+    download = Mock(side_effect=[empty, valid])
+    assert with_429_retry(download, retry_empty=True) is valid
+    assert download.call_count == 2
+    sleep.assert_called_once()
 
-    def fn():
-        calls["n"] += 1
-        if calls["n"] == 1:
-            raise RuntimeError("HTTP 429 Too Many Requests")
-        return "ok"
 
-    assert with_429_retry(fn) == "ok"
-    assert calls["n"] == 2
+def test_empty_retry_exhaustion_returns_empty_for_publication_guard(monkeypatch):
+    monkeypatch.setattr(yf_retry.time, "sleep", Mock())
+    empty = pd.DataFrame()
+    download = Mock(return_value=empty)
+    assert with_429_retry(download, retry_empty=True) is empty
+    assert download.call_count == 2
+
+
+@pytest.mark.parametrize("retry_empty", [False, True])
+def test_valid_and_partial_responses_are_not_retried(monkeypatch, retry_empty):
+    sleep = Mock()
+    monkeypatch.setattr(yf_retry.time, "sleep", sleep)
+    frame = pd.DataFrame({"AAA": [100.0], "BBB": [float("nan")]})
+    download = Mock(return_value=frame)
+    assert with_429_retry(download, retry_empty=retry_empty) is frame
+    download.assert_called_once_with()
+    sleep.assert_not_called()
 
 
 # -------------------- make_session --------------------

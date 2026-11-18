@@ -53,16 +53,19 @@ def _run_validator(repo, files):
     )
 
 
-def test_empties_out_previously_populated_data_fails(git_repo):
-    path = "major-indexes/us_major_indices.json"
-    _commit_file(git_repo, path, {"indices": {"^GSPC": {"price": 4500}}})
-    _write_file(git_repo, path, {"indices": {}})
+@pytest.mark.parametrize("path,key,populated", [
+    ("major-indexes/us_major_indices.json", "indices", {"^GSPC": {"price": 4500}}),
+    ("major-indexes/us_sector_indices.json", "sectors", {"XLK": {"price": 200}}),
+    ("implied-volatility/vix_options_snapshot.json", "data", {"vix": 15.0}),
+])
+def test_emptying_previously_populated_body_fails(git_repo, path, key, populated):
+    _commit_file(git_repo, path, {key: populated})
+    _write_file(git_repo, path, {key: {}})
 
     result = _run_validator(git_repo, [path])
 
     assert result.returncode == 1, f"stdout={result.stdout} stderr={result.stderr}"
-    combined = result.stdout + result.stderr
-    assert "us_major_indices.json" in combined
+    assert Path(path).name in result.stdout + result.stderr
 
 
 def test_non_empty_new_data_passes(git_repo):
@@ -123,7 +126,7 @@ def test_observed_unchanged_breadth_passes(git_repo):
 def test_malformed_json_fails(git_repo):
     path = 'major-indexes/us_sector_indices.json'
     _write_file(git_repo, path, {})
-    (git_repo / path).write_text('{')
+    (git_repo / path).write_text('{')  # truncated write
     assert _run_validator(git_repo, [path]).returncode == 1
 
 
@@ -182,27 +185,3 @@ def test_multiple_files_aggregate_failures(git_repo):
     combined = result.stdout + result.stderr
     assert "us_major_indices.json" in combined
     assert "us_sector_indices.json" in combined
-
-
-def test_sectors_body_key_works(git_repo):
-    path = "major-indexes/us_sector_indices.json"
-    _commit_file(git_repo, path, {"sectors": {"XLK": {"price": 200}}})
-    _write_file(git_repo, path, {"sectors": {}})
-
-    result = _run_validator(git_repo, [path])
-
-    assert result.returncode == 1
-    combined = result.stdout + result.stderr
-    assert "sectors" in combined
-
-
-def test_data_body_key_works(git_repo):
-    path = "implied-volatility/vix_options_snapshot.json"
-    _commit_file(git_repo, path, {"data": {"vix": 15.0}})
-    _write_file(git_repo, path, {"data": {}})
-
-    result = _run_validator(git_repo, [path])
-
-    assert result.returncode == 1
-    combined = result.stdout + result.stderr
-    assert "data" in combined

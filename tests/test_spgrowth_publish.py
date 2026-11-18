@@ -95,22 +95,22 @@ def _minimal_config(output_dir: Path) -> Config:
     )
 
 
-class TestIsPublishableCompany:
-    def test_good_company_is_publishable(self) -> None:
-        assert is_publishable_company(_good_company()) is True
+def _partial_company() -> CompanyData:
+    # A resolved company with partial errors but real annual data must be kept.
+    company = _good_company("PARTIAL")
+    company.growth.ttm = None  # e.g. no quarterly data for TTM
+    company.errors = ["No annual EPS data found"]
+    return company
 
-    def test_cik_not_found_is_not_publishable(self) -> None:
-        assert is_publishable_company(_cik_not_found()) is False
 
-    def test_no_sec_data_is_not_publishable(self) -> None:
-        assert is_publishable_company(_no_sec_data()) is False
-
-    def test_cik_with_only_annual_data_is_publishable(self) -> None:
-        # A resolved company with partial errors but real data must be kept.
-        company = _good_company("PARTIAL")
-        company.growth.ttm = None  # e.g. no quarterly data for TTM
-        company.errors = ["No annual EPS data found"]
-        assert is_publishable_company(company) is True
+@pytest.mark.parametrize("company, publishable", [
+    (_good_company(), True),
+    (_partial_company(), True),
+    (_cik_not_found(), False),
+    (_no_sec_data(), False),
+], ids=["complete", "annual-only", "cik-not-found", "no-sec-data"])
+def test_is_publishable_company(company: CompanyData, publishable: bool) -> None:
+    assert is_publishable_company(company) is publishable
 
 
 def test_save_growth_output_drops_structurally_empty_records(tmp_path: Path) -> None:

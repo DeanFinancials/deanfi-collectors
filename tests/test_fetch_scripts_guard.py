@@ -1,5 +1,5 @@
 """Structural tests verifying the assert_enough_succeeded guard is wired
-into all 9 fetch_*.py scripts identified in INCIDENT-2026-05-20.
+into the 9 per-ticker fetch_*.py scripts (see docs/architecture.md).
 
 We use a structural test (read source as text, verify call patterns) instead
 of an integration test because the fetch_*.py modules import pandas,
@@ -59,20 +59,15 @@ IMPORT_RE = re.compile(
 
 
 @pytest.mark.parametrize("rel_path,save_pattern,expected_guarded", SCRIPTS)
-def test_script_imports_guard(rel_path, save_pattern, expected_guarded):
-    """Every listed script must import the guard helper."""
+def test_save_calls_are_guarded(rel_path, save_pattern, expected_guarded):
+    """The script imports the guard, and every applicable persistence call is
+    preceded by a guard call within GUARD_PROXIMITY_LINES source lines."""
     source = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
     assert IMPORT_RE.search(source), (
         f"{rel_path}: missing `from shared.fetch_guard import "
         f"assert_enough_succeeded` import."
     )
-
-
-@pytest.mark.parametrize("rel_path,save_pattern,expected_guarded", SCRIPTS)
-def test_save_calls_are_guarded(rel_path, save_pattern, expected_guarded):
-    """Every applicable persistence call must be preceded by a guard call
-    within GUARD_PROXIMITY_LINES source lines."""
-    lines = (REPO_ROOT / rel_path).read_text(encoding="utf-8").splitlines()
+    lines = source.splitlines()
     save_re = re.compile(save_pattern)
 
     guarded = 0

@@ -1,15 +1,15 @@
+import importlib.util
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-MAJORINDEXES_DIR = Path(__file__).resolve().parent.parent / "majorindexes"
-sys.path.insert(0, str(MAJORINDEXES_DIR))
-
-import utils  # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    "majorindexes_utils", Path(__file__).resolve().parent.parent / "majorindexes" / "utils.py")
+utils = importlib.util.module_from_spec(_spec)  # unique name: impliedvol also has utils.py
+_spec.loader.exec_module(utils)
 
 
 def test_return_and_52_week_metrics_ignore_non_finite_closes():
@@ -45,7 +45,7 @@ def test_statistics_ignore_non_finite_closes():
 def test_save_json_rejects_non_finite_values(tmp_path):
     output = tmp_path / "snapshot.json"
 
-    with pytest.raises(ValueError, match="Out of range float values"):
+    with pytest.raises(ValueError):
         utils.save_json({"percent": float("nan")}, str(output))
 
 

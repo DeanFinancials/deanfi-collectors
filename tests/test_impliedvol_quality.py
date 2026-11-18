@@ -1,115 +1,63 @@
 """Implied-volatility quality guard: Yahoo placeholder IVs must not be published."""
 
-import sys
+import importlib.util
+import json
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import pytest
+import yaml
 
-IMPLIEDVOL_DIR = Path(__file__).resolve().parent.parent / "impliedvol"
-sys.path.insert(0, str(IMPLIEDVOL_DIR))
-
-import utils as iv_utils  # noqa: E402
-
-sys.path.remove(str(IMPLIEDVOL_DIR))
-sys.modules.pop("utils", None)
+_spec = importlib.util.spec_from_file_location(
+    "impliedvol_utils", Path(__file__).resolve().parent.parent / "impliedvol" / "utils.py")
+iv_utils = importlib.util.module_from_spec(_spec)  # unique name: majorindexes also has utils.py
+_spec.loader.exec_module(iv_utils)
 
 
 def _leg(strike, iv, bid, ask):
     return pd.Series({"strike": strike, "impliedVolatility": iv, "bid": bid, "ask": ask})
 
 
-def test_unquoted_placeholder_iv_is_not_usable():
+@pytest.mark.parametrize("leg,usable", [
     # Observed for DIA pre-market on 2026-11-18: bid/ask 0, IV 0.000987 and 1e-05.
-    assert not iv_utils.is_usable_iv(_leg(507.5, 0.000987, 0.0, 0.0))
-    assert not iv_utils.is_usable_iv(_leg(507.5, 1e-05, 0.0, 0.0))
-    assert not iv_utils.is_usable_iv(_leg(507.5, 0.0005, 6.1, 6.5))
-    assert not iv_utils.is_usable_iv(_leg(507.5, float("nan"), 6.1, 6.5))
-    assert iv_utils.is_usable_iv(_leg(732.0, 0.245308, 10.51, 10.83))
+    (_leg(507.5, 0.000987, 0.0, 0.0), False),
+    (_leg(507.5, 1e-05, 0.0, 0.0), False),
+    (_leg(507.5, 0.0005, 6.1, 6.5), False),
+    (_leg(507.5, float("nan"), 6.1, 6.5), False),
+    # deanfi-data acdeef5ac (2026-11-17 21:58 ET): wide after-hours quotes inflate IV.
+    (_leg(163.0, 0.61475, 3.05, 6.75), False),
+    (_leg(51.0, 0.913575, 0.10, 3.15), False),
+    (_leg(163.0, 0.30, 4.6, 4.5), False),  # crossed quote
+    (_leg(732.0, 0.245308, 10.51, 10.83), True),
+    (_leg(163.0, 0.377448, 3.95, 4.55), True),  # regular session, spread ~14% of mid
+    (_leg(100.0, 0.25, 3.0, 5.0), True),  # spread exactly at the limit
+])
+def test_is_usable_iv(leg, usable):
+    assert iv_utils.is_usable_iv(leg) is usable
 
 
-def test_wide_after_hours_quote_is_not_usable():
-    # deanfi-data acdeef5ac (2026-11-17 21:58 ET): XLK 163 call 3.05/6.75 -> IV 0.61,
-    # XLB 51 put 0.10/3.15 -> IV 0.91, versus ~0.24-0.46 during the session.
-    assert not iv_utils.is_usable_iv(_leg(163.0, 0.61475, 3.05, 6.75))
-    assert not iv_utils.is_usable_iv(_leg(51.0, 0.913575, 0.10, 3.15))
-    # Crossed quote.
-    assert not iv_utils.is_usable_iv(_leg(163.0, 0.30, 4.6, 4.5))
-    # Regular-session XLK quote from 2026-11-18 10:04 ET (spread ~14% of mid).
-    assert iv_utils.is_usable_iv(_leg(163.0, 0.377448, 3.95, 4.55))
-    # Spread exactly at the limit is accepted.
-    assert iv_utils.is_usable_iv(_leg(100.0, 0.25, 3.0, 5.0))
+@pytest.mark.parametrize("call,put,expected", [
+    (_leg(507.5, 0.000987, 0.0, 0.0), _leg(507.5, 1e-05, 0.0, 0.0), (None, "unavailable")),
+    (_leg(163.0, 0.61475, 3.05, 6.75), _leg(163.0, 0.611088, 2.95, 6.45), (None, "unavailable")),
+    (_leg(732.0, 0.24, 10.5, 10.8), _leg(732.0, 1e-05, 0.0, 0.0), (0.24, "call_only")),
+    (_leg(732.0, 0.24, 10.5, 10.8), _leg(732.0, 0.20, 8.3, 8.8), (0.22, "call_put_average")),
+])
+def test_average_usable_iv_uses_only_usable_legs(call, put, expected):
+    assert iv_utils.average_usable_iv(call, put) == expected
 
 
-def test_wide_after_hours_quotes_become_missing_and_carry_forward():
-    average, basis = iv_utils.average_usable_iv(
-        _leg(163.0, 0.61475, 3.05, 6.75), _leg(163.0, 0.611088, 2.95, 6.45)
-    )
-    assert (average, basis) == (None, "unavailable")
-
-    snap = {"symbol": "XLK", "average_iv": average, "iv_basis": basis,
-            "timestamp": "2026-11-17T21:58:56-05:00"}
-    prior = {"symbol": "XLK", "average_iv": 0.462, "iv_basis": "call_put_average",
-             "timestamp": "2026-11-17T15:54:00-05:00",
-             "iv_as_of": "2026-11-17T15:54:00-05:00"}
-    iv_utils.apply_iv_carry_forward(snap, prior, now=datetime.fromisoformat(snap["timestamp"]))
-    assert snap["average_iv"] == 0.462
-    assert snap["iv_stale"] is True
-    assert snap["iv_as_of"] == "2026-11-17T15:54:00-05:00"
-
-
-def test_find_atm_option_skips_wide_quoted_strike_for_tight_neighbour():
-    chain = pd.DataFrame(
-        [
-            {"strike": 51.0, "impliedVolatility": 0.91, "bid": 0.10, "ask": 3.15},
-            {"strike": 50.5, "impliedVolatility": 0.25, "bid": 0.55, "ask": 0.70},
-        ]
-    )
-    picked = iv_utils.find_atm_option(chain, 50.84, tolerance=0.02)
-    assert picked["strike"] == 50.5
-
-
-def test_average_usable_iv_marks_missing_instead_of_publishing_placeholders():
-    average, basis = iv_utils.average_usable_iv(
-        _leg(507.5, 0.000987, 0.0, 0.0), _leg(507.5, 1e-05, 0.0, 0.0)
-    )
-    assert average is None
-    assert basis == "unavailable"
-
-
-def test_average_usable_iv_uses_only_quoted_legs():
-    average, basis = iv_utils.average_usable_iv(
-        _leg(732.0, 0.24, 10.5, 10.8), _leg(732.0, 1e-05, 0.0, 0.0)
-    )
-    assert average == 0.24
-    assert basis == "call_only"
-
-    average, basis = iv_utils.average_usable_iv(
-        _leg(732.0, 0.24, 10.5, 10.8), _leg(732.0, 0.20, 8.3, 8.8)
-    )
-    assert average == 0.22
-    assert basis == "call_put_average"
-
-
-def test_find_atm_option_prefers_nearest_quoted_strike():
-    chain = pd.DataFrame(
-        [
-            {"strike": 507.0, "impliedVolatility": 0.000987, "bid": 0.0, "ask": 0.0},
-            {"strike": 508.0, "impliedVolatility": 0.18, "bid": 6.0, "ask": 6.4},
-        ]
-    )
-    picked = iv_utils.find_atm_option(chain, 507.1, tolerance=0.02)
-    assert picked["strike"] == 508.0
-
-
-def test_find_atm_option_falls_back_to_nearest_strike_when_nothing_is_quoted():
-    chain = pd.DataFrame(
-        [
-            {"strike": 507.0, "impliedVolatility": 0.000987, "bid": 0.0, "ask": 0.0},
-            {"strike": 508.0, "impliedVolatility": 1e-05, "bid": 0.0, "ask": 0.0},
-        ]
-    )
-    picked = iv_utils.find_atm_option(chain, 507.1, tolerance=0.02)
-    assert picked["strike"] == 507.0
+@pytest.mark.parametrize("rows,spot,expected_strike", [
+    # Wide-quoted nearest strike loses to a tight neighbour.
+    ([(51.0, 0.91, 0.10, 3.15), (50.5, 0.25, 0.55, 0.70)], 50.84, 50.5),
+    # Unquoted placeholder nearest strike loses to the nearest quoted one.
+    ([(507.0, 0.000987, 0.0, 0.0), (508.0, 0.18, 6.0, 6.4)], 507.1, 508.0),
+    # Nothing quoted: fall back to the nearest strike.
+    ([(507.0, 0.000987, 0.0, 0.0), (508.0, 1e-05, 0.0, 0.0)], 507.1, 507.0),
+])
+def test_find_atm_option_prefers_usable_quotes(rows, spot, expected_strike):
+    chain = pd.DataFrame(rows, columns=["strike", "impliedVolatility", "bid", "ask"])
+    assert iv_utils.find_atm_option(chain, spot, tolerance=0.02)["strike"] == expected_strike
 
 
 def test_formatting_helpers_accept_missing_iv():
@@ -119,11 +67,6 @@ def test_formatting_helpers_accept_missing_iv():
 
 
 # --- carry-forward of the last good IV -------------------------------------
-import json  # noqa: E402
-from datetime import datetime  # noqa: E402
-
-import yaml  # noqa: E402
-
 NOW = datetime.fromisoformat("2026-11-18T08:14:00-05:00")
 FRESH_PRIOR = {"symbol": "DIA", "average_iv": 0.152, "iv_basis": "call_put_average",
                "timestamp": "2026-11-17T15:55:00-05:00"}

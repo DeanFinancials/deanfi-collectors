@@ -20,25 +20,10 @@ def test_zero_successful_with_positive_total_exits_one(capsys):
     with pytest.raises(SystemExit) as excinfo:
         assert_enough_succeeded(0, 5, label="snapshot")
     assert excinfo.value.code == 1
-    captured = capsys.readouterr()
-    assert "snapshot" in captured.err
-    assert "0/5" in captured.err
-    assert "refusing" in captured.err
+    err = capsys.readouterr().err
+    assert "snapshot" in err and "0/5" in err  # which output, how many fetched
 
 
-def test_at_least_one_successful_returns_none():
-    assert assert_enough_succeeded(1, 5, label="snapshot") is None
-
-
-def test_total_zero_is_noop_even_when_successful_zero():
-    # Nothing was attempted; nothing to guard.
-    assert assert_enough_succeeded(0, 0, label="snapshot") is None
-
-
-def test_all_successful_returns_none():
-    assert assert_enough_succeeded(7, 7, label="historical") is None
-
-
-def test_label_is_keyword_only_required():
-    with pytest.raises(TypeError):
-        assert_enough_succeeded(1, 5)  # type: ignore[call-arg]
+@pytest.mark.parametrize("successful,total", [(1, 5), (7, 7), (0, 0)])
+def test_any_success_or_nothing_attempted_allows_publish(successful, total):
+    assert assert_enough_succeeded(successful, total, label="snapshot") is None

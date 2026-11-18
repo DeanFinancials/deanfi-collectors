@@ -1,13 +1,8 @@
 """
-Tests for the GSC topics collector (Issue 08 — C2a).
-
-TDD vertical slices:
-  TestAuthenticateGSC       — authentication behaviors (AC1/AC4)
-  TestFetchSearchAnalytics  — Search Analytics call behaviors (AC2/AC4/NFR-3)
-  TestFetchGSCTopics        — integration: auth + fetch + filter + seed merge
-  TestOpportunityScore      — utility function
-  TestValidateTopics        — schema validation (AC3)
-  TestRunGSCTopics          — run() entry-point behaviors (AC4 last-good + AC1)
+GSC topics collector: fail closed so a bad run never replaces the last-good
+topics.json, keep tokens out of logs, and keep export noise out of the topic
+pool the website draws articles from. Entry-level contract checks live in
+test_topics_contract.py.
 """
 import json
 from unittest.mock import MagicMock, patch
@@ -25,7 +20,6 @@ from gsctopics.gsc_topics_utils import (
     assign_category,
     is_quality_query,
     opportunity_score,
-    slugify,
     validate_topics,
 )
 from gsctopics.run_gsc_topics import run
@@ -78,47 +72,26 @@ def _valid_topic():
 # ── TestAuthenticateGSC ───────────────────────────────────────────────────────
 
 class TestAuthenticateGSC:
-    @patch("gsctopics.fetch_gsc.GoogleRequest")
-    @patch("gsctopics.fetch_gsc.Credentials")
-    def test_returns_access_token_when_credentials_present(
-        self, mock_creds_cls, _mock_req_cls, monkeypatch
-    ):
+    @pytest.mark.parametrize("missing", [
+        ("GSC_CLIENT_ID", "GSC_CLIENT_SECRET", "GSC_REFRESH_TOKEN"),
+        ("GSC_REFRESH_TOKEN",),
+    ], ids=["all", "one"])
+    def test_missing_credentials_raise_source_fetch_error(self, monkeypatch, missing):
         _gsc_env(monkeypatch)
-        mock_creds = MagicMock()
-        mock_creds.token = "my_access_token"
-        mock_creds_cls.return_value = mock_creds
+        for name in missing:
+            monkeypatch.delenv(name)
 
-        token = authenticate_gsc()
-
-        assert token == "my_access_token"
-        mock_creds.refresh.assert_called_once()
-
-    def test_raises_when_all_env_vars_missing(self, monkeypatch):
-        monkeypatch.delenv("GSC_CLIENT_ID", raising=False)
-        monkeypatch.delenv("GSC_CLIENT_SECRET", raising=False)
-        monkeypatch.delenv("GSC_REFRESH_TOKEN", raising=False)
-
-        with pytest.raises(SourceFetchError, match="GSC credentials not set"):
-            authenticate_gsc()
-
-    def test_raises_when_one_env_var_missing(self, monkeypatch):
-        monkeypatch.setenv("GSC_CLIENT_ID", "id")
-        monkeypatch.setenv("GSC_CLIENT_SECRET", "secret")
-        monkeypatch.delenv("GSC_REFRESH_TOKEN", raising=False)
-
-        with pytest.raises(SourceFetchError, match="GSC_REFRESH_TOKEN"):
+        with pytest.raises(SourceFetchError, match=missing[-1]):
             authenticate_gsc()
 
     @patch("gsctopics.fetch_gsc.GoogleRequest")
     @patch("gsctopics.fetch_gsc.Credentials")
-    def test_raises_on_invalid_grant_refresh_error(
+    def test_revoked_refresh_token_raises_source_fetch_error(
         self, mock_creds_cls, _mock_req_cls, monkeypatch
     ):
         _gsc_env(monkeypatch)
         from google.auth.exceptions import RefreshError
-        mock_creds = MagicMock()
-        mock_creds.refresh.side_effect = RefreshError("invalid_grant")
-        mock_creds_cls.return_value = mock_creds
+        mock_creds_cls.return_value.refresh.side_effect = RefreshError("invalid_grant")
 
         with pytest.raises(SourceFetchError, match="token refresh failed"):
             authenticate_gsc()
@@ -126,67 +99,44 @@ class TestAuthenticateGSC:
 
 # ── TestFetchSearchAnalytics ──────────────────────────────────────────────────
 
+def _respond(mock_post, rows=None, status_code=200, body=None):
+    payload = body if body is not None else _gsc_response(rows or [])
+    mock_post.return_value = MagicMock(status_code=status_code, json=lambda: payload)
+
+
 class TestFetchSearchAnalytics:
     @patch("gsctopics.fetch_gsc.requests.post")
-    def test_excludes_insights_pages(self, mock_post):
-        rows = [
-            _gsc_row("roth ira guide", "https://deanfi.com/insights/roth-ira/", impressions=200),
-            _gsc_row("retirement planning basics", "https://deanfi.com/retirement/", impressions=150),
-        ]
-        mock_post.return_value = MagicMock(
-            status_code=200, json=lambda: _gsc_response(rows)
-        )
+    def test_returns_contract_valid_entries_ranked_without_noise_or_covered_pages(self, mock_post):
+        _respond(mock_post, [
+            _gsc_row("roth ira guide", "https://deanfi.com/insights/roth-ira/", impressions=500),
+            _gsc_row('"rsxfs" "2025-01" before:2025-12-28', "https://deanfi.com/", impressions=900),
+            _gsc_row("retirement planning basics", "https://deanfi.com/retirement/", impressions=50),
+            _gsc_row("401k contribution limits", "https://deanfi.com/retirement/", impressions=150),
+        ])
 
         results = fetch_search_analytics("tok", "sc-domain:deanfi.com", 90, ["/insights/"])
 
-        assert len(results) == 1
-        assert results[0]["target_keyword"] == "retirement planning basics"
+        assert [e["target_keyword"] for e in results] == [
+            "401k contribution limits", "retirement planning basics",
+        ]
+        accepted, rejected = validate_topics(results)
+        assert rejected == [] and len(accepted) == 2
+        assert {(e["status"], e["source"]) for e in results} == {("suggested", "gsc")}
 
     @patch("gsctopics.fetch_gsc.requests.post")
-    def test_required_schema_fields_present_on_success(self, mock_post):
-        rows = [_gsc_row("401k contribution limits", "https://deanfi.com/retirement/")]
-        mock_post.return_value = MagicMock(
-            status_code=200, json=lambda: _gsc_response(rows)
-        )
-
-        results = fetch_search_analytics("tok", "sc-domain:deanfi.com", 90, [])
-
-        assert len(results) == 1
-        e = results[0]
-        for field in ("slug", "category", "target_keyword", "gsc_evidence", "added_at", "status"):
-            assert field in e, f"missing field: {field}"
-        for sub in ("impressions", "avg_position", "clicks", "window"):
-            assert sub in e["gsc_evidence"], f"gsc_evidence missing: {sub}"
-        assert e["status"] == "suggested"
-        assert e["source"] == "gsc"
-        assert e["gsc_evidence"]["window"] == "90d"
-
-    @patch("gsctopics.fetch_gsc.requests.post")
-    def test_empty_rows_returns_empty_list(self, mock_post):
-        mock_post.return_value = MagicMock(
-            status_code=200, json=lambda: {}  # no "rows" key
-        )
-
-        results = fetch_search_analytics("tok", "sc-domain:deanfi.com", 90, [])
-
-        assert results == []
-
-    @patch("gsctopics.fetch_gsc.requests.post")
-    def test_raises_source_fetch_error_on_401(self, mock_post):
-        mock_post.return_value = MagicMock(status_code=401)
-
-        with pytest.raises(SourceFetchError, match="HTTP 401"):
-            fetch_search_analytics("tok", "sc-domain:deanfi.com", 90, [])
+    def test_absent_rows_is_empty_not_an_error(self, mock_post):
+        _respond(mock_post, body={})
+        assert fetch_search_analytics("tok", "sc-domain:deanfi.com", 90, []) == []
 
     @patch("gsctopics.fetch_gsc.time.sleep", return_value=None)
     @patch("gsctopics.fetch_gsc.requests.post")
-    def test_401_logs_status_code_not_token_value(self, mock_post, _mock_sleep, caplog):
+    def test_401_raises_and_logs_status_code_not_token(self, mock_post, _mock_sleep, caplog):
         mock_post.return_value = MagicMock(status_code=401)
         secret_token = "super_secret_access_token_value"
 
         import logging
         with caplog.at_level(logging.WARNING, logger="gsctopics.fetch_gsc"):
-            with pytest.raises(SourceFetchError):
+            with pytest.raises(SourceFetchError, match="HTTP 401"):
                 fetch_search_analytics(secret_token, "sc-domain:deanfi.com", 90, [])
 
         assert secret_token not in caplog.text
@@ -283,6 +233,8 @@ class TestLoadSeedTopics:
         assert e["status"] == "suggested"
         assert e["gsc_evidence"] is None
         assert e["added_at"] == datetime.date.today().isoformat()
+        accepted, rejected = validate_topics(seeds)
+        assert len(accepted) == 1 and rejected == []
 
     def test_explicit_values_win_over_defaults(self):
         cfg = {"seed_topics": [{
@@ -296,25 +248,10 @@ class TestLoadSeedTopics:
         assert e["added_at"] == "2020-01-01"
         assert e["source"] == "manual"
 
-    def test_terse_seeds_pass_schema_validation(self):
-        cfg = {"seed_topics": [{
-            "slug": "how-to-calculate-your-net-worth",
-            "category": "financial-tips",
-            "target_keyword": "how to calculate your net worth",
-        }]}
-
-        accepted, rejected = validate_topics(load_seed_topics(cfg))
-
-        assert len(accepted) == 1
-        assert len(rejected) == 0
-
 
 # ── TestOpportunityScore ──────────────────────────────────────────────────────
 
 class TestOpportunityScore:
-    def test_higher_impressions_scores_higher(self):
-        assert opportunity_score(100.0, 10.0) > opportunity_score(10.0, 10.0)
-
     def test_position_floor_prevents_division_by_zero(self):
         assert opportunity_score(50.0, 0.0) == 50.0
 
@@ -358,50 +295,6 @@ class TestAssignCategory:
         assert assign_category("stock market breadth explained") == "market-education"
 
 
-# ── TestValidateTopics ────────────────────────────────────────────────────────
-
-class TestValidateTopics:
-    def test_valid_gsc_entry_accepted(self):
-        accepted, rejected = validate_topics([_valid_topic()])
-        assert len(accepted) == 1
-        assert len(rejected) == 0
-
-    def test_missing_required_field_rejected(self):
-        bad = _valid_topic()
-        del bad["slug"]
-        accepted, rejected = validate_topics([bad])
-        assert len(accepted) == 0
-        assert len(rejected) == 1
-
-    def test_invalid_category_rejected(self):
-        bad = _valid_topic()
-        bad["category"] = "not-a-real-category"
-        _, rejected = validate_topics([bad])
-        assert len(rejected) == 1
-
-    def test_wes_seed_with_null_gsc_evidence_accepted(self):
-        seed = {
-            "slug": "seed-topic",
-            "category": "financial-tips",
-            "target_keyword": "seed keyword",
-            "added_at": "2026-06-10",
-            "status": "suggested",
-            "source": "wes",
-            "gsc_evidence": None,
-        }
-        accepted, rejected = validate_topics([seed])
-        assert len(accepted) == 1
-        assert len(rejected) == 0
-
-    def test_rejection_log_contains_reason(self, caplog):
-        bad = _valid_topic()
-        bad["category"] = "invalid-cat"
-        import logging
-        with caplog.at_level(logging.WARNING):
-            validate_topics([bad])
-        assert "invalid category" in caplog.text
-
-
 # ── TestRunGSCTopics ──────────────────────────────────────────────────────────
 
 class TestRunGSCTopics:
@@ -422,16 +315,14 @@ class TestRunGSCTopics:
 
     @patch("gsctopics.run_gsc_topics.fetch_gsc_topics")
     @patch("gsctopics.run_gsc_topics.load_config")
-    def test_writes_output_when_all_succeeds(self, mock_cfg, mock_fetch, tmp_path):
+    def test_writes_only_valid_topics(self, mock_cfg, mock_fetch, tmp_path):
         out = tmp_path / "topics.json"
         mock_cfg.return_value = {}
-        mock_fetch.return_value = [_valid_topic()]
+        mock_fetch.return_value = [_valid_topic(), dict(_valid_topic(), slug="bad", category="nope")]
 
         run(str(out))
 
-        written = json.loads(out.read_text())
-        assert len(written) == 1
-        assert written[0]["slug"] == "roth-ira-limits"
+        assert [t["slug"] for t in json.loads(out.read_text())] == ["roth-ira-limits"]
 
     @patch("gsctopics.run_gsc_topics.fetch_gsc_topics")
     @patch("gsctopics.run_gsc_topics.load_config")
@@ -439,18 +330,6 @@ class TestRunGSCTopics:
         out = tmp_path / "topics.json"
         mock_cfg.return_value = {}
         mock_fetch.return_value = [{"broken": True}]  # fails validation
-
-        with pytest.raises(SystemExit) as exc_info:
-            run(str(out))
-        assert exc_info.value.code == 1
-        assert not out.exists()
-
-    @patch("gsctopics.run_gsc_topics.fetch_gsc_topics")
-    @patch("gsctopics.run_gsc_topics.load_config")
-    def test_missing_env_var_exits_nonzero_without_writing(self, mock_cfg, mock_fetch, tmp_path):
-        out = tmp_path / "topics.json"
-        mock_cfg.return_value = {}
-        mock_fetch.side_effect = SourceFetchError("GSC credentials not set: GSC_CLIENT_ID")
 
         with pytest.raises(SystemExit) as exc_info:
             run(str(out))

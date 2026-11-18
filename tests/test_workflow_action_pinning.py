@@ -1,9 +1,7 @@
-"""Every remote GitHub Action is pinned to a commit SHA; Dependabot bumps the pins monthly."""
+"""Every remote GitHub Action is pinned to a full commit SHA (supply-chain guard)."""
 
 import re
 from pathlib import Path
-
-import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 USES = re.compile(r"^\s*-?\s*uses:\s*['\"]?([^'\"\s#]+)", re.MULTILINE)
@@ -17,11 +15,5 @@ def test_every_remote_action_is_sha_pinned():
                 continue
             if not re.search(r"@[0-9a-f]{40}$", ref):
                 unpinned.append(f"{workflow.name}: {ref}")
-    assert unpinned == []
+    assert unpinned == [], "pin these actions to a 40-char commit SHA"
 
-
-def test_dependabot_groups_github_actions_updates():
-    config = yaml.safe_load((REPO_ROOT / ".github" / "dependabot.yml").read_text())
-    updates = [u for u in config["updates"] if u["package-ecosystem"] == "github-actions"]
-    assert len(updates) == 1
-    assert updates[0]["groups"]

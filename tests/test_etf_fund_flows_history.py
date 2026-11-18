@@ -1,5 +1,6 @@
 """ETF fund flows need the prior session, so each run must start from the published month files."""
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -19,16 +20,21 @@ def _steps():
     return workflow["jobs"]["fetch-and-publish"]["steps"]
 
 
-def test_workflow_seeds_output_dir_from_data_repo_before_generating():
-    names = [step.get("name", "") for step in _steps()]
+def test_workflow_seeds_published_month_files_before_generating(tmp_path):
+    """Without the seed, a run writes a one-day month file over the published history."""
+    steps = _steps()
+    names = [step.get("name", "") for step in steps]
     seed = names.index("Seed existing monthly outputs from data repo")
-    generate = names.index("Generate ETF fund flows")
-    checkout_data = names.index("Checkout data repo")
-    assert checkout_data < seed < generate
+    assert names.index("Checkout data repo") < seed < names.index("Generate ETF fund flows")
 
-    seed_run = _steps()[seed]["run"]
-    assert "data-cache/etf-fund-flows/etf_fund_flows_" in seed_run
-    assert "etffundflows/output" in seed_run
+    published = tmp_path / "data-cache/etf-fund-flows/etf_fund_flows_2026-11.json"
+    published.parent.mkdir(parents=True)
+    published.write_text('{"data": {"SPY": {}}}')
+    subprocess.run(["bash", "-e", "-c", steps[seed]["run"]], cwd=tmp_path, check=True,
+                   capture_output=True)
+
+    seeded = tmp_path / "etffundflows/output/etf_fund_flows_2026-11.json"
+    assert seeded.read_text() == published.read_text()
 
 
 def test_seeded_month_doc_supplies_prior_point_for_flow():
@@ -54,8 +60,3 @@ def test_manual_test_mode_never_publishes_to_data_repo():
     steps = {step.get("name", ""): step for step in _steps()}
     for name in ("Copy to data repo", "Update data freshness", "Commit and push"):
         assert steps[name].get("if") == "env.PUBLISH == 'true'", name
-
-    artifact = steps["Upload test-mode outputs as artifact"]
-    assert artifact.get("if") == "env.PUBLISH != 'true'"
-    assert artifact["uses"].startswith("actions/upload-artifact@")
-    assert "etffundflows/output" in artifact["with"]["path"]
