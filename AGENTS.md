@@ -93,4 +93,4 @@ deanfi-data/          (not in this repo — the sibling data repo on GitHub)
 | `stockwhales/` | Alpaca | twice daily | `stock-whales/` |
 | `etffundflows/` | yfinance | daily after close | `etf-fund-flows/` |
 | `supportresistence/` | Alpaca | daily 5am ET | `supportresistence/` |
-| `dailynews/` | Finnhub | manual only | `daily-news/` |
+| `dailynews/` | Finnhub + RSS | weeknights (cron `30 22 * * 1-5`; starts ~02:00–04:40 UTC in practice) | `daily-news/` |
