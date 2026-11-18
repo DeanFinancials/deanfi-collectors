@@ -1,12 +1,14 @@
 """
 Shared utilities for the education-facts collector.
 
-Provides: retry-with-backoff HTTP fetch, record validation (required fields +
-sane bounds), facts JSON writer, and config loader.
+Provides: retry-with-backoff HTTP fetch, record validation (required fields,
+category, value type, as_of date, sane bounds), facts JSON writer, and config loader.
 """
 import datetime
 import json
 import logging
+import math
+import re
 import time
 from pathlib import Path
 from typing import Any, Optional
@@ -82,6 +84,44 @@ def fetch_with_retry(
     return None
 
 
+# as_of must be an ISO calendar date (YYYY-MM-DD) naming a real day. The
+# website's freshness probe parses it with JavaScript `new Date()`, which accepts
+# every such string; requiring this strict subset keeps "" and other
+# unparseable values out of facts.json.
+_AS_OF_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+# A fact's value is a finite number, except facts in TEXT_UNIT, whose value is a
+# non-empty display string (e.g. "67 years").
+TEXT_UNIT = "text"
+
+
+def _invalid_field_reason(rec: dict) -> Optional[str]:
+    """Return why rec breaks the facts.json contract, or None when it is valid."""
+    for field in REQUIRED_FIELDS:
+        if field not in rec or rec[field] is None:
+            return f"missing/null required field '{field}'"
+
+    if rec["category"] not in CATEGORY_ENUM:
+        return f"invalid category '{rec['category']}'"
+
+    value = rec["value"]
+    if rec["unit"] == TEXT_UNIT:
+        if not isinstance(value, str) or not value.strip():
+            return f"text fact value must be a non-empty string, got {value!r}"
+    elif isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        return f"value must be a finite number, got {value!r}"
+
+    as_of = rec["as_of"]
+    try:
+        if not isinstance(as_of, str) or not _AS_OF_RE.match(as_of):
+            raise ValueError
+        datetime.date.fromisoformat(as_of)
+    except ValueError:
+        return f"as_of must be a YYYY-MM-DD date, got {as_of!r}"
+
+    return None
+
+
 def validate_records(
     records: list[dict],
     sane_bounds: Optional[dict] = None,
@@ -89,24 +129,18 @@ def validate_records(
     """
     Split records into (accepted, rejected).
 
-    A record is rejected if any required field is absent/null, or if its
+    A record is rejected if any required field is absent/null, its category is
+    outside CATEGORY_ENUM, its value is not a finite number (or, for unit
+    "text", a non-empty string), its as_of is not a real YYYY-MM-DD date, or its
     numeric value falls outside the configured sane bounds.  Rejected records
-    are logged with field name + observed value so CI output is auditable.
+    are logged with the reason and observed value so CI output is auditable.
     """
     sane_bounds = sane_bounds or {}
     accepted: list[dict] = []
     rejected: list[dict] = []
 
     for rec in records:
-        reject_reason: Optional[str] = None
-
-        for field in REQUIRED_FIELDS:
-            if field not in rec or rec[field] is None:
-                reject_reason = f"missing/null required field '{field}'"
-                logger.warning(
-                    "Rejecting fact id=%s: %s", rec.get("id", "?"), reject_reason
-                )
-                break
+        reject_reason = _invalid_field_reason(rec)
 
         if reject_reason is None and rec.get("id") in sane_bounds:
             lo, hi = sane_bounds[rec["id"]]
@@ -115,11 +149,9 @@ def validate_records(
                 reject_reason = (
                     f"sane_bounds violated: field=value observed={val} bounds=[{lo}, {hi}]"
                 )
-                logger.warning(
-                    "Rejecting fact id=%s: %s", rec["id"], reject_reason
-                )
 
         if reject_reason:
+            logger.warning("Rejecting fact id=%s: %s", rec.get("id", "?"), reject_reason)
             rejected.append(rec)
         else:
             accepted.append(rec)
@@ -134,31 +166,6 @@ def write_facts(records: list[dict], output_path: str) -> None:
     tmp = out.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(records, indent=2, default=str))
     tmp.replace(out)
-
-
-def check_facts_freshness(
-    facts: list[dict],
-    today: Optional[datetime.date] = None,
-) -> list[str]:
-    """
-    Return a list of fact IDs whose data is stale (age > max_age_days).
-
-    Used by the CI schema-contract step and the daily freshness probe.
-    A fact is stale when (today - as_of).days > max_age_days, except current
-    tax-year statutory facts remain valid through their stated tax year.
-    """
-    if today is None:
-        today = datetime.date.today()
-    stale: list[str] = []
-    for f in facts:
-        try:
-            as_of = datetime.date.fromisoformat(f["as_of"])
-            max_age = int(f["max_age_days"])
-            if (today - as_of).days > max_age and not is_current_tax_year_fact(f, today):
-                stale.append(f.get("id", "?"))
-        except (KeyError, ValueError, TypeError):
-            pass
-    return stale
 
 
 def is_current_tax_year_fact(fact: dict, today: datetime.date) -> bool:

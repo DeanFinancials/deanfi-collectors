@@ -294,3 +294,15 @@ class TestRunEducationFacts:
 
         assert exc.value.code == 1
         assert not (tmp_path / "facts.json").exists()
+
+    def test_fact_with_blank_as_of_is_not_published(self, tmp_path):
+        """A source row without a date yields as_of="" (fetch_group1/2 default);
+        publishing it would fail the website's freshness probe (facts/invalid-as-of)."""
+        output_file = _run_with(
+            tmp_path,
+            group1={"return_value": [_valid_record(id="undated", as_of="")]},
+            group2={"return_value": [_valid_record(id="dated")]},
+            group3_records={"return_value": []},
+        )
+
+        assert [r["id"] for r in json.loads(output_file.read_text())] == ["dated"]
