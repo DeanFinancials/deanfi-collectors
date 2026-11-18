@@ -2285,10 +2285,11 @@ def is_publishable_company(data: CompanyData) -> bool:
       - a resolved CIK but no usable financials at all (no annual data, no
         quarterly data, and no TTM).
 
-    Such records serialise with ``"ttm": null``. Downstream dashboards read
-    ``growth.ttm.*`` directly, so a single null-ttm row blanks the page.
-    Records that went through extraction and carry *some* data (even with
-    partial errors) are kept.
+    A null ``growth.ttm`` alone does not drop a record: one with annual or
+    quarterly data but no TTM is kept and serialises with ``"ttm": null``
+    (the website types ``ttm`` as nullable and renders it as missing). Records
+    that went through extraction and carry *some* data (even with partial
+    errors) are kept.
     """
     if not data.cik:
         return False

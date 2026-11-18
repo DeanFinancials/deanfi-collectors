@@ -13,7 +13,8 @@ Notes:
 Env vars:
 - ALPACA_API_KEY or APCA-API-KEY-ID
 - ALPACA_API_SECRET or APCA-API-SECRET-KEY
-- ALPACA_DATA_URL (optional)
+
+The Market Data base URL (https://data.alpaca.markets) is fixed in code.
 
 Docs:
 - https://docs.alpaca.markets/reference/stockbars
