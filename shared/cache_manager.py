@@ -19,6 +19,9 @@ partial intraday bar cached earlier is overwritten by the final bar. If the
 download fails the fetcher returns the stale cache, unless stale data is
 disallowed (allow_stale=False or PRICE_CACHE_ALLOW_STALE=false, set by the
 close run); then it returns an empty DataFrame and the caller's guard fails.
+If the download succeeds but the cache cannot be read, the fetcher re-downloads
+the full requested range instead of returning (and saving) the short
+incremental frame; if that fails too it returns an empty DataFrame.
 
 Usage:
     from shared.cache_manager import CachedDataFetcher
@@ -207,12 +210,12 @@ class CachedDataFetcher:
                             if self._save_cache(cache_file, combined):
                                 self._save_metadata(metadata_file, combined, len(tickers))
                             return combined
-                        else:
-                            # Cache load failed, use new data
-                            print("Warning: Cache load failed, using new data only", file=sys.stderr)
-                            if self._save_cache(cache_file, new_df):
-                                self._save_metadata(metadata_file, new_df, len(tickers))
-                            return new_df
+                        # The cache is unreadable: the incremental frame alone
+                        # would truncate the history, so rebuild the full period.
+                        print("Warning: Cache load failed, re-downloading the full period", file=sys.stderr)
+                        return self._rebuild_after_unreadable_cache(
+                            cache_file, metadata_file, tickers,
+                            lambda: self._download_with_period(tickers, period))
                     else:
                         if not self.allow_stale:
                             print(f"Error: Incremental download failed and {ALLOW_STALE_ENV}=false; "
@@ -231,9 +234,10 @@ class CachedDataFetcher:
             # Full download (no cache or weekly rebuild)
             print(f"Downloading {period} of data for {len(tickers)} symbols...", file=sys.stderr)
             df = self._download_with_period(tickers, period)
-            if df is not None and not df.empty:
-                if self._save_cache(cache_file, df):
-                    self._save_metadata(metadata_file, df, len(tickers))
+            if df is None or df.empty:
+                return pd.DataFrame()
+            if self._save_cache(cache_file, df):
+                self._save_metadata(metadata_file, df, len(tickers))
             return df
         
         # Date-based download with incremental logic
@@ -256,6 +260,11 @@ class CachedDataFetcher:
         # Merge with cache if incremental
         if is_incremental:
             cached_df = self._load_cache(cache_file)
+            if cached_df is None or cached_df.empty:
+                print("Warning: Cache load failed, re-downloading the full date range", file=sys.stderr)
+                return self._rebuild_after_unreadable_cache(
+                    cache_file, metadata_file, tickers,
+                    lambda: self._download_with_dates(tickers, start_date, end_date))
             final_df = self._merge_data(cached_df, new_df, is_incremental)
         else:
             final_df = new_df
@@ -266,6 +275,24 @@ class CachedDataFetcher:
         
         return final_df
     
+    def _rebuild_after_unreadable_cache(self, cache_file: Path, metadata_file: Path,
+                                        tickers: list, download) -> pd.DataFrame:
+        """Full re-download when an incremental refresh has no readable cache.
+
+        Returning or saving only the incremental frame would truncate long-history
+        outputs and persist the truncated cache. If the full download also fails
+        there is no usable cache to fall back on, so return an empty frame and
+        leave the cache files untouched.
+        """
+        df = download()
+        if df is None or df.empty:
+            print("Error: Full re-download failed and the cache is unreadable; "
+                  "returning no data", file=sys.stderr)
+            return pd.DataFrame()
+        if self._save_cache(cache_file, df):
+            self._save_metadata(metadata_file, df, len(tickers))
+        return df
+
     def _download_with_period(self, tickers: list, period: str):
         """Download data using yfinance period parameter."""
         try:

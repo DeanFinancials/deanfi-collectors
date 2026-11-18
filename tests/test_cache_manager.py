@@ -67,7 +67,8 @@ def test_changed_or_untrusted_requests_refresh(tmp_path, downloads, monkeypatch,
     else:
         (tmp_path / 'breadth.parquet').write_text('corrupt')
     fetch(tmp_path, **kwargs)
-    assert downloads.call_count == 2
+    # An unreadable cache also turns the incremental refresh into a full one.
+    assert downloads.call_count == (3 if change == 'corrupt' else 2)
 
 
 def test_failed_refresh_does_not_mark_stale_cache_reusable(tmp_path, downloads, monkeypatch):
@@ -177,3 +178,102 @@ def test_download_without_todays_bar_drops_cached_partial_bar(tmp_path, monkeypa
     result = CachedDataFetcher(tmp_path).fetch_prices(['AAA', 'BBB'], period='2y', cache_name='close')
     assert result.index[-1] == dates[-2]
     assert (result.loc[dates[-5:-1]] == 2.0).all().all()
+
+
+ROWS = 300
+DATES = pd.bdate_range(end='2026-11-18', periods=ROWS)
+START = str(DATES[0].date())
+
+
+def _break_cache(tmp_path, monkeypatch, how):
+    cache_file = tmp_path / 'close.parquet'
+    if how == 'corrupt':
+        cache_file.write_bytes(b'not parquet')
+    elif how == 'missing':
+        cache_file.unlink()  # metadata still claims a cache
+    else:  # pyarrow read error on an existing file
+        def boom(*args, **kwargs):
+            raise OSError('pyarrow read error')
+        monkeypatch.setattr(pd, 'read_parquet', boom)
+
+
+def _unreadable_cache_downloads(tmp_path, monkeypatch, how, full_result):
+    """Warm a full cache, break it, and stub the incremental and full downloads."""
+    _warm_cache(tmp_path, monkeypatch, _prices(DATES, 1.0))
+    _break_cache(tmp_path, monkeypatch, how)
+    incremental = _prices(DATES[-5:], 2.0)
+
+    def by_dates(tickers, start, end=None):
+        return full_result if start == START else incremental
+    dates_download = Mock(side_effect=by_dates)
+    period_download = Mock(return_value=full_result)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_dates', dates_download)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_period', period_download)
+    return dates_download, period_download
+
+
+UNREADABLE = pytest.mark.parametrize('how', ['corrupt', 'missing', 'read_error'])
+REQUESTS = pytest.mark.parametrize('request_kwargs', [{'period': '2y'}, {'start_date': START}],
+                                   ids=['period', 'dates'])
+
+
+@UNREADABLE
+@REQUESTS
+def test_unreadable_cache_rebuilds_full_history(tmp_path, monkeypatch, how, request_kwargs):
+    full = _prices(DATES, 3.0)
+    dates_download, period_download = _unreadable_cache_downloads(tmp_path, monkeypatch, how, full)
+    result = CachedDataFetcher(tmp_path).fetch_prices(['AAA', 'BBB'], cache_name='close', **request_kwargs)
+    pd.testing.assert_frame_equal(result, full, check_freq=False)
+    if 'period' in request_kwargs:
+        assert period_download.call_count == 1
+    else:
+        assert any(c.args[1] == START for c in dates_download.call_args_list)
+    monkeypatch.undo()  # restore pd.read_parquet before checking the saved cache
+    saved = pd.read_parquet(tmp_path / 'close.parquet')
+    assert len(saved) == ROWS
+    metadata = json.loads((tmp_path / 'close_metadata.json').read_text())
+    assert (metadata['data_start'], metadata['data_end']) == (START, '2026-11-18')
+
+
+@pytest.mark.parametrize('allow_stale', [True, False], ids=['stale_allowed', 'stale_disallowed'])
+@pytest.mark.parametrize('failure', [None, pd.DataFrame()], ids=['exception', 'empty'])
+@UNREADABLE
+@REQUESTS
+def test_unreadable_cache_and_failed_full_download_returns_empty(
+        tmp_path, monkeypatch, how, request_kwargs, failure, allow_stale):
+    _unreadable_cache_downloads(tmp_path, monkeypatch, how, failure)
+    cache_file = tmp_path / 'close.parquet'
+    metadata_file = tmp_path / 'close_metadata.json'
+    before = (cache_file.read_bytes() if cache_file.exists() else None, metadata_file.read_text())
+    result = CachedDataFetcher(tmp_path, allow_stale=allow_stale).fetch_prices(
+        ['AAA', 'BBB'], cache_name='close', **request_kwargs)
+    assert isinstance(result, pd.DataFrame) and result.empty
+    # Nothing truncated was saved: the cache files are exactly as before.
+    after = (cache_file.read_bytes() if cache_file.exists() else None, metadata_file.read_text())
+    assert after == before
+
+
+@REQUESTS
+def test_cold_start_downloads_full_range_once(tmp_path, monkeypatch, request_kwargs):
+    full = _prices(DATES, 1.0)
+    dates_download = Mock(return_value=full)
+    period_download = Mock(return_value=full)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_dates', dates_download)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_period', period_download)
+    result = CachedDataFetcher(tmp_path).fetch_prices(['AAA', 'BBB'], cache_name='close', **request_kwargs)
+    pd.testing.assert_frame_equal(result, full, check_freq=False)
+    assert dates_download.call_count + period_download.call_count == 1
+    assert len(pd.read_parquet(tmp_path / 'close.parquet')) == ROWS
+
+
+@REQUESTS
+def test_readable_cache_merges_without_full_download(tmp_path, monkeypatch, request_kwargs):
+    _warm_cache(tmp_path, monkeypatch, _prices(DATES, 1.0))
+    dates_download = Mock(return_value=_prices(DATES[-5:], 2.0))
+    period_download = Mock()
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_dates', dates_download)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_period', period_download)
+    result = CachedDataFetcher(tmp_path).fetch_prices(['AAA', 'BBB'], cache_name='close', **request_kwargs)
+    assert len(result) == ROWS
+    assert dates_download.call_count == 1 and period_download.call_count == 0
+    assert dates_download.call_args.args[1] != START  # incremental window only
