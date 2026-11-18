@@ -23,6 +23,14 @@ warnings.filterwarnings('ignore')
 ET = ZoneInfo('America/New_York')
 
 
+def market_today(now: Optional[datetime] = None):
+    """Today's date in New York. Runners use UTC, which is a day ahead after ~19:00-20:00 ET."""
+    current = now or datetime.now(ET)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=ET)
+    return current.astimezone(ET).date()
+
+
 # Historical IV Reference Ranges (based on market research)
 # Source: Barchart, AlphaQuery, Investopedia (Nov 2025)
 IV_HISTORICAL_AVERAGES = {
@@ -178,6 +186,12 @@ def calculate_iv_ma(iv_series: pd.Series, periods: List[int] = [20, 50]) -> Dict
 MIN_PLAUSIBLE_IV = 0.01
 MAX_PLAUSIBLE_IV = 5.0
 
+# Yahoo's IV is solved from the bid/ask mid, so a wide quote inflates it. After
+# the close, sector ETF quotes widen (e.g. XLK 3.05/6.75) and the IV doubles
+# (XLB 0.84 vs 0.24 intraday). A leg is only trusted when
+# (ask - bid) / mid is at most this fraction.
+MAX_IV_SPREAD_FRACTION = 0.5
+
 
 def _as_float(value) -> Optional[float]:
     try:
@@ -188,7 +202,7 @@ def _as_float(value) -> Optional[float]:
 
 
 def is_usable_iv(option) -> bool:
-    """True when ``option`` has a live quote and a plausible implied volatility."""
+    """True when ``option`` has a tight live quote and a plausible implied volatility."""
     if option is None:
         return False
     iv = _as_float(option.get('impliedVolatility'))
@@ -196,7 +210,9 @@ def is_usable_iv(option) -> bool:
     ask = _as_float(option.get('ask'))
     if iv is None or bid is None or ask is None:
         return False
-    return bid > 0 and ask > 0 and MIN_PLAUSIBLE_IV <= iv <= MAX_PLAUSIBLE_IV
+    if not (bid > 0 and ask >= bid and MIN_PLAUSIBLE_IV <= iv <= MAX_PLAUSIBLE_IV):
+        return False
+    return (ask - bid) / ((ask + bid) / 2) <= MAX_IV_SPREAD_FRACTION
 
 
 def average_usable_iv(atm_call, atm_put) -> Tuple[Optional[float], str]:
@@ -328,7 +344,7 @@ def filter_options_by_dte(ticker: yf.Ticker,
         if not expirations:
             return None
         
-        today = datetime.now().date()
+        today = market_today()
         
         # Find expiration within DTE range
         for exp_str in expirations:
@@ -465,7 +481,7 @@ def get_option_snapshot(symbol: str,
         
         # Calculate DTE
         exp_dt = datetime.strptime(exp_date, '%Y-%m-%d').date()
-        today = datetime.now().date()
+        today = market_today()
         dte = (exp_dt - today).days
         
         # Find ATM options
@@ -568,7 +584,7 @@ def get_historical_iv(symbol: str,
         current_snapshot = get_option_snapshot(symbol, min_dte, max_dte)
         if current_snapshot:
             # Add today's IV
-            today = datetime.now().date()
+            today = market_today()
             if today.strftime('%Y-%m-%d') in df['date'].values:
                 df.loc[df['date'] == today.strftime('%Y-%m-%d'), 'average_iv'] = current_snapshot['average_iv']
         

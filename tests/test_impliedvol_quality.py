@@ -27,6 +27,47 @@ def test_unquoted_placeholder_iv_is_not_usable():
     assert iv_utils.is_usable_iv(_leg(732.0, 0.245308, 10.51, 10.83))
 
 
+def test_wide_after_hours_quote_is_not_usable():
+    # deanfi-data acdeef5ac (2026-11-17 21:58 ET): XLK 163 call 3.05/6.75 -> IV 0.61,
+    # XLB 51 put 0.10/3.15 -> IV 0.91, versus ~0.24-0.46 during the session.
+    assert not iv_utils.is_usable_iv(_leg(163.0, 0.61475, 3.05, 6.75))
+    assert not iv_utils.is_usable_iv(_leg(51.0, 0.913575, 0.10, 3.15))
+    # Crossed quote.
+    assert not iv_utils.is_usable_iv(_leg(163.0, 0.30, 4.6, 4.5))
+    # Regular-session XLK quote from 2026-11-18 10:04 ET (spread ~14% of mid).
+    assert iv_utils.is_usable_iv(_leg(163.0, 0.377448, 3.95, 4.55))
+    # Spread exactly at the limit is accepted.
+    assert iv_utils.is_usable_iv(_leg(100.0, 0.25, 3.0, 5.0))
+
+
+def test_wide_after_hours_quotes_become_missing_and_carry_forward():
+    average, basis = iv_utils.average_usable_iv(
+        _leg(163.0, 0.61475, 3.05, 6.75), _leg(163.0, 0.611088, 2.95, 6.45)
+    )
+    assert (average, basis) == (None, "unavailable")
+
+    snap = {"symbol": "XLK", "average_iv": average, "iv_basis": basis,
+            "timestamp": "2026-11-17T21:58:56-05:00"}
+    prior = {"symbol": "XLK", "average_iv": 0.462, "iv_basis": "call_put_average",
+             "timestamp": "2026-11-17T15:54:00-05:00",
+             "iv_as_of": "2026-11-17T15:54:00-05:00"}
+    iv_utils.apply_iv_carry_forward(snap, prior, now=datetime.fromisoformat(snap["timestamp"]))
+    assert snap["average_iv"] == 0.462
+    assert snap["iv_stale"] is True
+    assert snap["iv_as_of"] == "2026-11-17T15:54:00-05:00"
+
+
+def test_find_atm_option_skips_wide_quoted_strike_for_tight_neighbour():
+    chain = pd.DataFrame(
+        [
+            {"strike": 51.0, "impliedVolatility": 0.91, "bid": 0.10, "ask": 3.15},
+            {"strike": 50.5, "impliedVolatility": 0.25, "bid": 0.55, "ask": 0.70},
+        ]
+    )
+    picked = iv_utils.find_atm_option(chain, 50.84, tolerance=0.02)
+    assert picked["strike"] == 50.5
+
+
 def test_average_usable_iv_marks_missing_instead_of_publishing_placeholders():
     average, basis = iv_utils.average_usable_iv(
         _leg(507.5, 0.000987, 0.0, 0.0), _leg(507.5, 1e-05, 0.0, 0.0)
@@ -155,3 +196,10 @@ def test_market_workflows_point_iv_fetchers_at_published_snapshots():
         iv_step = steps[names.index("Fetch implied volatility")]
         assert iv_step["env"]["IV_PRIOR_SNAPSHOT_DIR"].endswith("data-cache/implied-volatility"), name
         assert names.index("Checkout data repo") < names.index("Fetch implied volatility"), name
+
+
+def test_market_today_uses_new_york_date_after_utc_midnight():
+    from datetime import datetime, timezone
+    # 01:30 UTC on Nov 18 is 20:30 ET on Nov 17: days-to-expiry must count from Nov 17.
+    assert str(iv_utils.market_today(datetime(2026, 11, 18, 1, 30, tzinfo=timezone.utc))) == '2026-11-17'
+    assert str(iv_utils.market_today(datetime(2026, 11, 18, 15, 0, tzinfo=timezone.utc))) == '2026-11-18'
