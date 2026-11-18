@@ -5,7 +5,7 @@ Usage:
     python -m gsctopics.run_gsc_topics <output_path> [--config <config_path>]
 
 On source failure the existing topics.json is left intact and the process exits
-with code 1 (last-good preservation, AC4).
+with code 1 (last-good preservation).
 """
 import argparse
 import logging

@@ -4,8 +4,8 @@ Inputs are candidate news items (from RSS feeds, Finnhub, etc.) already
 normalized into the catalyst shape. This module is responsible for:
 
 - assembling the wrapping ``market_catalysts.json`` payload
-- (later) deterministic scoring + ranking
-- (later) tagging official-source items
+- deterministic scoring + ranking
+- tagging source tiers (official / premium / standard)
 
 The optional low-token AI ranker lives in ``deanfi-data``, not here.
 """
@@ -242,8 +242,8 @@ def build_market_catalysts(
 ) -> dict:
     """Assemble the ``market_catalysts.json`` payload from candidates.
 
-    Phase 2 first slice: no scoring yet. Candidates pass through unchanged.
-    Subsequent slices add deterministic scoring and official-source tagging.
+    Each candidate gets a fallback ``why_it_matters``, a source tier and a
+    deterministic relevance score; the list is sorted by score, highest first.
     """
     now = _parse_ts(generated_at) or datetime.now(timezone.utc)
     scored = []

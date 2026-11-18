@@ -1,6 +1,6 @@
 # ETF Fund Flows Collector
 
-This collector derives **daily ETF fund flows** for the tickers in `organized_etf_list.csv`.
+This collector derives **daily ETF fund flows** for the tickers in `organized_etf_list.csv` (repo root). `etf-fund-flows.yml` runs it each weekday after the close.
 
 ## What it does
 For each ETF ticker, once per trading day (after market close):

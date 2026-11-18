@@ -3,7 +3,7 @@ Education-facts collector entry point.
 
 Calls all three source groups, merges results, validates records, and writes
 education/facts.json.  Any SourceFetchError from a group keeps the last-good
-output file unchanged and exits non-zero (AC2).
+output file unchanged and exits non-zero.
 
 Usage (from deanfi-collectors root):
     python -m educationfacts.run_education_facts --output ./educationfacts/facts.json

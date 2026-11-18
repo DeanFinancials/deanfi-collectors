@@ -1,6 +1,6 @@
 # Consumer & Credit Collector
 
-Daily FRED-based export of U.S. consumer sentiment, spending, saving, and credit balance indicators. Outputs a structured JSON with inline documentation (`_README`) plus metadata, current graded readings, and resampled history for charting.
+FRED-based export of U.S. consumer sentiment, spending, saving, and credit balance indicators. Outputs a structured JSON with inline documentation (`_README`) plus metadata, current graded readings, and resampled history for charting.
 
 ## Indicators
 
@@ -44,7 +44,7 @@ python fetch_consumer_credit.py --output consumer_credit.json
 
 ## Update Frequency
 
-Intended to run daily around 12:00 PM ET alongside other economy collectors.
+Runs twice each weekday in `economy-indicators.yml` with the other FRED collectors (see `docs/workflows.md`).
 
 ## Data Source
 

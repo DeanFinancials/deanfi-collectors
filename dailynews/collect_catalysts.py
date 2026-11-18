@@ -1,6 +1,6 @@
 """End-to-end Market Catalysts collector.
 
-Reads Finnhub `top_news.json` / `sector_news.json` from disk, pulls Phase 2a
+Reads Finnhub `top_news.json` / `sector_news.json` from disk, pulls
 official-source RSS feeds, normalizes everything into catalyst-candidate
 shape, deduplicates by URL (keeping the higher-tier copy), and writes a
 ranked ``market_catalysts.json``.

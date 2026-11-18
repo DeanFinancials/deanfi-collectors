@@ -1,7 +1,7 @@
 """
 GSC topics collector — authentication, Search Analytics fetch, and topic building.
 
-AC4 / NFR-3 compliance:
+Secret handling:
   - Access token is placed only in the Authorization: Bearer header.
   - HTTP status codes are logged on failure; token and secret values are NEVER written
     to any log message.
@@ -89,7 +89,7 @@ def fetch_search_analytics(
     Rows whose page URL path starts with any excluded_prefix are dropped before
     entries are built.  Results are sorted by opportunity score descending.
 
-    AC4 / NFR-3: HTTP status codes logged on failure; access_token never logged.
+    HTTP status codes are logged on failure; access_token is never logged.
     Raises SourceFetchError on 401/403 (auth failure) or after all retries exhausted.
     """
     site_encoded = urllib.parse.quote(site_url, safe="")
@@ -116,7 +116,7 @@ def fetch_search_analytics(
             if resp.status_code == 200:
                 break
             status = resp.status_code
-            # AC4 / NFR-3: log status code only, never the Bearer token value
+            # Log status code only, never the Bearer token value
             logger.warning(
                 "GSC Search Analytics HTTP %d (attempt %d/%d)",
                 status, attempt + 1, max_retries,
@@ -159,7 +159,7 @@ def fetch_search_analytics(
             dropped_noise += 1
             continue
 
-        # AC2: exclude queries already served at an /insights/* page
+        # Exclude queries already served at an /insights/* page
         path = urllib.parse.urlparse(page_url).path
         if any(path.startswith(prefix) for prefix in excluded_prefixes):
             continue

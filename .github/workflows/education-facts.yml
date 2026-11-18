@@ -1,19 +1,19 @@
 name: Education Facts Collection
 
-# Lane 1 (data collection) for the Educational Article Automation pipeline.
-# Runs the C1a education-facts collector and publishes education/facts.json to the
+# Data collection for the educational article automation pipeline.
+# Runs the education-facts collector and publishes education/facts.json to the
 # deanfi-data repo, which sync-to-r2.yml then mirrors to https://r2.deanfi.com/education/facts.json.
 # deanfi-website's weekend publish workflow consumes that artifact from R2.
 #
 # FAIL-CLOSED: run_education_facts exits non-zero and writes nothing if any source
-# group fails or zero valid records remain (C1a-AC2/AC3). This workflow intentionally
-# does NOT use continue-on-error, so such a failure fails the job (→ GitHub failure
-# notification / Signal 1) and leaves the last-good facts.json in deanfi-data untouched.
+# group fails or zero valid records remain. This workflow intentionally
+# does NOT use continue-on-error, so such a failure fails the job (triggering a GitHub
+# failure notification) and leaves the last-good facts.json in deanfi-data untouched.
 
 on:
   schedule:
     # Weekly, Thursday 04:00 UTC. Source figures (Treasury/BLS/FRED/BEA + annual seeds)
-    # change monthly at most, so weekly stays well inside the C10b freshness threshold
+    # change monthly at most, so weekly stays well inside the freshness threshold
     # (monthly sources ≤35d). Thursday gives a 2-day buffer + a daily-probe window before
     # the Saturday 10:00 UTC education publish slot in deanfi-website.
     - cron: '0 4 * * 4'

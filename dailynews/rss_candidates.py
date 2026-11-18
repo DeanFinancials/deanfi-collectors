@@ -11,7 +11,7 @@ from typing import Callable, Iterable, List
 from xml.etree import ElementTree as ET
 
 
-# Phase 2 RSS feed catalog. Each entry is (name, category, url).
+# Official-source RSS feed catalog. Each entry is (name, category, url).
 OFFICIAL_FEEDS: tuple[dict, ...] = (
     {
         "name": "Federal Reserve",

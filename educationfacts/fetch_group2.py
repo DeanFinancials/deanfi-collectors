@@ -8,7 +8,7 @@ Fetches live economic indicators:
                         delinquency rate, house price index
   BEA  (BEA_API_KEY, optional) — real GDP growth rate
 
-AC4 compliance: HTTP status codes are logged on failure; API key values are
+Secret handling: HTTP status codes are logged on failure; API key values are
 NEVER written to logs (keys are passed as query parameters or POST bodies,
 never interpolated into log messages).
 """
@@ -69,7 +69,7 @@ def fetch_bls_series(
     Fetch the latest observations for the given BLS series.
 
     Raises SourceFetchError on non-2xx after all retries or on missing data.
-    AC4: status codes are logged; api_key is never written to any log message.
+    Status codes are logged; api_key is never written to any log message.
     """
     import time as _time
 
@@ -207,7 +207,7 @@ _FRED_SERIES: list[dict] = [
         # Quarterly series. With the quarter-start as_of convention, the newest
         # point legitimately ages ~1 quarter (~91d) + publication lag before the
         # next release supersedes it (~210-260d observed). 270d covers that worst
-        # case + grace while still tripping Signal 3 if a quarter is fully missed.
+        # case + grace while still flagging the fact stale if a quarter is fully missed.
         "max_age_days": 270,
     },
     {

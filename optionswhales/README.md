@@ -10,6 +10,8 @@ This collector scans the entire S&P 500 for significant options activity, identi
 - **Trade ideas**: Follow large institutional bets
 - **Market intelligence**: Identify unusual options activity before price moves
 
+`options-whales.yml` runs this twice each weekday (see `docs/workflows.md`).
+
 ## Features
 
 - **Smart 5-day lookback**: Uses NYSE trading calendar to skip weekends and holidays
@@ -87,29 +89,6 @@ python fetch_options_whales.py --tickers AAPL,MSFT,NVDA,TSLA
 python fetch_options_whales.py --output-dir /path/to/output
 ```
 
-## Dependencies
-
-- `requests`: HTTP requests to Alpaca API
-- `pandas`: Data manipulation
-- `pandas_market_calendars`: NYSE trading calendar for accurate day counting
-- `pyyaml`: Configuration file parsing
-
-Install via:
-```bash
-pip install requests pandas pandas_market_calendars pyyaml
-```
-
-## GitHub Actions Workflow
-
-The collector runs daily at 9 PM ET via GitHub Actions. Workflow file should be added to `.github/workflows/`.
-
-### Required Secrets
-
-Add these secrets to the deanfi-collectors repository:
-
-- `ALPACA_API_KEY`
-- `ALPACA_API_SECRET`
-
 ## Trade Classification
 
 ### Tier Labels
@@ -154,21 +133,6 @@ Alpaca's free tier allows 200 requests/minute. The collector:
 
 Full S&P 500 scan typically takes 15-20 minutes.
 
-## File Structure
-
-```
-optionswhales/
-├── config.yml                 # Configuration
-├── fetch_options_whales.py    # Main collector script
-├── utils.py                   # Helper functions
-└── README.md                  # This file
-```
-
-## Related Collectors
-
-- `analysttrends/` - Analyst recommendations for S&P 500
-- `whaletrades/` - (Future) Stock whale trades
-
 ## Troubleshooting
 
 ### "Missing API keys" error
@@ -185,7 +149,3 @@ The collector handles these automatically with retry logic. If persistent, check
 - Check if market was open during lookback period
 - Verify API keys have options data access
 - Try with `--test` flag to verify connectivity
-
-## License
-
-See repository LICENSE file.

@@ -143,7 +143,7 @@ def check_facts_freshness(
     """
     Return a list of fact IDs whose data is stale (age > max_age_days).
 
-    Used by the CI schema-contract step and the daily freshness probe (issue 22).
+    Used by the CI schema-contract step and the daily freshness probe.
     A fact is stale when (today - as_of).days > max_age_days, except current
     tax-year statutory facts remain valid through their stated tax year.
     """

@@ -1,21 +1,21 @@
 name: GSC Topics Collection
 
-# Lane 1 (data collection) for the Educational Article Automation pipeline.
-# Runs the C2a GSC-topics collector and publishes education/topics.json to the
+# Data collection for the educational article automation pipeline.
+# Runs the GSC-topics collector and publishes education/topics.json to the
 # deanfi-data repo, which sync-to-r2.yml then mirrors to https://r2.deanfi.com/education/topics.json.
 # deanfi-website's weekend publish workflow consumes that artifact from R2.
 #
 # FAIL-CLOSED: run_gsc_topics exits non-zero and writes nothing on GSC auth/transport
-# failure, on any unset GSC secret, or if no valid entries are produced (C2a-AC4). This
+# failure, on any unset GSC secret, or if no valid entries are produced. This
 # workflow intentionally does NOT use continue-on-error, so such a failure fails the job
-# (→ GitHub failure notification / Signal 1) and leaves last-good topics.json untouched.
+# (triggering a GitHub failure notification) and leaves last-good topics.json untouched.
 # Auth uses OAuth 2.0 (client id + secret + refresh token); see deanfi-website
 # docs/adr/0004-gsc-oauth-over-service-account.md.
 
 on:
   schedule:
-    # Twice weekly, Monday + Thursday 04:15 UTC. The topics freshness threshold (Signal 4,
-    # newest non-consumed added_at ≤14d) is tighter than facts, so two runs/week keep a
+    # Twice weekly, Monday + Thursday 04:15 UTC. The topics freshness threshold (newest
+    # non-consumed added_at ≤14d) is tighter than facts, so two runs/week keep a
     # single failed run well clear of the threshold. GSC has a ~2–3 day data-processing lag.
     # The 15-min offset from education-facts avoids contending for the deanfi-data lock.
     - cron: '15 4 * * 1,4'

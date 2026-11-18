@@ -15,9 +15,7 @@ This collector scans S&P 500 stocks for large trades that indicate institutional
 - **Sector Analysis**: Aggregates sentiment by GICS sector
 - **Split Output**: Summary JSON (aggregates) + Trades JSON (per-ticker details)
 
-## Requirements
-
-### Environment Variables
+## Environment Variables
 
 ```bash
 # Alpaca API credentials (either format works)
@@ -27,13 +25,6 @@ export ALPACA_API_SECRET="your-api-secret"
 export APCA-API-KEY-ID="your-api-key"
 export APCA-API-SECRET-KEY="your-api-secret"
 ```
-
-### Dependencies
-
-- `requests` - HTTP client for API calls
-- `pyyaml` - Configuration file parsing
-- `pandas` - Data manipulation
-- `pandas_market_calendars` - NYSE trading day calculations
 
 ## Usage
 

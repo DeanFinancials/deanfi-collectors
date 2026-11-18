@@ -8,7 +8,7 @@ Unified collector that extracts annual (10-K) and quarterly (10-Q) financial dat
 2. Fetches S&P 100 ticker list for filtering (via `sp100_universe.py`)
 3. Retrieves annual (10-K) and quarterly (10-Q) filings from SEC EDGAR
 4. Extracts **Revenue** and **EPS (Diluted)** metrics
-5. Uses fallback sources (yfinance, Alpha Vantage, Finnhub) when SEC data is incomplete
+5. Uses fallback sources (yfinance, Alpha Vantage, Finnhub, FMP) when SEC data is incomplete
 6. Calculates **Year-over-Year growth rates**, **TTM metrics**, and **CAGR**
 7. Outputs both **sp100growth.json** and **sp500growth.json** from a single run
 
@@ -151,18 +151,11 @@ alphavantage_enabled: true
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `FINNHUB_API_KEY` | Recommended | For quarterly data fallback |
-| `ALPHA_VANTAGE_API_KEY` | Optional | For annual data fallback |
+| `FINNHUB_API_KEY` | Recommended | Quarterly fallback and Finnhub As Reported |
+| `ALPHA_VANTAGE_API_KEY` | Optional | Annual fallback |
+| `FMP_API_KEY` | Optional | Final fallback and validation (`fmp` in `config.yml`) |
 
-## Migration from SP100 Growth
-
-This collector replaces the original `sp100growth/fetch_sp100_growth.py`. The original collector is still available for reference but the workflow has been updated to use this unified version.
-
-Key differences:
-- Processes full S&P 500 instead of just S&P 100
-- Outputs two files from a single run
-- More efficient (no duplicate API calls)
-- Workflow renamed from `sp100-growth.yml` to `sp-growth.yml`
+`sp-growth.yml` passes only `FINNHUB_API_KEY`, so the Alpha Vantage and FMP fallbacks are skipped in CI.
 
 ## Notes
 
@@ -170,4 +163,4 @@ Key differences:
 - Null values indicate insufficient data from all sources
 - Revenue figures are in USD (not scaled)
 - Fiscal year end dates vary by company
-- Processing ~500 companies takes approximately 15-20 minutes
+- Processing ~500 companies takes approximately 15-20 minutes (the workflow timeout is 30)

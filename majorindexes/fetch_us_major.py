@@ -83,7 +83,7 @@ def fetch_latest_etf_prices(tickers: List[str]) -> Dict[str, Dict[str, Optional[
     if not tickers:
         return {}
 
-    # Use 5m bars for reliability and lower load; updated often enough for a 10-min cadence.
+    # Use 5m bars for reliability and lower load; updated often enough for a 15-min cadence.
     df = with_429_retry(
         yf.download,
         retry_empty=True,

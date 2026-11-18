@@ -2,7 +2,7 @@
 
 Returns a curl_cffi-backed requests-compatible session that impersonates a real
 Chrome browser, materially improving success rate against Yahoo Finance bot
-detection (per INCIDENT-2026-05-20). Falls back to None when curl_cffi is not
+detection (see docs/architecture.md, Data-quality guards). Falls back to None when curl_cffi is not
 importable; yfinance accepts session=None and will use its default transport.
 """
 

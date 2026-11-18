@@ -20,11 +20,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Files validated by default. Mirrors snapshot files affected by the
-# 2026-05-20 yfinance rate-limit incident.
+# Files validated by default: the yfinance snapshots that a rate-limited run
+# could otherwise empty out (see docs/architecture.md, Data-quality guards).
 # NOTE: meanreversion/price_vs_ma_snapshot.json is intentionally EXCLUDED.
 # Its body shape differs (single-ticker SPY snapshot) so an empty `indices`
-# dict can be a normal edge case. The Task 2 per-script guard covers it.
+# dict can be a normal edge case. The per-script fetch guard covers it.
 DEFAULT_FILES = [
     "advance-decline/daily_breadth.json",
     "major-indexes/us_major_indices.json",

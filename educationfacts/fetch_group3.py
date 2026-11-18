@@ -7,7 +7,7 @@ rather than fetched from HTML pages (which change layout annually).  The module:
 
   - Reads seed_facts from the config
   - Validates that each seed is within its max_age_days staleness threshold
-  - Returns the complete list of accepted seeds as §7.11 fact records
+  - Returns the complete list of accepted seeds as fact records
 
 No network calls are made by this group.  SourceFetchError is raised only if
 the seed data is stale beyond its threshold (treats stale config as a "source
@@ -41,8 +41,7 @@ def load_seed_facts(config: dict) -> list[dict]:
     for raw in seeds:
         rec = dict(raw)  # shallow copy so we don't mutate config
 
-        # Remove non-§7.11 fields that may appear in config for human readability
-        # (tax_year is an optional §7.11 field — keep it)
+        # tax_year is an optional fact field and is kept as-is.
 
         # Validate staleness
         max_age = rec.get("max_age_days", 400)

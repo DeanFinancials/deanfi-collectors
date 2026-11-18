@@ -1,6 +1,6 @@
 # Housing & Affordability Collector
 
-Daily FRED-based export of U.S. housing activity, price, mortgage, and affordability metrics. Outputs a structured JSON with inline documentation (`_README`) plus metadata, current graded readings, and resampled history for charting.
+FRED-based export of U.S. housing activity, price, mortgage, and affordability metrics. Outputs a structured JSON with inline documentation (`_README`) plus metadata, current graded readings, and resampled history for charting.
 
 ## Indicators
 
@@ -43,7 +43,7 @@ python fetch_housing_affordability.py --output housing_affordability.json
 
 ## Update Frequency
 
-Intended to run daily around 12:00 PM ET alongside other economy collectors.
+Runs twice each weekday in `economy-indicators.yml` with the other FRED collectors (see `docs/workflows.md`).
 
 ## Data Source
 

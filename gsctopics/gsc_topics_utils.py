@@ -149,7 +149,7 @@ def check_topics_freshness(
     Return True if the newest non-consumed entry's added_at is within threshold_days.
 
     Returns False (stale) when the newest non-consumed added_at > threshold_days ago.
-    Used by the CI schema-contract step and the daily freshness probe (issue 22).
+    Used by the CI schema-contract step and the daily freshness probe.
     An empty non-consumed list is treated as fresh (no entries to check).
     """
     if today is None:
