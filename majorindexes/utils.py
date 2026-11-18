@@ -11,7 +11,7 @@ Provides:
 import pandas as pd
 import numpy as np
 from datetime import datetime, time
-import pytz
+from zoneinfo import ZoneInfo
 from typing import Dict, List, Optional, Tuple
 import json
 
@@ -417,8 +417,7 @@ def get_market_hours_status() -> str:
     Returns:
         'pre' | 'during' | 'post' | 'closed'
     """
-    et = pytz.timezone('US/Eastern')
-    now = datetime.now(et)
+    now = datetime.now(ZoneInfo('America/New_York'))
     
     # Weekend check
     if now.weekday() >= 5:  # Saturday=5, Sunday=6

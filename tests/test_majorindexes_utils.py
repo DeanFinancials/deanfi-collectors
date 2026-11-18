@@ -1,5 +1,6 @@
 import importlib.util
 import json
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -72,3 +73,24 @@ def test_current_snapshot_accepts_unchanged_prices():
     snapshot = utils.get_current_snapshot(frame)
     assert snapshot['current_price'] == 100
     assert snapshot['daily_change_percent'] == 0
+
+
+@pytest.mark.parametrize('utc_instant,expected', [
+    # 13:45 UTC is 08:45 EST the Friday before DST starts (2026-03-08)...
+    ('2026-03-06T13:45:00+00:00', 'pre'),
+    # ...and 09:45 EDT the Monday after, once New York is UTC-4.
+    ('2026-03-09T13:45:00+00:00', 'during'),
+    # 20:30 UTC is 16:30 EDT before DST ends (2026-11-01) and 15:30 EST after.
+    ('2026-10-30T20:30:00+00:00', 'post'),
+    ('2026-11-02T20:30:00+00:00', 'during'),
+])
+def test_market_hours_status_follows_new_york_dst(monkeypatch, utc_instant, expected):
+    instant = datetime.fromisoformat(utc_instant)
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return instant.astimezone(tz)
+
+    monkeypatch.setattr(utils, 'datetime', FrozenDatetime)
+    assert utils.get_market_hours_status() == expected
