@@ -69,7 +69,72 @@ BASELINE_TOPICS: tuple[str, ...] = (
     "s&p",
     "nasdaq",
     "dow",
+    # Broad market vocabulary, so market news is not scored like world news.
+    "stock",
+    "stocks",
+    "stock market",
+    "shares",
+    "equities",
+    "wall street",
+    "investors",
+    "futures",
+    "selloff",
+    "sell-off",
+    "rally",
+    "fear gauge",
+    "ipo",
+    "merger",
+    "acquisition",
+    "buyback",
+    "dividend",
+    "tariff",
+    "tariffs",
+    "trade war",
+    "bank",
+    "banks",
+    "ecb",
+    "opec",
+    "bond",
+    "bonds",
+    "yields",
+    "dollar",
+    "crude",
+    "gold",
+    "bitcoin",
+    "crypto",
+    "recession",
+    "consumer",
+    "retail sales",
+    "housing",
+    "home sales",
+    "homebuilder",
+    "homebuilders",
+    "mortgage",
+    "mortgages",
+    "semiconductor",
+    "semiconductors",
+    "chipmaker",
+    "nvidia",
+    "apple",
+    "microsoft",
+    "amazon",
+    "alphabet",
+    "google",
+    "meta",
+    "tesla",
 )
+
+# Non-official items that match no market topic (e.g. foreign politics) lose
+# a modest amount so they sort below market news of similar age. Items are
+# re-scored only, never dropped.
+NO_MARKET_TOPIC_PENALTY = 10.0
+
+# Official items keep their tier weight while fresh, then lose
+# OFFICIAL_AGE_PENALTY_PER_DAY per day past OFFICIAL_FRESH_DAYS (capped), so an
+# archived release (e.g. a 2017 BEA satellite account) cannot lead the list.
+OFFICIAL_FRESH_DAYS = 7.0
+OFFICIAL_AGE_PENALTY_PER_DAY = 2.0
+OFFICIAL_AGE_PENALTY_MAX = 40.0
 
 
 def compute_topic_bonus(candidate: dict, *, topics: Iterable[str]) -> float:
@@ -111,9 +176,15 @@ def compute_relevance_score(
     now: datetime | None = None,
     topics: Iterable[str] | None = None,
 ) -> float:
-    """Deterministic relevance score combining source tier + recency.
+    """Deterministic relevance score: source tier + recency + topic relevance.
 
-    Future slices will add topic relevance and same-day market-move linkage.
+    - tier weight (official 60 / premium 30 / standard 10)
+    - recency: up to 30 points, decaying to 0 over 48h (all tiers)
+    - topic bonus: 5 per matched market topic, capped at 20
+    - non-official items with no market topic: -NO_MARKET_TOPIC_PENALTY
+    - official items older than OFFICIAL_FRESH_DAYS: age penalty (capped)
+
+    The score never goes below 0.
     """
     tier = candidate.get("source_tier") or classify_source_tier(candidate)
     score = SOURCE_TIER_WEIGHT.get(tier, 0.0)
@@ -127,9 +198,18 @@ def compute_relevance_score(
         # Up to 30 points for recency, decaying over 48h.
         recency = max(0.0, 30.0 - (age_hours * (30.0 / 48.0)))
         score += recency
+        age_days = age_hours / 24.0
+        if tier == "official" and age_days > OFFICIAL_FRESH_DAYS:
+            score -= min(
+                OFFICIAL_AGE_PENALTY_MAX,
+                (age_days - OFFICIAL_FRESH_DAYS) * OFFICIAL_AGE_PENALTY_PER_DAY,
+            )
 
-    score += compute_topic_bonus(candidate, topics=topics or BASELINE_TOPICS)
-    return round(score, 4)
+    topic_bonus = compute_topic_bonus(candidate, topics=topics or BASELINE_TOPICS)
+    score += topic_bonus
+    if tier != "official" and topic_bonus == 0.0:
+        score -= NO_MARKET_TOPIC_PENALTY
+    return round(max(0.0, score), 4)
 
 
 def classify_source_tier(candidate: dict) -> str:
