@@ -140,6 +140,14 @@ jobs:
           python fetch_major_indices_iv.py || true
           python fetch_sector_etfs_iv.py || true
 
+      # actions/cache saves ./cache in its post step at job end, so this lands in
+      # the saved cache: entries no collector used for 14 days (old cache keys)
+      # and orphaned halves are dropped. Best effort, never fails the job.
+      - name: Prune unused price cache entries
+        if: steps.hours_check.outputs.in_market_hours == 'true'
+        continue-on-error: true
+        run: python scripts/prune_price_cache.py --cache-dir ./cache
+
       - name: Validate core outputs
         if: steps.hours_check.outputs.in_market_hours == 'true'
         run: |

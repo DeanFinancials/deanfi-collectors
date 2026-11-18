@@ -33,6 +33,12 @@ If the download succeeds but the cache cannot be read, the fetcher re-downloads
 the full requested range instead of returning (and saving) the short
 incremental frame; if that fails too it returns an empty DataFrame.
 
+Every request records its cache name and time in USAGE_FILE (the entry's own
+files stay untouched unless it saves), so an entry that is only read still
+counts as live. prune_unused_cache() deletes entries neither saved nor
+requested for PRUNE_UNUSED_DAYS, plus parquet or metadata halves missing their
+partner, so keys no collector requests any more do not persist forever.
+
 Usage:
     from shared.cache_manager import CachedDataFetcher
     
@@ -48,7 +54,7 @@ import json
 import hashlib
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Tuple
 import pandas as pd
@@ -72,6 +78,16 @@ OVERLAP_CALENDAR_DAYS = 7
 # distribution) are 1e-3 or more. 1e-5 sits two orders of magnitude from each.
 ADJUSTMENT_RTOL = 1e-5
 PRICE_FIELDS = ("Open", "High", "Low", "Close")
+# prune_unused_cache() removes entries no run has requested for this many days.
+# Every live key is requested by every successful market run (the close run
+# runs every weekday, holidays included), so live keys are at most a long
+# weekend (~4 days) unused; 14 days leaves room for a week-long market closure
+# or paused workflows. Any entry unused for over DEFAULT_MAX_AGE_HOURS (7 days)
+# is fully re-downloaded on its next use anyway, so pruning it loses nothing.
+PRUNE_UNUSED_DAYS = 14
+METADATA_SUFFIX = "_metadata.json"
+# {cache_name: last request time (UTC ISO)} in the cache dir.
+USAGE_FILE = "price_cache_usage.json"
 
 
 def _stale_allowed_from_env() -> bool:
@@ -199,7 +215,8 @@ class CachedDataFetcher:
             DataFrame with OHLCV data for all tickers
         """
         cache_file = self.cache_dir / f"{cache_name}.parquet"
-        metadata_file = self.cache_dir / f"{cache_name}_metadata.json"
+        metadata_file = self.cache_dir / f"{cache_name}{METADATA_SUFFIX}"
+        self._mark_used(cache_name)
 
         # A restored cache from another run must still be refreshed. Sharing only
         # identical requests within one attempt avoids five S&P 500 downloads.
@@ -559,6 +576,16 @@ class CachedDataFetcher:
             print(f"Warning: Could not save cache: {e}", file=sys.stderr)
             return False
     
+    def _mark_used(self, cache_name: str):
+        """Record this request in USAGE_FILE, so pruning keeps entries that are only read."""
+        try:
+            usage_file = self.cache_dir / USAGE_FILE
+            usage = _read_usage(usage_file)
+            usage[cache_name] = _utc_now_iso()
+            usage_file.write_text(json.dumps(usage, indent=2, sort_keys=True))
+        except Exception as e:
+            print(f"Warning: Could not record cache use: {e}", file=sys.stderr)
+
     def _load_metadata(self, metadata_file: Path):
         """Load cache metadata from JSON file."""
         if not metadata_file.exists():
@@ -594,3 +621,110 @@ class CachedDataFetcher:
             metadata_file.write_text(json.dumps(payload, indent=2))
         except Exception as e:
             print(f"Warning: Could not save cache metadata: {e}", file=sys.stderr)
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _as_utc(value) -> Optional[datetime]:
+    """Parse an ISO timestamp; naive values (CacheMetadata.last_update) are local time."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed.astimezone(timezone.utc)
+
+
+def _read_usage(usage_file: Path) -> dict:
+    """USAGE_FILE contents; empty when missing or unreadable."""
+    try:
+        data = json.loads(usage_file.read_text())
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _last_used(metadata_file: Path, requested_at) -> datetime:
+    """When an entry was last saved (metadata last_update) or requested (USAGE_FILE).
+
+    Uses recorded timestamps, not file mtimes (an actions/cache restore need not
+    keep them). With no readable timestamp it falls back to the metadata's file
+    mtime: a live entry with broken metadata is rewritten in the same run anyway.
+    """
+    try:
+        data = json.loads(metadata_file.read_text())
+    except (OSError, ValueError):
+        data = None
+    saved_at = _as_utc(data.get("last_update")) if isinstance(data, dict) else None
+    stamps = [t for t in (saved_at, _as_utc(requested_at)) if t]
+    if stamps:
+        return max(stamps)
+    return datetime.fromtimestamp(metadata_file.stat().st_mtime, timezone.utc)
+
+
+def prune_unused_cache(cache_dir, max_unused_days: float = PRUNE_UNUSED_DAYS,
+                       now: Optional[datetime] = None) -> list:
+    """Delete price cache entries unused for max_unused_days, and orphaned halves.
+
+    An entry is `<name>.parquet` plus `<name>_metadata.json` directly in
+    cache_dir. It is removed when neither its metadata's last_update (last save)
+    nor its USAGE_FILE time (last request) is within max_unused_days, or when
+    either half is missing (the fetcher ignores a lone half and downloads in
+    full). USAGE_FILE then forgets names with no files left. Other files,
+    subdirectories and symlinks are left alone, and nothing outside cache_dir
+    is touched. Best effort: errors are logged to stderr, never raised.
+    Returns the removed file names.
+    """
+    removed = []
+    try:
+        root = Path(cache_dir)
+        if not root.is_dir():
+            print(f"Price cache prune: {root} is not a directory, nothing to prune", file=sys.stderr)
+            return removed
+        cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=float(max_unused_days))
+        usage_file = root / USAGE_FILE
+        usage = _read_usage(usage_file)
+        entries = {}
+        for path in root.iterdir():
+            if path.is_symlink() or not path.is_file():
+                continue
+            if path.name.endswith(METADATA_SUFFIX):
+                entries.setdefault(path.name[:-len(METADATA_SUFFIX)], {})["metadata"] = path
+            elif path.suffix == ".parquet":
+                entries.setdefault(path.stem, {})["parquet"] = path
+        for name, files in sorted(entries.items()):
+            try:
+                if "metadata" not in files:
+                    reason = "parquet without metadata"
+                elif "parquet" not in files:
+                    reason = "metadata without parquet"
+                else:
+                    used = _last_used(files["metadata"], usage.get(name))
+                    if used >= cutoff:
+                        continue
+                    reason = f"unused since {used.isoformat(timespec='seconds')}"
+            except Exception as e:
+                print(f"Warning: Price cache prune skipped {name}: {e}", file=sys.stderr)
+                continue
+            gone = []
+            for path in files.values():
+                try:
+                    path.unlink()
+                    gone.append(path.name)
+                except OSError as e:
+                    print(f"Warning: Price cache prune could not remove {path.name}: {e}", file=sys.stderr)
+            if gone:
+                print(f"Pruned price cache entry {name} ({reason}): {', '.join(gone)}", file=sys.stderr)
+            removed.extend(gone)
+        stale = [n for n in usage if not ((root / f"{n}.parquet").exists()
+                                           or (root / f"{n}{METADATA_SUFFIX}").exists())]
+        if stale and usage_file.is_file() and not usage_file.is_symlink():
+            for n in stale:
+                del usage[n]
+            usage_file.write_text(json.dumps(usage, indent=2, sort_keys=True))
+    except Exception as e:
+        print(f"Warning: Price cache prune failed: {e}", file=sys.stderr)
+    return removed
