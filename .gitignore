@@ -217,6 +217,8 @@ secret*.yml
 
 # Project-specific: Output files and cache
 *.json
+# Contract schema for daily-news output (read by dailynews/tests); not collector output.
+!dailynews/market_catalysts.schema.json
 !**/config.example.json
 outputs/
 cache/

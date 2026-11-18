@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deanfi.com/schemas/market_catalysts.schema.json",
+  "title": "DeanFi Market Catalysts",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "ranked"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "market_date",
+        "generated_at",
+        "weekly_mode",
+        "expected_min_catalysts",
+        "ranking_method"
+      ],
+      "properties": {
+        "market_date": { "type": ["string", "null"] },
+        "generated_at": { "type": "string" },
+        "weekly_mode": { "type": "boolean" },
+        "expected_min_catalysts": { "type": "integer", "minimum": 0 },
+        "ranking_method": {
+          "type": "string",
+          "enum": ["deterministic", "ai"]
+        },
+        "official_release_today": { "type": "boolean" },
+        "official_release_categories": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "ranked": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "title",
+          "source",
+          "url",
+          "published_at",
+          "category",
+          "relevance_score",
+          "why_it_matters"
+        ],
+        "properties": {
+          "title": { "type": "string" },
+          "source": { "type": "string" },
+          "url": { "type": "string" },
+          "published_at": { "type": "string" },
+          "category": { "type": "string" },
+          "relevance_score": { "type": "number" },
+          "why_it_matters": { "type": "string" },
+          "source_tier": {
+            "type": "string",
+            "enum": ["official", "premium", "standard"]
+          },
+          "related_symbols": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "related_data_points": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": { "type": "object" }
+    }
+  }
+}
