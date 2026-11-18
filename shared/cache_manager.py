@@ -14,6 +14,16 @@ Cache Strategy:
 - Age 24-168 hours: Download last 10 trading days (daily updates  
 - Age > 168 hours: Full rebuild (weekly refresh)
 
+Prices are dividend- and split-adjusted (auto_adjust=True), and Yahoo
+re-adjusts all earlier history after an ex-dividend date or a split. Each
+incremental download therefore starts early enough to overlap cached full
+days; if its OHLC on those days (excluding the newest date of either frame,
+which may be a partial intraday bar) differs from the cache beyond
+ADJUSTMENT_RTOL for any ticker, the fetcher re-downloads the full requested
+range and saves that instead of merging. As a backstop, a full download is
+forced when the last one (metadata `full_download_at`, which incremental saves
+carry forward) is older than DEFAULT_MAX_AGE_HOURS or unknown.
+
 An incremental download replaces every cached row from its first date on, so a
 partial intraday bar cached earlier is overwritten by the final bar. If the
 download fails the fetcher returns the stale cache, unless stale data is
@@ -50,6 +60,18 @@ DEFAULT_MAX_AGE_HOURS = 168  # 1 week
 INTRADAY_LOOKBACK_DAYS = 5
 DAILY_LOOKBACK_DAYS = 10
 ALLOW_STALE_ENV = "PRICE_CACHE_ALLOW_STALE"
+# The incremental window also reaches this many calendar days before the
+# cache's last date, so it overlaps at least one full cached session (not the
+# cache's possibly partial last bar) over weekends and multi-day holidays.
+OVERLAP_CALENDAR_DAYS = 7
+# Relative OHLC difference on overlapping cached days that means Yahoo has
+# re-adjusted history. Re-downloads of unchanged history return identical
+# values (parquet round-trips float64 exactly) or differ by float noise
+# (~1e-7 at worst, from float32-precision adjclose ratios); the smallest
+# adjustments that matter (a 0.1-0.3% quarterly dividend, a monthly bond-fund
+# distribution) are 1e-3 or more. 1e-5 sits two orders of magnitude from each.
+ADJUSTMENT_RTOL = 1e-5
+PRICE_FIELDS = ("Open", "High", "Low", "Close")
 
 
 def _stale_allowed_from_env() -> bool:
@@ -67,17 +89,21 @@ class CacheMetadata:
         ticker_count: int,
         data_start: str,
         data_end: str,
-        source: str = "yfinance"
+        source: str = "yfinance",
+        full_download_at: Optional[datetime] = None,
     ):
         self.last_update = last_update
         self.ticker_count = ticker_count
         self.data_start = data_start
         self.data_end = data_end
         self.source = source
+        # When the cached history was last downloaded in full (None: unknown).
+        self.full_download_at = full_download_at
     
     def to_dict(self) -> dict:
         return {
             "last_update": self.last_update.isoformat(),
+            "full_download_at": self.full_download_at.isoformat() if self.full_download_at else None,
             "ticker_count": self.ticker_count,
             "data_start": self.data_start,
             "data_end": self.data_end,
@@ -86,17 +112,40 @@ class CacheMetadata:
     
     @classmethod
     def from_dict(cls, data: dict) -> "CacheMetadata":
+        full = data.get("full_download_at")
         return cls(
             last_update=pd.Timestamp(data["last_update"]).to_pydatetime(),
             ticker_count=data["ticker_count"],
             data_start=data["data_start"],
             data_end=data["data_end"],
-            source=data.get("source", "yfinance")
+            source=data.get("source", "yfinance"),
+            full_download_at=pd.Timestamp(full).to_pydatetime() if full else None,
         )
     
     def age_hours(self) -> float:
         """Get cache age in hours."""
         return (datetime.now() - self.last_update).total_seconds() / 3600
+
+    def full_download_due(self, max_age_hours: int = DEFAULT_MAX_AGE_HOURS) -> bool:
+        """True when the last full download is unknown or older than max_age_hours.
+
+        Incremental saves refresh last_update but not full_download_at, so daily
+        runs still get a weekly full re-adjustment.
+        """
+        if self.full_download_at is None:
+            return True
+        return (datetime.now() - self.full_download_at).total_seconds() / 3600 > max_age_hours
+
+    def incremental_start(self, lookback_days: int) -> str:
+        """First date of an incremental download: the lookback window, widened to
+        reach OVERLAP_CALENDAR_DAYS before the cache's last date."""
+        start = datetime.now() - timedelta(days=lookback_days)
+        try:
+            start = min(start, datetime.strptime(self.data_end, '%Y-%m-%d')
+                        - timedelta(days=OVERLAP_CALENDAR_DAYS))
+        except (TypeError, ValueError):
+            pass
+        return start.strftime('%Y-%m-%d')
     
     def is_valid(self, expected_tickers: int, max_age_hours: int = DEFAULT_MAX_AGE_HOURS) -> bool:
         """Check if cache is valid (not too old, ticker count matches)."""
@@ -186,6 +235,20 @@ class CachedDataFetcher:
                 # - Age > 168h (7 days): Full rebuild
                 
                 if cache_age_hours < 168:  # Less than 7 days - do incremental
+                    if metadata.full_download_due():
+                        print("Last full download unknown or older than "
+                              f"{DEFAULT_MAX_AGE_HOURS}h - full re-download to refresh adjustments",
+                              file=sys.stderr)
+                        df = self._download_with_period(tickers, period)
+                        if df is not None and not df.empty:
+                            self._save_full(cache_file, metadata_file, df, tickers)
+                            return df
+                        if not self.allow_stale:
+                            print(f"Error: Full download failed and {ALLOW_STALE_ENV}=false; "
+                                  "not using stale cache", file=sys.stderr)
+                            return pd.DataFrame()
+                        print("Warning: Full download failed, falling back to an incremental update",
+                              file=sys.stderr)
                     # Determine lookback window
                     if cache_age_hours < 24:
                         lookback_days = 5
@@ -197,19 +260,16 @@ class CachedDataFetcher:
                     print(f"Cache age {cache_age_hours:.1f}h - {update_type} incremental update (last {lookback_days} days)", file=sys.stderr)
                     
                     # Download only recent data
-                    from datetime import datetime, timedelta
-                    incremental_start = (datetime.now() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
+                    incremental_start = metadata.incremental_start(lookback_days)
                     new_df = self._download_with_dates(tickers, incremental_start, None)
                     
                     if new_df is not None and not new_df.empty:
                         # Load existing cache and merge
                         cached_df = self._load_cache(cache_file)
                         if cached_df is not None and not cached_df.empty:
-                            combined = self._merge_data(cached_df, new_df, True)
-                            # Save merged cache
-                            if self._save_cache(cache_file, combined):
-                                self._save_metadata(metadata_file, combined, len(tickers))
-                            return combined
+                            return self._merge_or_readjust(
+                                cache_file, metadata_file, tickers, metadata, cached_df, new_df,
+                                lambda: self._download_with_period(tickers, period))
                         # The cache is unreadable: the incremental frame alone
                         # would truncate the history, so rebuild the full period.
                         print("Warning: Cache load failed, re-downloading the full period", file=sys.stderr)
@@ -236,8 +296,7 @@ class CachedDataFetcher:
             df = self._download_with_period(tickers, period)
             if df is None or df.empty:
                 return pd.DataFrame()
-            if self._save_cache(cache_file, df):
-                self._save_metadata(metadata_file, df, len(tickers))
+            self._save_full(cache_file, metadata_file, df, tickers)
             return df
         
         # Date-based download with incremental logic
@@ -247,6 +306,16 @@ class CachedDataFetcher:
         
         # Download new data
         new_df = self._download_with_dates(tickers, download_start, download_end)
+
+        if ((new_df is None or new_df.empty) and not is_incremental and self.allow_stale
+                and metadata is not None and metadata.age_hours() <= DEFAULT_MAX_AGE_HOURS):
+            # Only the full_download_at backstop forced this full download; a
+            # stale-tolerant run still gets the usual incremental update.
+            print("Warning: Full download failed, falling back to an incremental update",
+                  file=sys.stderr)
+            download_start, download_end, is_incremental = self._determine_download_range(
+                metadata, start_date, end_date, allow_backstop=False)
+            new_df = self._download_with_dates(tickers, download_start, download_end)
         
         if new_df is None or new_df.empty:
             if not self.allow_stale:
@@ -265,15 +334,83 @@ class CachedDataFetcher:
                 return self._rebuild_after_unreadable_cache(
                     cache_file, metadata_file, tickers,
                     lambda: self._download_with_dates(tickers, start_date, end_date))
-            final_df = self._merge_data(cached_df, new_df, is_incremental)
-        else:
-            final_df = new_df
-        
-        # Save cache
-        if self._save_cache(cache_file, final_df):
-            self._save_metadata(metadata_file, final_df, len(tickers))
-        
-        return final_df
+            return self._merge_or_readjust(
+                cache_file, metadata_file, tickers, metadata, cached_df, new_df,
+                lambda: self._download_with_dates(tickers, start_date, end_date))
+
+        self._save_full(cache_file, metadata_file, new_df, tickers)
+        return new_df
+
+    def _merge_or_readjust(self, cache_file: Path, metadata_file: Path, tickers: list,
+                           metadata: "CacheMetadata", cached_df: pd.DataFrame,
+                           new_df: pd.DataFrame, full_download) -> pd.DataFrame:
+        """Merge an incremental download, unless Yahoo has re-adjusted history.
+
+        If the overlapping cached days no longer match the fresh download (an
+        ex-dividend date or a split re-adjusted earlier closes), merging would
+        keep the old adjustment for every earlier row, so re-download the full
+        range and save that. If the full download fails: with stale data
+        disallowed return an empty frame; otherwise merge as before (the merged
+        cache keeps the old adjustment, so the next run detects it again).
+        """
+        changed = self._adjusted_tickers(cached_df, new_df)
+        if changed:
+            shown = ", ".join(changed[:10]) + (" ..." if len(changed) > 10 else "")
+            print(f"Adjusted history changed for {len(changed)} ticker(s) ({shown}) - "
+                  "full re-download", file=sys.stderr)
+            df = full_download()
+            if df is not None and not df.empty:
+                self._save_full(cache_file, metadata_file, df, tickers)
+                return df
+            if not self.allow_stale:
+                print(f"Error: Full re-download failed and {ALLOW_STALE_ENV}=false; "
+                      "not merging onto stale adjustments", file=sys.stderr)
+                return pd.DataFrame()
+            print("Warning: Full re-download failed, merging onto the cached adjustment",
+                  file=sys.stderr)
+        combined = self._merge_data(cached_df, new_df, True)
+        if self._save_cache(cache_file, combined):
+            self._save_metadata(metadata_file, combined, len(tickers),
+                                full_download_at=metadata.full_download_at if metadata else None)
+        return combined
+
+    @staticmethod
+    def _adjusted_tickers(cached_df: pd.DataFrame, new_df: pd.DataFrame) -> list:
+        """Tickers whose OHLC on overlapping full days differs beyond ADJUSTMENT_RTOL.
+
+        The newest date of each frame is skipped: either may be a partial
+        intraday bar that legitimately changes. Volume is not compared (Yahoo
+        revises it routinely and it does not drive adjusted outputs).
+        """
+        if cached_df.empty or new_df.empty:
+            return []
+        cached_df = cached_df[~cached_df.index.duplicated(keep='last')]
+        new_df = new_df[~new_df.index.duplicated(keep='last')]
+        dates = cached_df.index.intersection(new_df.index)
+        dates = dates[(dates < cached_df.index.max()) & (dates < new_df.index.max())]
+        if dates.empty:
+            return []
+        changed = []
+        for column in cached_df.columns.intersection(new_df.columns):
+            field = column[0] if isinstance(column, tuple) else column
+            if field not in PRICE_FIELDS:
+                continue
+            old = pd.to_numeric(cached_df.loc[dates, column], errors='coerce')
+            new = pd.to_numeric(new_df.loc[dates, column], errors='coerce')
+            both = old.notna() & new.notna()
+            if not both.any():
+                continue
+            old, new = old[both].astype(float), new[both].astype(float)
+            if ((new - old).abs() > ADJUSTMENT_RTOL * old.abs()).any():
+                ticker = column[1] if isinstance(column, tuple) and len(column) > 1 else str(column)
+                if ticker not in changed:
+                    changed.append(ticker)
+        return changed
+
+    def _save_full(self, cache_file: Path, metadata_file: Path, df: pd.DataFrame, tickers: list):
+        """Save a full download and record it as the latest full download."""
+        if self._save_cache(cache_file, df):
+            self._save_metadata(metadata_file, df, len(tickers), full_download_at=datetime.now())
     
     def _rebuild_after_unreadable_cache(self, cache_file: Path, metadata_file: Path,
                                         tickers: list, download) -> pd.DataFrame:
@@ -289,8 +426,7 @@ class CachedDataFetcher:
             print("Error: Full re-download failed and the cache is unreadable; "
                   "returning no data", file=sys.stderr)
             return pd.DataFrame()
-        if self._save_cache(cache_file, df):
-            self._save_metadata(metadata_file, df, len(tickers))
+        self._save_full(cache_file, metadata_file, df, tickers)
         return df
 
     def _download_with_period(self, tickers: list, period: str):
@@ -335,7 +471,8 @@ class CachedDataFetcher:
         self,
         metadata,
         requested_start: str,
-        requested_end: str = None
+        requested_end: str = None,
+        allow_backstop: bool = True,
     ) -> Tuple[str, str, bool]:
         """Determine what date range to download based on cache state."""
         # No cache: full download
@@ -349,6 +486,11 @@ class CachedDataFetcher:
         if age_hours > DEFAULT_MAX_AGE_HOURS:
             print(f"Cache age {age_hours:.1f}h exceeds max {DEFAULT_MAX_AGE_HOURS}h - full rebuild", file=sys.stderr)
             return requested_start, requested_end, False
+
+        if allow_backstop and metadata.full_download_due():
+            print(f"Last full download unknown or older than {DEFAULT_MAX_AGE_HOURS}h - "
+                  "full re-download to refresh adjustments", file=sys.stderr)
+            return requested_start, requested_end, False
         
         # Intraday update (< 24 hours)
         if age_hours < 24:
@@ -360,7 +502,7 @@ class CachedDataFetcher:
             print(f"Cache age {age_hours:.1f}h - incremental update (last {lookback_days} days)", file=sys.stderr)
         
         # Calculate incremental start date
-        incremental_start = (datetime.now() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
+        incremental_start = metadata.incremental_start(lookback_days)
         
         return incremental_start, requested_end, True
     
@@ -429,15 +571,21 @@ class CachedDataFetcher:
             print(f"Warning: Could not load cache metadata: {e}", file=sys.stderr)
             return None
     
-    def _save_metadata(self, metadata_file: Path, df: pd.DataFrame, ticker_count: int):
-        """Save cache metadata to JSON file."""
+    def _save_metadata(self, metadata_file: Path, df: pd.DataFrame, ticker_count: int,
+                       full_download_at: Optional[datetime] = None):
+        """Save cache metadata to JSON file.
+
+        full_download_at: now for a full download; for an incremental merge the
+        previous value, so the weekly full re-adjustment still happens.
+        """
         try:
             metadata = CacheMetadata(
                 last_update=datetime.now(),
                 ticker_count=ticker_count,
                 data_start=str(df.index.min().date()) if not df.empty else "",
                 data_end=str(df.index.max().date()) if not df.empty else "",
-                source="yfinance"
+                source="yfinance",
+                full_download_at=full_download_at,
             )
             metadata_file.parent.mkdir(parents=True, exist_ok=True)
             payload = metadata.to_dict()
