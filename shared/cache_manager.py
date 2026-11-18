@@ -192,14 +192,14 @@ class CachedDataFetcher:
                             print(f"✓ Merged result: {len(combined)} rows", file=sys.stderr)
                             
                             # Save merged cache
-                            self._save_cache(cache_file, combined)
-                            self._save_metadata(metadata_file, combined, len(tickers))
+                            if self._save_cache(cache_file, combined):
+                                self._save_metadata(metadata_file, combined, len(tickers))
                             return combined
                         else:
                             # Cache load failed, use new data
                             print("Warning: Cache load failed, using new data only", file=sys.stderr)
-                            self._save_cache(cache_file, new_df)
-                            self._save_metadata(metadata_file, new_df, len(tickers))
+                            if self._save_cache(cache_file, new_df):
+                                self._save_metadata(metadata_file, new_df, len(tickers))
                             return new_df
                     else:
                         # Incremental download failed, try using stale cache
@@ -216,8 +216,8 @@ class CachedDataFetcher:
             print(f"Downloading {period} of data for {len(tickers)} symbols...", file=sys.stderr)
             df = self._download_with_period(tickers, period)
             if df is not None and not df.empty:
-                self._save_cache(cache_file, df)
-                self._save_metadata(metadata_file, df, len(tickers))
+                if self._save_cache(cache_file, df):
+                    self._save_metadata(metadata_file, df, len(tickers))
             return df
         
         # Date-based download with incremental logic
@@ -241,8 +241,8 @@ class CachedDataFetcher:
             final_df = new_df
         
         # Save cache
-        self._save_cache(cache_file, final_df)
-        self._save_metadata(metadata_file, final_df, len(tickers))
+        if self._save_cache(cache_file, final_df):
+            self._save_metadata(metadata_file, final_df, len(tickers))
         
         return final_df
     
@@ -353,14 +353,20 @@ class CachedDataFetcher:
             print(f"Warning: Could not load cache: {e}", file=sys.stderr)
             return None
     
-    def _save_cache(self, cache_file: Path, df: pd.DataFrame):
-        """Save price data to parquet cache file."""
+    def _save_cache(self, cache_file: Path, df: pd.DataFrame) -> bool:
+        """Save price data to parquet cache file; return whether it was written.
+
+        Callers write metadata only on success, so metadata never describes a
+        parquet file that failed to save.
+        """
         try:
             cache_file.parent.mkdir(parents=True, exist_ok=True)
             df.to_parquet(cache_file, engine='pyarrow', compression='snappy')
             print(f"Saved cache: {len(df)} rows", file=sys.stderr)
+            return True
         except Exception as e:
             print(f"Warning: Could not save cache: {e}", file=sys.stderr)
+            return False
     
     def _load_metadata(self, metadata_file: Path):
         """Load cache metadata from JSON file."""

@@ -80,3 +80,26 @@ def test_failed_refresh_does_not_mark_stale_cache_reusable(tmp_path, downloads, 
     assert downloads.call_count == 3
     assert json.loads((tmp_path / 'breadth_metadata.json').read_text()) == before
 
+
+
+def _fail_parquet_writes(monkeypatch):
+    def boom(self, *args, **kwargs):
+        raise OSError('disk full')
+    monkeypatch.setattr(pd.DataFrame, 'to_parquet', boom)
+
+
+@pytest.mark.parametrize('request_kwargs', [{}, {'period': None, 'start_date': '2026-09-01'}],
+                         ids=['period', 'dates'])
+def test_failed_parquet_save_writes_no_metadata(tmp_path, downloads, monkeypatch, request_kwargs):
+    _fail_parquet_writes(monkeypatch)
+    fetch(tmp_path, **request_kwargs)
+    assert not (tmp_path / 'breadth_metadata.json').exists()
+
+
+def test_failed_parquet_save_keeps_previous_metadata(tmp_path, downloads, monkeypatch):
+    fetch(tmp_path)
+    before = (tmp_path / 'breadth_metadata.json').read_text()
+    monkeypatch.setenv('GITHUB_RUN_ID', '101')  # new run: refresh, then the save fails
+    _fail_parquet_writes(monkeypatch)
+    fetch(tmp_path)
+    assert (tmp_path / 'breadth_metadata.json').read_text() == before
