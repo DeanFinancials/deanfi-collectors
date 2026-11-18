@@ -172,6 +172,47 @@ def calculate_iv_ma(iv_series: pd.Series, periods: List[int] = [20, 50]) -> Dict
     return result
 
 
+# Yahoo reports placeholder IVs (1e-05, 0.000987, ...) for contracts with no
+# live two-sided quote, e.g. DIA before the open. An IV is only trusted when the
+# contract has bid > 0 and ask > 0 and the value is in this range.
+MIN_PLAUSIBLE_IV = 0.01
+MAX_PLAUSIBLE_IV = 5.0
+
+
+def _as_float(value) -> Optional[float]:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if np.isnan(number) else number
+
+
+def is_usable_iv(option) -> bool:
+    """True when ``option`` has a live quote and a plausible implied volatility."""
+    if option is None:
+        return False
+    iv = _as_float(option.get('impliedVolatility'))
+    bid = _as_float(option.get('bid'))
+    ask = _as_float(option.get('ask'))
+    if iv is None or bid is None or ask is None:
+        return False
+    return bid > 0 and ask > 0 and MIN_PLAUSIBLE_IV <= iv <= MAX_PLAUSIBLE_IV
+
+
+def average_usable_iv(atm_call, atm_put) -> Tuple[Optional[float], str]:
+    """Average the ATM legs whose IV is usable.
+
+    Returns ``(average_iv, basis)`` where basis is ``call_put_average``,
+    ``call_only``, ``put_only`` or ``unavailable`` (average_iv is None).
+    """
+    legs = [(name, leg) for name, leg in (('call', atm_call), ('put', atm_put)) if is_usable_iv(leg)]
+    if not legs:
+        return None, 'unavailable'
+    values = [float(leg['impliedVolatility']) for _, leg in legs]
+    basis = 'call_put_average' if len(legs) == 2 else f"{legs[0][0]}_only"
+    return round(sum(values) / len(values), 6), basis
+
+
 def find_atm_option(options_df: pd.DataFrame, 
                     underlying_price: float,
                     tolerance: float = 0.02) -> Optional[pd.Series]:
@@ -196,7 +237,12 @@ def find_atm_option(options_df: pd.DataFrame,
     
     # Filter within tolerance
     atm_options = options_df[options_df['strike_pct_diff'] <= tolerance]
-    
+
+    # Prefer the nearest strike with a usable IV; fall back to the nearest strike.
+    usable = atm_options[atm_options.apply(is_usable_iv, axis=1)] if len(atm_options) else atm_options
+    if len(usable) > 0:
+        atm_options = usable
+
     if len(atm_options) == 0:
         # If none within tolerance, take closest
         atm_idx = options_df['strike_diff'].idxmin()
@@ -381,9 +427,11 @@ def get_option_snapshot(symbol: str,
                 **calculate_option_liquidity(atm_put)
             },
             
-            # Average IV (mid of ATM call and put)
-            'average_iv': round((float(atm_call['impliedVolatility']) + float(atm_put['impliedVolatility'])) / 2, 6)
         }
+        # Average IV of the ATM legs with a live quote; None when neither is usable.
+        snapshot['average_iv'], snapshot['iv_basis'] = average_usable_iv(atm_call, atm_put)
+        if snapshot['average_iv'] is None:
+            print(f"⚠️  {symbol}: no ATM option with a live quote and plausible IV; publishing average_iv as missing")
         
         return snapshot
         
@@ -475,7 +523,7 @@ def serialize_for_json(obj):
         return obj
 
 
-def format_iv_percentage(iv: float) -> str:
+def format_iv_percentage(iv: Optional[float]) -> Optional[str]:
     """
     Format IV as percentage string.
     
@@ -485,10 +533,12 @@ def format_iv_percentage(iv: float) -> str:
     Returns:
         Formatted string like "25.00%"
     """
+    if iv is None:
+        return None
     return f"{iv * 100:.2f}%"
 
 
-def classify_iv_level(iv: float, iv_ma_20: Optional[float] = None) -> str:
+def classify_iv_level(iv: Optional[float], iv_ma_20: Optional[float] = None) -> Optional[str]:
     """
     Classify IV level (Low, Normal, Elevated, High, Extreme).
     
@@ -499,6 +549,9 @@ def classify_iv_level(iv: float, iv_ma_20: Optional[float] = None) -> str:
     Returns:
         Classification string
     """
+    if iv is None:
+        return None
+
     # Absolute levels
     if iv < 0.15:
         abs_level = "Low"

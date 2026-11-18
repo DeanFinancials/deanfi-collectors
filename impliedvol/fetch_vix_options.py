@@ -85,7 +85,9 @@ def fetch_vix_snapshot():
         snapshot['average_iv_formatted'] = format_iv_percentage(snapshot['average_iv'])
         
         # VIX has extreme IV values - custom classification
-        if snapshot['average_iv'] < 0.50:
+        if snapshot['average_iv'] is None:
+            iv_level = None
+        elif snapshot['average_iv'] < 0.50:
             iv_level = "Very Low (for VIX)"
         elif snapshot['average_iv'] < 1.00:
             iv_level = "Low"
@@ -105,9 +107,9 @@ def fetch_vix_snapshot():
             'historical_avg_formatted': hist_ref['historical_avg_formatted'],
             'typical_low': hist_ref['typical_range']['low'],
             'typical_high': hist_ref['typical_range']['high'],
-            'current_vs_average': None if hist_ref['historical_avg'] is None else 
+            'current_vs_average': None if hist_ref['historical_avg'] is None or snapshot['average_iv'] is None else 
                 round(snapshot['average_iv'] - hist_ref['historical_avg'], 4),
-            'current_vs_average_pct': None if hist_ref['historical_avg'] is None else
+            'current_vs_average_pct': None if hist_ref['historical_avg'] is None or snapshot['average_iv'] is None else
                 f"{((snapshot['average_iv'] / hist_ref['historical_avg'] - 1) * 100):.2f}%",
             'special_note': hist_ref.get('special_note', None)
         }
