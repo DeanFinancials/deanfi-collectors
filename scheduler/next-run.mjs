@@ -5,6 +5,21 @@ const WORKFLOW = 'market-data-intraday.yml';
 const API = `https://api.github.com/repos/${REPO}`;
 const INTERVAL_MS = 15 * 60 * 1000;
 const MAX_WAIT_MS = 13 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 15000;
+const MAX_ATTEMPTS = 3;
+const RETRY_BACKOFF_MS = [2000, 5000];
+// ubuntu-slim jobs stop at 15 minutes; never start a retry past this budget.
+const RETRY_BUDGET_MS = MAX_WAIT_MS + 75 * 1000;
+
+class TransientError extends Error {}
+
+// Timeouts, network failures and 5xx responses are retryable; 4xx and
+// malformed responses are not and fail closed.
+export function isTransient(error) {
+  return error instanceof TransientError
+    || error?.name === 'TimeoutError' || error?.name === 'AbortError'
+    || (error instanceof TypeError && /fetch failed|network/i.test(error.message));
+}
 
 export function isCollectionWindow(date) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
@@ -44,12 +59,33 @@ export async function scheduleNext(env, {
     Authorization: `Bearer ${env.GH_TOKEN}`, Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'deanfi-market-handoff',
   };
+  const deadline = now().getTime() + RETRY_BUDGET_MS;
+  async function withRetries(label, attempt, beforeRetry = async () => null) {
+    for (let tries = 1; ; tries += 1) {
+      try {
+        return await attempt();
+      } catch (error) {
+        const backoff = RETRY_BACKOFF_MS[tries - 1] ?? RETRY_BACKOFF_MS.at(-1);
+        if (!isTransient(error) || tries >= MAX_ATTEMPTS
+          || now().getTime() + backoff >= deadline) throw error;
+        log(`${label} attempt ${tries} failed (${error.message}); retrying in ${backoff} ms`);
+        await sleep(backoff);
+        const early = await beforeRetry();
+        if (early) return early;
+      }
+    }
+  }
   async function get(path) {
-    const response = await fetchFn(`${API}${path}`, {
-      headers, signal: AbortSignal.timeout(15000), redirect: 'error',
+    return withRetries('GitHub scheduler read', async () => {
+      const response = await fetchFn(`${API}${path}`, {
+        headers, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS), redirect: 'error',
+      });
+      if (response.status >= 500) {
+        throw new TransientError(`GitHub scheduler read failed: HTTP ${response.status}`);
+      }
+      if (!response.ok) throw new Error(`GitHub scheduler read failed: HTTP ${response.status}`);
+      return response.json();
     });
-    if (!response.ok) throw new Error(`GitHub scheduler read failed: HTTP ${response.status}`);
-    return response.json();
   }
   const current = await get(`/actions/runs/${env.GITHUB_RUN_ID}`);
   async function inspect() {
@@ -67,14 +103,26 @@ export async function scheduleNext(env, {
   // Another backup or manual run may have taken ownership while we waited.
   plan = await inspect();
   if (plan.status !== 'schedule') return plan;
-  const response = await fetchFn(`${API}/actions/workflows/${WORKFLOW}/dispatches`, {
-    method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ref: 'main', inputs: {
-      source: 'handoff', scheduled_at: due.toISOString(), collect_data: isCollectionWindow(now()),
-    } }),
-    signal: AbortSignal.timeout(15000), redirect: 'error',
+  const body = JSON.stringify({ ref: 'main', inputs: {
+    source: 'handoff', scheduled_at: due.toISOString(), collect_data: isCollectionWindow(now()),
+  } });
+  // A timed-out or 5xx dispatch may still have landed. Before retrying, re-run
+  // the ownership check so a run created by that dispatch is not duplicated.
+  const outcome = await withRetries('Next collector dispatch', async () => {
+    const response = await fetchFn(`${API}/actions/workflows/${WORKFLOW}/dispatches`, {
+      method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS), redirect: 'error',
+    });
+    if (response.status >= 500) {
+      throw new TransientError(`Next collector dispatch failed: HTTP ${response.status}`);
+    }
+    if (!response.ok) throw new Error(`Next collector dispatch failed: HTTP ${response.status}`);
+    return null;
+  }, async () => {
+    const recheck = await inspect();
+    return recheck.status === 'schedule' ? null : recheck;
   });
-  if (!response.ok) throw new Error(`Next collector dispatch failed: HTTP ${response.status}`);
+  if (outcome) return outcome;
   return { status: 'dispatched', scheduledAt: due.toISOString() };
 }
 

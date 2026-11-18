@@ -124,3 +124,101 @@ for (const [created, collect] of [
     assert.equal(JSON.parse(post.options.body).inputs.collect_data, collect);
   });
 }
+
+const timeoutError = () => new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+
+function flakyApi({ failReads = 0, readFailure = timeoutError, postOutcomes = [204],
+  landedOnFailure = false } = {}) {
+  let clock = at(3);
+  let readFailures = 0;
+  let dispatched = false;
+  const calls = [];
+  const sleeps = [];
+  return {
+    calls, sleeps, now: () => clock,
+    sleep: async (ms) => { sleeps.push(ms); clock = new Date(+clock + ms); },
+    log: () => {},
+    fetchFn: async (url, options) => {
+      calls.push({ url, options });
+      if (options.method === 'POST') {
+        const outcome = postOutcomes.shift() ?? 204;
+        if (outcome === 'timeout') {
+          if (landedOnFailure) dispatched = true;
+          throw timeoutError();
+        }
+        if (outcome === 'network') throw new TypeError('fetch failed');
+        if (outcome < 300) dispatched = true;
+        return new Response(null, { status: outcome });
+      }
+      if (readFailures < failReads) {
+        readFailures += 1;
+        const failure = readFailure();
+        if (failure instanceof Response) return failure;
+        throw failure;
+      }
+      if (url.endsWith('/runs/100')) return Response.json(current);
+      return Response.json({ workflow_runs: dispatched
+        ? [{ id: 101, created_at: clock.toISOString() }, current] : [current] });
+    },
+  };
+}
+
+const posts = (api) => api.calls.filter(({ options }) => options.method === 'POST');
+
+test('scheduler reads retry with backoff after a timeout', async () => {
+  const api = flakyApi({ failReads: 2 });
+  assert.equal((await scheduleNext(env, api)).status, 'dispatched');
+  assert.equal(posts(api).length, 1);
+  assert.ok(api.sleeps.slice(0, 2).every((ms) => ms > 0));
+});
+
+test('scheduler reads retry on 5xx and network errors', async () => {
+  const api5xx = flakyApi({ failReads: 1, readFailure: () => new Response(null, { status: 502 }) });
+  assert.equal((await scheduleNext(env, api5xx)).status, 'dispatched');
+  const apiNet = flakyApi({ failReads: 1, readFailure: () => new TypeError('fetch failed') });
+  assert.equal((await scheduleNext(env, apiNet)).status, 'dispatched');
+});
+
+test('scheduler reads give up after bounded attempts', async () => {
+  const api = flakyApi({ failReads: 10 });
+  await assert.rejects(scheduleNext(env, api), /timeout/);
+  assert.equal(api.calls.length, 3);
+});
+
+test('scheduler reads do not retry 4xx or malformed responses', async () => {
+  const api = flakyApi({ failReads: 10, readFailure: () => new Response(null, { status: 404 }) });
+  await assert.rejects(scheduleNext(env, api), /HTTP 404/);
+  assert.equal(api.calls.length, 1);
+  let calls = 0;
+  await assert.rejects(scheduleNext(env, { now: () => at(3), sleep: async () => {}, log: () => {},
+    fetchFn: async () => { calls += 1; return new Response('not json', { status: 200 }); } }));
+  assert.equal(calls, 1);
+});
+
+test('dispatch retries after a timeout when the dispatch did not land', async () => {
+  const api = flakyApi({ postOutcomes: ['timeout', 204] });
+  assert.equal((await scheduleNext(env, api)).status, 'dispatched');
+  assert.equal(posts(api).length, 2);
+  assert.equal(posts(api)[0].options.body, posts(api)[1].options.body);
+});
+
+test('dispatch is not duplicated when a timed-out dispatch actually landed', async () => {
+  const api = flakyApi({ postOutcomes: ['timeout'], landedOnFailure: true });
+  assert.equal((await scheduleNext(env, api)).status, 'newer-run-owns-handoff');
+  assert.equal(posts(api).length, 1);
+});
+
+test('dispatch retries 5xx and network errors but not 4xx', async () => {
+  const api = flakyApi({ postOutcomes: [503, 'network', 204] });
+  assert.equal((await scheduleNext(env, api)).status, 'dispatched');
+  assert.equal(posts(api).length, 3);
+  const rejected = flakyApi({ postOutcomes: [422] });
+  await assert.rejects(scheduleNext(env, rejected), /HTTP 422/);
+  assert.equal(posts(rejected).length, 1);
+});
+
+test('dispatch gives up after bounded attempts', async () => {
+  const api = flakyApi({ postOutcomes: ['timeout', 'timeout', 'timeout', 204] });
+  await assert.rejects(scheduleNext(env, api), /timeout/);
+  assert.equal(posts(api).length, 3);
+});
