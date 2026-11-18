@@ -103,3 +103,77 @@ def test_failed_parquet_save_keeps_previous_metadata(tmp_path, downloads, monkey
     _fail_parquet_writes(monkeypatch)
     fetch(tmp_path)
     assert (tmp_path / 'breadth_metadata.json').read_text() == before
+
+
+def _prices(dates, value):
+    return pd.DataFrame({('Close', 'AAA'): value, ('Close', 'BBB'): value},
+                        index=pd.DatetimeIndex(dates))
+
+
+def _warm_cache(tmp_path, monkeypatch, frame):
+    """Save `frame` as a fresh (< 24h) cache, so the next fetch is incremental."""
+    monkeypatch.delenv('GITHUB_RUN_ID', raising=False)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_period', Mock(return_value=frame))
+    CachedDataFetcher(tmp_path).fetch_prices(['AAA', 'BBB'], period='2y', cache_name='close')
+
+
+@pytest.mark.parametrize('env', [None, 'true'], ids=['unset', 'true'])
+def test_intraday_default_falls_back_to_stale_cache(tmp_path, monkeypatch, env):
+    cached = _prices(pd.bdate_range('2026-01-01', periods=30), 1.0)
+    _warm_cache(tmp_path, monkeypatch, cached)
+    if env is None:
+        monkeypatch.delenv('PRICE_CACHE_ALLOW_STALE', raising=False)
+    else:
+        monkeypatch.setenv('PRICE_CACHE_ALLOW_STALE', env)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_dates', Mock(return_value=pd.DataFrame()))
+    result = CachedDataFetcher(tmp_path).fetch_prices(['AAA', 'BBB'], period='2y', cache_name='close')
+    pd.testing.assert_frame_equal(result, cached, check_freq=False)
+
+
+@pytest.mark.parametrize('failure', [None, pd.DataFrame()], ids=['exception', 'empty'])
+@pytest.mark.parametrize('how', ['env', 'arg'])
+def test_stale_fallback_disabled_returns_empty(tmp_path, monkeypatch, failure, how):
+    _warm_cache(tmp_path, monkeypatch, _prices(pd.bdate_range('2026-01-01', periods=30), 1.0))
+    download = Mock(return_value=failure)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_dates', download)
+    full = Mock(return_value=None)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_period', full)
+    kwargs = {}
+    if how == 'env':
+        monkeypatch.setenv('PRICE_CACHE_ALLOW_STALE', 'false')
+    else:
+        kwargs['allow_stale'] = False
+    fetcher = CachedDataFetcher(tmp_path, **kwargs)
+    period_result = fetcher.fetch_prices(['AAA', 'BBB'], period='2y', cache_name='close')
+    dates_result = fetcher.fetch_prices(['AAA', 'BBB'], start_date='2025-01-01', cache_name='close')
+    assert download.call_count == 2 and full.call_count == 0
+    assert isinstance(period_result, pd.DataFrame) and period_result.empty
+    assert isinstance(dates_result, pd.DataFrame) and dates_result.empty
+
+
+@pytest.mark.parametrize('rows', [30, 300, 5000])
+@pytest.mark.parametrize('request_kwargs', [{'period': '2y'}, {'start_date': '2020-01-01'}],
+                         ids=['period', 'dates'])
+def test_downloaded_final_bar_replaces_cached_partial_bar(tmp_path, monkeypatch, rows, request_kwargs):
+    # The cache's last row is today's partial intraday bar (1.0); the close
+    # download returns the final bars (2.0) for the last five sessions.
+    dates = pd.bdate_range(end='2026-11-18', periods=rows)
+    _warm_cache(tmp_path, monkeypatch, _prices(dates, 1.0))
+    final = _prices(dates[-5:], 2.0)
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_dates', Mock(return_value=final))
+    result = CachedDataFetcher(tmp_path).fetch_prices(['AAA', 'BBB'], cache_name='close', **request_kwargs)
+    assert len(result) == rows and result.index.is_monotonic_increasing
+    assert (result.loc[dates[-5:]] == 2.0).all().all()
+    assert (result.loc[dates[:-5]] == 1.0).all().all()
+    reloaded = pd.read_parquet(tmp_path / 'close.parquet')
+    assert (reloaded.loc[dates[-1]] == 2.0).all()
+
+
+def test_download_without_todays_bar_drops_cached_partial_bar(tmp_path, monkeypatch):
+    dates = pd.bdate_range(end='2026-11-18', periods=30)
+    _warm_cache(tmp_path, monkeypatch, _prices(dates, 1.0))
+    monkeypatch.setattr(CachedDataFetcher, '_download_with_dates',
+                        Mock(return_value=_prices(dates[-5:-1], 2.0)))
+    result = CachedDataFetcher(tmp_path).fetch_prices(['AAA', 'BBB'], period='2y', cache_name='close')
+    assert result.index[-1] == dates[-2]
+    assert (result.loc[dates[-5:-1]] == 2.0).all().all()

@@ -24,6 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # The restored cache can hold an intraday partial bar for today. If a price
+    # refresh fails, return nothing instead of that cache so the collectors'
+    # guards fail the run and the last good files stay published.
+    env:
+      PRICE_CACHE_ALLOW_STALE: "false"
+
     # Serialize with the other collectors that write to deanfi-data.
     concurrency:
       group: deanfi-data-repo

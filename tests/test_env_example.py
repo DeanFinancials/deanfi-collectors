@@ -13,9 +13,9 @@ REPO = Path(__file__).resolve().parent.parent
 
 # scripts/ holds workflow glue that only runs inside GitHub Actions.
 CI_ONLY_DIRS = {"scripts"}
-# GITHUB_* is set by the runner. These two are a workflow input and a path the
-# workflow sets (optional locally), not credentials.
-NOT_LOCAL_CONFIG = {"MARKET_PULSE_WEEKLY_OVERRIDE", "IV_PRIOR_SNAPSHOT_DIR"}
+# GITHUB_* is set by the runner. These are a workflow input, a path and a
+# switch the workflows set (optional locally), not credentials.
+NOT_LOCAL_CONFIG = {"MARKET_PULSE_WEEKLY_OVERRIDE", "IV_PRIOR_SNAPSHOT_DIR", "PRICE_CACHE_ALLOW_STALE"}
 # Alpaca SDK-style aliases accepted as fallbacks for ALPACA_API_KEY/SECRET.
 ALIASES = {"APCA-API-KEY-ID", "APCA-API-SECRET-KEY"}
 

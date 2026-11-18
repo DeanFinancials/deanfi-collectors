@@ -14,6 +14,12 @@ Cache Strategy:
 - Age 24-168 hours: Download last 10 trading days (daily updates  
 - Age > 168 hours: Full rebuild (weekly refresh)
 
+An incremental download replaces every cached row from its first date on, so a
+partial intraday bar cached earlier is overwritten by the final bar. If the
+download fails the fetcher returns the stale cache, unless stale data is
+disallowed (allow_stale=False or PRICE_CACHE_ALLOW_STALE=false, set by the
+close run); then it returns an empty DataFrame and the caller's guard fails.
+
 Usage:
     from shared.cache_manager import CachedDataFetcher
     
@@ -40,6 +46,13 @@ from shared.yf_retry import with_429_retry
 DEFAULT_MAX_AGE_HOURS = 168  # 1 week
 INTRADAY_LOOKBACK_DAYS = 5
 DAILY_LOOKBACK_DAYS = 10
+ALLOW_STALE_ENV = "PRICE_CACHE_ALLOW_STALE"
+
+
+def _stale_allowed_from_env() -> bool:
+    """PRICE_CACHE_ALLOW_STALE=false (or 0/no/off) disables the stale fallback."""
+    value = os.environ.get(ALLOW_STALE_ENV, "").strip().lower()
+    return value not in ("0", "false", "no", "off")
 
 
 class CacheMetadata:
@@ -94,14 +107,18 @@ class CacheMetadata:
 class CachedDataFetcher:
     """Fetcher with intelligent caching for yfinance data."""
     
-    def __init__(self, cache_dir: Optional[Path] = None):
+    def __init__(self, cache_dir: Optional[Path] = None, allow_stale: Optional[bool] = None):
         """
         Initialize cached data fetcher.
         
         Args:
             cache_dir: Directory for cache storage (default: ./cache)
+            allow_stale: Return the cached data when a refresh download fails.
+                None reads PRICE_CACHE_ALLOW_STALE (default true). The close run
+                sets it false so it never publishes intraday or stale bars.
         """
         self.cache_dir = Path(cache_dir) if cache_dir else Path("cache")
+        self.allow_stale = _stale_allowed_from_env() if allow_stale is None else allow_stale
         self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def fetch_prices(
@@ -185,12 +202,7 @@ class CachedDataFetcher:
                         # Load existing cache and merge
                         cached_df = self._load_cache(cache_file)
                         if cached_df is not None and not cached_df.empty:
-                            # Merge: combine and deduplicate
-                            print(f"Merging: cache={len(cached_df)} rows, new={len(new_df)} rows", file=sys.stderr)
-                            combined = pd.concat([cached_df, new_df]).sort_index()
-                            combined = combined[~combined.index.duplicated(keep='last')]
-                            print(f"✓ Merged result: {len(combined)} rows", file=sys.stderr)
-                            
+                            combined = self._merge_data(cached_df, new_df, True)
                             # Save merged cache
                             if self._save_cache(cache_file, combined):
                                 self._save_metadata(metadata_file, combined, len(tickers))
@@ -202,6 +214,10 @@ class CachedDataFetcher:
                                 self._save_metadata(metadata_file, new_df, len(tickers))
                             return new_df
                     else:
+                        if not self.allow_stale:
+                            print(f"Error: Incremental download failed and {ALLOW_STALE_ENV}=false; "
+                                  "not using stale cache", file=sys.stderr)
+                            return pd.DataFrame()
                         # Incremental download failed, try using stale cache
                         print("Warning: Incremental download failed, using stale cache", file=sys.stderr)
                         cached_df = self._load_cache(cache_file)
@@ -229,6 +245,10 @@ class CachedDataFetcher:
         new_df = self._download_with_dates(tickers, download_start, download_end)
         
         if new_df is None or new_df.empty:
+            if not self.allow_stale:
+                print(f"Error: Download failed and {ALLOW_STALE_ENV}=false; not using cached data",
+                      file=sys.stderr)
+                return pd.DataFrame()
             print("Download failed, attempting to use cached data", file=sys.stderr)
             cached_df = self._load_cache(cache_file)
             return cached_df if cached_df is not None else pd.DataFrame()
@@ -330,11 +350,13 @@ class CachedDataFetcher:
         # Incremental merge
         print(f"Merging: cache={len(cached_df)} rows, new={len(new_df)} rows", file=sys.stderr)
         
-        # Combine and sort
+        # The fresh download is authoritative from its first date on: drop every
+        # cached row in that window (a partial intraday bar included, even if the
+        # download has no row for that date) before combining. Deduplicating
+        # after an unstable sort_index could keep the cached row instead.
+        new_df = new_df[~new_df.index.duplicated(keep='last')]
+        cached_df = cached_df[cached_df.index < new_df.index.min()]
         combined = pd.concat([cached_df, new_df]).sort_index()
-        
-        # Remove duplicate dates (keep newest)
-        combined = combined[~combined.index.duplicated(keep='last')]
         
         print(f"Merged result: {len(combined)} rows", file=sys.stderr)
         
