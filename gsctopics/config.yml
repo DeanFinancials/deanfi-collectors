@@ -244,7 +244,7 @@ seed_topics:
       - /retirement/social-security/
       - /retirement/retirement-planner/
     facts_refs:
-      - ssa-cola-pct-2026
+      - ssa-cola-pct-2027
 
   - slug: when-to-claim-social-security
     title_working: When to Claim Social Security
@@ -259,7 +259,7 @@ seed_topics:
       - /retirement/withdrawal-strategy/
     facts_refs:
       - ssa-full-retirement-age-note
-      - ssa-earnings-test-under-fra-2026
+      - ssa-earnings-test-under-fra-2027
 
   - slug: required-minimum-distributions-explained
     title_working: Required Minimum Distributions Explained
@@ -317,7 +317,7 @@ seed_topics:
       - /fire/savings-rate/
     facts_refs:
       - irs-401k-employee-limit-2026
-      - ssa-cola-pct-2026
+      - ssa-cola-pct-2027
 
   - slug: sequence-of-returns-risk-explained
     title_working: Sequence of Returns Risk Explained

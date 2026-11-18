@@ -20,9 +20,9 @@ sane_bounds:
   irs-std-deduction-mfj-2026:       [10000,  100000]
   irs-hsa-individual-limit-2026:    [1000,    20000]
   irs-hsa-family-limit-2026:        [2000,    30000]
-  # SSA benefit parameters ─ 2026
-  ssa-cola-pct-2026:                [-2.0,     15.0]
-  ssa-earnings-test-under-fra-2026: [5000,   200000]
+  # SSA benefit parameters ─ 2027
+  ssa-cola-pct-2027:                [-2.0,     15.0]
+  ssa-earnings-test-under-fra-2027: [5000,   200000]
   # FSA federal loan rates 2026-27 (%)
   fsa-direct-subsidized-rate-2026-27:          [1.0, 15.0]
   fsa-direct-unsubsidized-undergrad-rate-2026-27: [1.0, 15.0]
@@ -120,15 +120,18 @@ seed_facts:
     max_age_days: 400
     tax_year: 2026
 
-  # ── SSA 2026 ─────────────────────────────────────────────────────────────
-  - id: ssa-cola-pct-2026
+  # ── SSA 2027 ─────────────────────────────────────────────────────────────
+  # Source: SSA notice "Cost-of-Living Increase and Other Determinations for
+  # 2027", Federal Register 2026-21796, published 2026-10-26. ssa.gov blocks
+  # automated fetches, so the Federal Register copy is the cited source.
+  - id: ssa-cola-pct-2027
     category: retirement
-    claim: "2026 Social Security cost-of-living adjustment (COLA)"
-    value: 2.5
+    claim: "2027 Social Security cost-of-living adjustment (COLA), effective for December 2026 benefits payable January 2027"
+    value: 3.6
     unit: "%"
-    source_name: "Social Security Administration COLA Notice"
-    source_url: "https://www.ssa.gov/oact/cola/colasummary.html"
-    as_of: "2025-10-10"
+    source_name: "Social Security Administration COLA Notice (Federal Register 2026-21796)"
+    source_url: "https://www.federalregister.gov/documents/2026/10/26/2026-21796/cost-of-living-increase-and-other-determinations-for-2027"
+    as_of: "2026-10-26"
     max_age_days: 400
 
   - id: ssa-full-retirement-age-note
@@ -141,14 +144,14 @@ seed_facts:
     as_of: "2026-07-09"
     max_age_days: 400
 
-  - id: ssa-earnings-test-under-fra-2026
+  - id: ssa-earnings-test-under-fra-2027
     category: retirement
-    claim: "2026 annual earnings limit before Social Security benefits are reduced (under Full Retirement Age)"
-    value: 23400
+    claim: "2027 annual earnings limit before Social Security benefits are reduced (under Full Retirement Age)"
+    value: 25560
     unit: "USD"
-    source_name: "Social Security Administration"
-    source_url: "https://www.ssa.gov/oact/cola/rtea.html"
-    as_of: "2025-10-10"
+    source_name: "Social Security Administration COLA Notice (Federal Register 2026-21796)"
+    source_url: "https://www.federalregister.gov/documents/2026/10/26/2026-21796/cost-of-living-increase-and-other-determinations-for-2027"
+    as_of: "2026-10-26"
     max_age_days: 400
 
   # ── Federal Student Aid 2026-27 ───────────────────────────────────────────
