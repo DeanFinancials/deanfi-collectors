@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import sys
 import time
@@ -26,6 +27,9 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import requests
 import yfinance as yf
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from shared.fetch_guard import assert_enough_succeeded  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -363,6 +367,19 @@ def safe_float(v) -> Optional[float]:
         return float(v)
     except Exception:
         return None
+
+
+def is_usable_point(point: dict) -> bool:
+    """Whether a ticker's session point carries data a flow can be built from.
+
+    AUM is the one input every flow needs, both today (AUM_t) and as the next
+    run's AUM_{t-1}. A point without it adds nothing and, once published, would
+    become the prior point that nulls the next session's flows too. Flows
+    themselves are not required: on a first run, or for a ticker with no prior
+    point, they are legitimately null (warning ``missing_prior_day``).
+    """
+    aum = safe_float(point.get("aum"))
+    return aum is not None and math.isfinite(aum)
 
 
 def compute_flow(aum_t: Optional[float], aum_prev: Optional[float], r_t: Optional[float]) -> Optional[float]:
@@ -705,6 +722,15 @@ def main() -> int:
         cur_doc.setdefault("data", {})[t] = tnode
 
         all_points_for_agg.append(point)
+
+    # Refuse to write anything when no ticker produced usable data: the month
+    # files are upserted in place over the seeded copies, and the workflow
+    # publishes them, so an all-null session would replace the last good files.
+    assert_enough_succeeded(
+        sum(1 for p in all_points_for_agg if is_usable_point(p)),
+        len(all_points_for_agg),
+        label="etffundflows",
+    )
 
     # Save per-ticker
     cur_doc.setdefault("metadata", {})["aum_nav_calls"] = {

@@ -20,6 +20,9 @@ Where:
 
 Outputs are written as **monthly JSON** files and copied to the `deanfi-data` repo by the workflow.
 
+### Zero-success guard
+The workflow seeds `output/` with the published month files and the script upserts the session into them in place. Before writing, the script calls `assert_enough_succeeded` (`shared/fetch_guard.py`, rule in `docs/architecture.md`): if no ticker got an AUM value for the session, it exits 1 and writes nothing, so the last good files stay. A ticker counts as succeeded when its point has AUM, the input every flow needs. Null flows do not count against it: a first run with nothing seeded, or a ticker with no prior point, records `missing_prior_day` and still succeeds.
+
 ## Configuration
 See `config.yml`.
 
