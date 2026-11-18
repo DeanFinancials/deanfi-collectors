@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Set
@@ -1029,76 +1030,116 @@ def yfinance_quarterly_financials(symbol: str, quarters_to_fetch: int = 8) -> pd
 # Alpha Vantage Fallback (Annual)
 # ============================================================================
 
+ANNUAL_FALLBACK_COLUMNS = ["end", "revenue", "eps_diluted", "source"]
+
+
+def _to_finite_float(value: Any) -> Optional[float]:
+    """Parse a provider number ("123", 1.5, "None", "-", None) into a finite float or None."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _annual_fallback_frame(rows: Dict[str, dict]) -> pd.DataFrame:
+    """Build a fallback DataFrame that always has ANNUAL_FALLBACK_COLUMNS.
+
+    Providers return partial payloads (one endpoint rate-limited, fields
+    missing), so a column may be absent from every row. Downstream code reads
+    df["end"], df["revenue"] and df["eps_diluted"]; reindexing guarantees they
+    exist (as NaN) instead of raising KeyError.
+    """
+    if not rows:
+        return pd.DataFrame(columns=ANNUAL_FALLBACK_COLUMNS)
+    df = pd.DataFrame(list(rows.values())).reindex(columns=ANNUAL_FALLBACK_COLUMNS)
+    df["end"] = df["end"].astype(str)
+    for col in ("revenue", "eps_diluted"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df.sort_values("end", ascending=False).drop_duplicates("end", keep="first")
+
+
+def _provider_list(payload: Any, key: Optional[str] = None) -> List[dict]:
+    """Return the report list from a provider payload, or [] for anything else.
+
+    Handles rate-limit / error bodies such as {"Note": ...}, {"Information": ...},
+    {"Error Message": ...}, a bare string, or a non-list where a list is expected.
+    """
+    if key is not None:
+        payload = payload.get(key) if isinstance(payload, dict) else None
+    if not isinstance(payload, list):
+        return []
+    return [item for item in payload if isinstance(item, dict)]
+
+
+def _alphavantage_get(function: str, symbol: str, api_key: str, timeout: int) -> Any:
+    """GET one Alpha Vantage function; return parsed JSON or None. Never raises."""
+    try:
+        r = requests.get(
+            "https://www.alphavantage.co/query",
+            params={"function": function, "symbol": symbol, "apikey": api_key},
+            timeout=timeout,
+        )
+        if r.status_code != 200:
+            print(f"[warn] Alpha Vantage {function} HTTP {r.status_code} for {symbol}")
+            return None
+        js = r.json()
+    except Exception as e:  # network error or non-JSON body
+        print(f"[warn] Alpha Vantage {function} error for {symbol}: {type(e).__name__}")
+        return None
+    if isinstance(js, dict):
+        for notice in ("Note", "Information", "Error Message"):
+            if notice in js:
+                print(f"[warn] Alpha Vantage {function} returned no data for {symbol} ({notice})")
+                return None
+    return js
+
+
 def alphavantage_annual_financials(symbol: str, api_key: str, years_to_fetch: int = 6, timeout: int = 15) -> pd.DataFrame:
     """
     Fetch annual revenue and EPS from Alpha Vantage.
     Returns DataFrame with columns: end, revenue, eps_diluted, source
+
+    Each endpoint (INCOME_STATEMENT, EARNINGS) is handled independently: an
+    empty, rate-limited ({"Note"}/{"Information"}) or malformed response from
+    either one yields partial or no data, never an exception.
     """
     if not api_key:
-        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
-    
-    base = "https://www.alphavantage.co/query"
-    rows = {}
-    
-    # Income statement for revenue and EPS
-    try:
-        url = f"{base}?function=INCOME_STATEMENT&symbol={symbol}&apikey={api_key}"
-        r = requests.get(url, timeout=timeout)
-        if r.status_code == 200:
-            js = r.json()
-            for report in (js.get("annualReports") or [])[:years_to_fetch]:
-                fiscal_end = report.get("fiscalDateEnding")
-                if not fiscal_end:
-                    continue
-                
-                rec = rows.setdefault(fiscal_end, {"end": fiscal_end, "source": "alphavantage"})
-                
-                # Revenue
-                rev = report.get("totalRevenue")
-                if rev and rev != "None":
-                    try:
-                        rec["revenue"] = float(rev)
-                    except:
-                        pass
-                
-                # EPS (Alpha Vantage earnings endpoint)
-    except Exception as e:
-        print(f"[warn] Alpha Vantage income statement error for {symbol}: {e}")
-    
-    # Also fetch earnings for EPS
-    try:
-        url = f"{base}?function=EARNINGS&symbol={symbol}&apikey={api_key}"
-        r = requests.get(url, timeout=timeout)
-        if r.status_code == 200:
-            js = r.json()
-            for report in (js.get("annualEarnings") or [])[:years_to_fetch]:
-                fiscal_end = report.get("fiscalDateEnding")
-                if not fiscal_end:
-                    continue
-                
-                rec = rows.setdefault(fiscal_end, {"end": fiscal_end, "source": "alphavantage"})
-                
-                eps = report.get("reportedEPS")
-                if eps and eps != "None":
-                    try:
-                        rec["eps_diluted"] = float(eps)
-                    except:
-                        pass
-    except Exception as e:
-        print(f"[warn] Alpha Vantage earnings error for {symbol}: {e}")
-    
-    if not rows:
-        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
-    
-    df = pd.DataFrame(list(rows.values()))
-    df = df.sort_values("end", ascending=False).drop_duplicates("end", keep="first")
-    
+        return pd.DataFrame(columns=ANNUAL_FALLBACK_COLUMNS)
+
+    rows: Dict[str, dict] = {}
+
+    # Income statement for revenue
+    income = _alphavantage_get("INCOME_STATEMENT", symbol, api_key, timeout)
+    for report in _provider_list(income, "annualReports")[:years_to_fetch]:
+        fiscal_end = report.get("fiscalDateEnding")
+        if not isinstance(fiscal_end, str) or not fiscal_end:
+            continue
+        rec = rows.setdefault(fiscal_end, {"end": fiscal_end, "source": "alphavantage"})
+        rev = _to_finite_float(report.get("totalRevenue"))
+        if rev is not None:
+            rec["revenue"] = rev
+
+    # Earnings for EPS
+    earnings = _alphavantage_get("EARNINGS", symbol, api_key, timeout)
+    for report in _provider_list(earnings, "annualEarnings")[:years_to_fetch]:
+        fiscal_end = report.get("fiscalDateEnding")
+        if not isinstance(fiscal_end, str) or not fiscal_end:
+            continue
+        rec = rows.setdefault(fiscal_end, {"end": fiscal_end, "source": "alphavantage"})
+        eps = _to_finite_float(report.get("reportedEPS"))
+        if eps is not None:
+            rec["eps_diluted"] = eps
+
+    df = _annual_fallback_frame(rows)
+
     # Filter out records where revenue is NULL - these are typically TTM/LTM values
     # from the EARNINGS endpoint that don't have corresponding annual revenue data.
     # This prevents phantom records like "2025-09-30" with EPS but no revenue.
-    df = df[df["revenue"].notna()].copy()
-    
-    return df
+    # When INCOME_STATEMENT returned nothing, this leaves no Alpha Vantage rows.
+    return df[df["revenue"].notna()].copy()
 
 
 # ============================================================================
@@ -1349,67 +1390,55 @@ def fmp_annual_financials(symbol: str, api_key: str, years_to_fetch: int = 6, ti
     Returns DataFrame with columns: end, revenue, eps_diluted, source
     """
     if not api_key:
-        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
-    
-    base = "https://financialmodelingprep.com/stable"
-    rows = {}
-    
+        return pd.DataFrame(columns=ANNUAL_FALLBACK_COLUMNS)
+
+    rows: Dict[str, dict] = {}
+
     try:
         # Income statement endpoint provides revenue, net income, and EPS
-        url = f"{base}/income-statement?symbol={symbol}&apikey={api_key}"
-        r = requests.get(url, timeout=timeout)
-        
-        if r.status_code == 200:
-            data = r.json()
-            
-            # Response is a list of annual reports, most recent first
-            for item in (data or [])[:years_to_fetch]:
-                # Only process annual (FY) periods
-                period = item.get("period", "")
-                if period != "FY":
-                    continue
-                
-                # Get fiscal year end date
-                end = item.get("date")  # Format: "2025-09-30"
-                if not end:
-                    continue
-                
-                rec = rows.setdefault(end, {"end": end, "source": "fmp"})
-                
-                # Revenue
-                rev = item.get("revenue")
-                if rev is not None:
-                    try:
-                        rec["revenue"] = float(rev)
-                    except:
-                        pass
-                
-                # EPS Diluted
-                eps = item.get("epsDiluted")
-                if eps is not None:
-                    try:
-                        rec["eps_diluted"] = float(eps)
-                    except:
-                        pass
-        elif r.status_code == 402:
-            # Premium required for this ticker - silently skip (expected for some tickers)
-            pass
-        elif r.status_code == 429:
-            print(f"[warn] FMP rate limit reached for {symbol}")
-        elif r.status_code >= 500:
-            print(f"[warn] FMP server error for {symbol}: HTTP {r.status_code}")
-        # Note: 4xx errors (except 402/429) are silently skipped as they indicate
-        # the ticker is not available on FMP free tier
-            
-    except Exception as e:
-        print(f"[warn] FMP error for {symbol}: {e}")
-    
-    if not rows:
-        return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
-    
-    df = pd.DataFrame(list(rows.values()))
-    df = df.sort_values("end", ascending=False).drop_duplicates("end", keep="first")
-    return df
+        r = requests.get(
+            "https://financialmodelingprep.com/stable/income-statement",
+            params={"symbol": symbol, "apikey": api_key},
+            timeout=timeout,
+        )
+        status = r.status_code
+        data = r.json() if status == 200 else None
+    except Exception as e:  # network error or non-JSON body
+        print(f"[warn] FMP error for {symbol}: {type(e).__name__}")
+        return pd.DataFrame(columns=ANNUAL_FALLBACK_COLUMNS)
+
+    if status == 402:
+        # Premium required for this ticker - silently skip (expected for some tickers)
+        pass
+    elif status == 429:
+        print(f"[warn] FMP rate limit reached for {symbol}")
+    elif status >= 500:
+        print(f"[warn] FMP server error for {symbol}: HTTP {status}")
+    elif status == 200 and not isinstance(data, list):
+        # FMP reports limits/errors with HTTP 200 and a dict body, e.g. {"Error Message": ...}
+        print(f"[warn] FMP returned no data for {symbol}")
+    # Note: other 4xx errors are silently skipped as they indicate
+    # the ticker is not available on FMP free tier
+
+    # Response is a list of annual reports, most recent first
+    for item in _provider_list(data)[:years_to_fetch]:
+        # Only process annual (FY) periods
+        if item.get("period", "") != "FY":
+            continue
+
+        end = item.get("date")  # Format: "2025-09-30"
+        if not isinstance(end, str) or not end:
+            continue
+
+        rec = rows.setdefault(end, {"end": end, "source": "fmp"})
+        rev = _to_finite_float(item.get("revenue"))
+        if rev is not None:
+            rec["revenue"] = rev
+        eps = _to_finite_float(item.get("epsDiluted"))
+        if eps is not None:
+            rec["eps_diluted"] = eps
+
+    return _annual_fallback_frame(rows)
 
 
 # ============================================================================

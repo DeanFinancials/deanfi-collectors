@@ -23,6 +23,9 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   FINNHUB_API_KEY: "${{ secrets.FINNHUB_API_KEY }}"
+  # Optional annual-data fallbacks; an unset secret is empty and the collector skips that source.
+  ALPHA_VANTAGE_API_KEY: "${{ secrets.ALPHA_VANTAGE_API_KEY }}"
+  FMP_API_KEY: "${{ secrets.FMP_API_KEY }}"
   DATA_REPO: "${{ github.repository_owner }}/deanfi-data"
   DATA_REPO_TOKEN: "${{ secrets.DATA_REPO_TOKEN }}"
 

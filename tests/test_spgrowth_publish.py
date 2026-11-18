@@ -133,3 +133,64 @@ def test_save_growth_output_drops_structurally_empty_records(tmp_path: Path) -> 
     # can safely read growth.ttm.*.
     for ticker, company in companies.items():
         assert company["growth"]["ttm"] is not None, f"{ticker} published with null ttm"
+
+
+# ---------------------------------------------------------------------------
+# Website contract: fields deanfi-website reads (src/types/sp500growth.ts,
+# src/utils/sp500-growth-data.ts, components/stocks/sp500-index|sp500-growth|
+# sector-fundamentals). Keys must exist; numbers are int/float/None.
+# ---------------------------------------------------------------------------
+
+_NUM = (int, float, type(None))
+COMPANY_KEYS = {
+    "ticker", "sector", "cik", "company_name", "extracted_at",
+    "annual_values", "quarterly_values", "growth", "errors",
+}
+GROWTH_KEYS = {
+    "revenue_yoy", "eps_yoy", "ttm",
+    "revenue_cagr_3yr", "eps_cagr_3yr", "revenue_cagr_5yr", "eps_cagr_5yr",
+}
+TTM_KEYS = {"revenue", "eps_diluted", "revenue_yoy", "eps_yoy", "as_of_quarter", "source"}
+
+
+def assert_company_contract(ticker: str, c: dict, *, allow_null_ttm: bool = False) -> None:
+    assert set(c) == COMPANY_KEYS, f"{ticker}: keys {sorted(c)}"
+    assert c["ticker"] == ticker
+    for k in ("ticker", "sector", "cik", "extracted_at"):
+        assert isinstance(c[k], str), f"{ticker}.{k}"
+    assert isinstance(c["company_name"], (str, type(None)))
+    assert isinstance(c["errors"], list) and all(isinstance(e, str) for e in c["errors"])
+    for section in ("annual_values", "quarterly_values"):
+        assert isinstance(c[section], dict)
+        for label, vals in c[section].items():
+            assert isinstance(label, str)
+            assert set(vals) == {"revenue", "eps"}, f"{ticker}.{section}.{label}"
+            assert all(isinstance(v, _NUM) and not isinstance(v, bool) for v in vals.values())
+    g = c["growth"]
+    assert set(g) == GROWTH_KEYS, f"{ticker}.growth keys {sorted(g)}"
+    for k in ("revenue_yoy", "eps_yoy"):
+        assert isinstance(g[k], dict) and all(isinstance(v, _NUM) for v in g[k].values())
+    for k in ("revenue_cagr_3yr", "eps_cagr_3yr", "revenue_cagr_5yr", "eps_cagr_5yr"):
+        assert isinstance(g[k], _NUM), f"{ticker}.growth.{k}"
+    if g["ttm"] is None:
+        assert allow_null_ttm, f"{ticker}: null ttm"
+        return
+    assert set(g["ttm"]) == TTM_KEYS, f"{ticker}.growth.ttm keys {sorted(g['ttm'])}"
+    for k in ("revenue", "eps_diluted", "revenue_yoy", "eps_yoy"):
+        assert isinstance(g["ttm"][k], _NUM)
+    assert g["ttm"]["source"] in {"sec", "finnhub", "mixed", "annual_fallback"}
+
+
+def test_published_file_matches_website_contract(tmp_path: Path) -> None:
+    out = tmp_path / "sp100growth.json"
+    save_growth_output([_good_company("AAA"), _partial_company()], None, out, "S&P 100", _minimal_config(tmp_path))
+
+    data = json.loads(out.read_text())
+
+    assert {"_README", "metadata", "companies"} <= set(data)
+    meta = data["metadata"]
+    assert isinstance(meta["generated_at"], str)
+    assert isinstance(meta["ticker_count"], int) and isinstance(meta["successful_extractions"], int)
+    assert meta["universe"] == "S&P 100"
+    for ticker, company in data["companies"].items():
+        assert_company_contract(ticker, company, allow_null_ttm=(ticker == "PARTIAL"))

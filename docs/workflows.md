@@ -36,13 +36,14 @@ Set in **Settings → Secrets and variables → Actions**.
 | `FINNHUB_API_KEY` | `daily-news.yml`, `analyst-trends.yml`, `earnings-calendar.yml`, `earnings-surprises.yml`, `sp-growth.yml` |
 | `FRED_API_KEY` | `economy-indicators.yml`, `education-facts.yml` |
 | `ALPACA_API_KEY`, `ALPACA_API_SECRET` | `options-whales.yml`, `stock-whales.yml`, `support-resistence.yml` |
-| `ALPHA_VANTAGE_API_KEY` | `etf-fund-flows.yml` (optional AUM fallback) |
+| `ALPHA_VANTAGE_API_KEY` | `etf-fund-flows.yml` (optional AUM fallback), `sp-growth.yml` (optional annual revenue/EPS fallback) |
+| `FMP_API_KEY` | `sp-growth.yml` (optional annual revenue/EPS fallback; free tier is 250 calls/day) |
 | `BLS_API_KEY`, `BEA_API_KEY` | `education-facts.yml` (BEA optional) |
 | `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, `GSC_REFRESH_TOKEN` | `gsc-topics.yml` (OAuth 2.0) |
 
 Repository variable `MARKET_INTRADAY_CHAIN_DISABLED=true` stops the intraday handoff chain (see `scheduler/README.md`).
 
-yfinance needs no key. `GITHUB_TOKEN` is read-only on this repo except for the intraday timer job, which gets `actions: write` to dispatch the next run.
+An unset optional secret reaches the collector as an empty string, and the collector skips that source. yfinance needs no key. `GITHUB_TOKEN` is read-only on this repo except for the intraday timer job, which gets `actions: write` to dispatch the next run.
 
 ## Changing or adding a workflow
 

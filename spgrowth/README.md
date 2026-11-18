@@ -155,7 +155,9 @@ alphavantage_enabled: true
 | `ALPHA_VANTAGE_API_KEY` | Optional | Annual fallback |
 | `FMP_API_KEY` | Optional | Final fallback and validation (`fmp` in `config.yml`) |
 
-`sp-growth.yml` passes only `FINNHUB_API_KEY`, so the Alpha Vantage and FMP fallbacks are skipped in CI.
+`sp-growth.yml` passes all three from GitHub Secrets. A missing or empty key skips that fallback; the run continues with the remaining sources.
+
+Alpha Vantage and FMP rate limits arrive as error bodies (`{"Note": ...}`, `{"Information": ...}`, `{"Error Message": ...}`, HTTP 402/429). Each call is parsed on its own: a limited or malformed response gives that source no data for the ticker (or only the fields the other call returned), never an error.
 
 ## Notes
 
