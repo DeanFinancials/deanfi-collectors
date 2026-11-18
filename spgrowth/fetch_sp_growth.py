@@ -74,6 +74,7 @@ from shared.sp100_universe import fetch_sp100_tickers
 from shared.spx_universe import fetch_spx_tickers
 from shared.sector_mapping import get_sector
 from shared.ticker_utils import dedupe_company_tickers
+from shared.fetch_guard import assert_enough_succeeded
 
 
 # ============================================================================
@@ -240,18 +241,44 @@ def fetch_company_facts(ticker: str, user_agent: str) -> Optional[dict]:
 # Finnhub Fallback
 # ============================================================================
 
+FINNHUB_BASE = "https://finnhub.io/api/v1"
+
+
+def _finnhub_get(path: str, params: Dict[str, str], api_key: str, timeout: int) -> requests.Response:
+    """GET a Finnhub endpoint with the key in the X-Finnhub-Token header.
+
+    The key never goes into the URL, so it cannot leak through a requests
+    exception message (which includes the URL) or a logged URL.
+    """
+    return requests.get(
+        f"{FINNHUB_BASE}{path}",
+        params=params,
+        headers={"X-Finnhub-Token": api_key},
+        timeout=timeout,
+    )
+
+
+def _describe_error(e: BaseException) -> str:
+    """Exception type plus HTTP status when known; never the message, which can carry URLs."""
+    response = getattr(e, "response", None)
+    status = getattr(response, "status_code", None)
+    return f"{type(e).__name__} (HTTP {status})" if status is not None else type(e).__name__
+
 def finnhub_quarterly_financials(symbol: str, api_key: str, timeout: int = 15) -> pd.DataFrame:
     """Fetch quarterly revenue and EPS from Finnhub."""
     if not api_key:
         return pd.DataFrame(columns=["end", "revenue", "eps_diluted"])
     
-    base = "https://finnhub.io/api/v1"
     rows = {}
     
     # Income statement for revenue and EPS
     try:
-        url = f"{base}/stock/financials?symbol={symbol}&statement=ic&freq=quarterly&token={api_key}"
-        r = requests.get(url, timeout=timeout)
+        r = _finnhub_get(
+            "/stock/financials",
+            {"symbol": symbol, "statement": "ic", "freq": "quarterly"},
+            api_key,
+            timeout,
+        )
         if r.status_code == 200:
             js = r.json() or {}
             for item in (js.get("data") or []):
@@ -281,8 +308,12 @@ def finnhub_quarterly_financials(symbol: str, api_key: str, timeout: int = 15) -
     # Also try earnings calendar for EPS if not found
     if not any("eps_diluted" in r for r in rows.values()):
         try:
-            url = f"{base}/calendar/earnings?symbol={symbol}&from=2020-01-01&to=2100-01-01&token={api_key}"
-            r = requests.get(url, timeout=timeout)
+            r = _finnhub_get(
+                "/calendar/earnings",
+                {"symbol": symbol, "from": "2020-01-01", "to": "2100-01-01"},
+                api_key,
+                timeout,
+            )
             if r.status_code == 200:
                 js = r.json() or {}
                 for it in (js.get("earningsCalendar") or []):
@@ -336,8 +367,12 @@ def finnhub_as_reported_quarterly_financials(symbol: str, api_key: str, quarters
         return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
     
     try:
-        url = f"https://finnhub.io/api/v1/stock/financials-reported?symbol={symbol}&freq=quarterly&token={api_key}"
-        r = requests.get(url, timeout=timeout)
+        r = _finnhub_get(
+            "/stock/financials-reported",
+            {"symbol": symbol, "freq": "quarterly"},
+            api_key,
+            timeout,
+        )
         if r.status_code != 200:
             return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
         
@@ -610,7 +645,7 @@ def finnhub_as_reported_quarterly_financials(symbol: str, api_key: str, quarters
         return df.head(quarters_to_fetch)
         
     except Exception as e:
-        print(f"[warn] Finnhub As Reported quarterly error for {symbol}: {e}")
+        print(f"[warn] Finnhub As Reported quarterly error for {symbol}: {_describe_error(e)}")
         return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
 
 
@@ -1154,13 +1189,16 @@ def finnhub_annual_financials(symbol: str, api_key: str, years_to_fetch: int = 6
     if not api_key:
         return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
     
-    base = "https://finnhub.io/api/v1"
     rows = {}
     
     # Income statement for revenue (annual frequency)
     try:
-        url = f"{base}/stock/financials?symbol={symbol}&statement=ic&freq=annual&token={api_key}"
-        r = requests.get(url, timeout=timeout)
+        r = _finnhub_get(
+            "/stock/financials",
+            {"symbol": symbol, "statement": "ic", "freq": "annual"},
+            api_key,
+            timeout,
+        )
         if r.status_code == 200:
             js = r.json() or {}
             for item in (js.get("data") or [])[:years_to_fetch]:
@@ -1221,10 +1259,13 @@ def finnhub_as_reported_annual_financials(symbol: str, api_key: str, years_to_fe
     if not api_key:
         return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
     
-    url = f"https://finnhub.io/api/v1/stock/financials-reported?symbol={symbol}&freq=annual&token={api_key}"
-    
     try:
-        r = requests.get(url, timeout=timeout)
+        r = _finnhub_get(
+            "/stock/financials-reported",
+            {"symbol": symbol, "freq": "annual"},
+            api_key,
+            timeout,
+        )
         if r.status_code != 200:
             return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
         
@@ -1365,7 +1406,7 @@ def finnhub_as_reported_annual_financials(symbol: str, api_key: str, years_to_fe
         return df
         
     except Exception as e:
-        print(f"[warn] Finnhub As Reported error for {symbol}: {e}")
+        print(f"[warn] Finnhub As Reported error for {symbol}: {_describe_error(e)}")
         return pd.DataFrame(columns=["end", "revenue", "eps_diluted", "source"])
 
 
@@ -2328,6 +2369,30 @@ def is_publishable_company(data: CompanyData) -> bool:
     return has_annual or has_quarterly or has_ttm
 
 
+def publishable_results(
+    results: List[CompanyData],
+    ticker_filter: Optional[Set[str]],
+    universe_name: str,
+) -> List[CompanyData]:
+    """The records that go into a universe's JSON: in the universe and publishable.
+
+    Structurally-empty junk records (unresolved CIK / no usable data) are
+    dropped so they never reach the published JSON. See is_publishable_company.
+    """
+    if ticker_filter:
+        filtered_results = [r for r in results if r.ticker in ticker_filter]
+    else:
+        filtered_results = results
+
+    excluded = sorted(r.ticker for r in filtered_results if not is_publishable_company(r))
+    if excluded:
+        print(
+            f"[warn] {universe_name}: excluded {len(excluded)} unpublishable ticker(s) "
+            f"(no CIK or no usable data): {', '.join(excluded)}"
+        )
+    return [r for r in filtered_results if is_publishable_company(r)]
+
+
 def save_growth_output(
     results: List[CompanyData],
     ticker_filter: Optional[Set[str]],
@@ -2345,21 +2410,7 @@ def save_growth_output(
         universe_name: Name for metadata (e.g., "S&P 100", "S&P 500")
         config: Configuration object
     """
-    # Filter results if needed
-    if ticker_filter:
-        filtered_results = [r for r in results if r.ticker in ticker_filter]
-    else:
-        filtered_results = results
-
-    # Drop structurally-empty junk records (unresolved CIK / no usable data) so
-    # they never reach the published JSON. See is_publishable_company.
-    excluded = sorted(r.ticker for r in filtered_results if not is_publishable_company(r))
-    if excluded:
-        print(
-            f"[warn] {universe_name}: excluded {len(excluded)} unpublishable ticker(s) "
-            f"(no CIK or no usable data): {', '.join(excluded)}"
-        )
-    filtered_results = [r for r in filtered_results if is_publishable_company(r)]
+    filtered_results = publishable_results(results, ticker_filter, universe_name)
 
     # Count successes
     success_count = sum(1 for r in filtered_results if r.annual_data)
@@ -2486,20 +2537,30 @@ def main():
         else:
             print("no data found")
     
-    # Create output directory
-    config.output_dir.mkdir(parents=True, exist_ok=True)
-    
-    print(f"\n[info] Saving output files...")
-    
-    # Save SP100 output (filtered from full results)
+    # (file name, universe name, published records, universe size). The S&P
+    # 100 file is filtered from the full results; the S&P 500 file is all of them.
+    outputs = []
     if output_sp100:
-        sp100_path = config.output_dir / "sp100growth.json"
-        save_growth_output(results, sp100_tickers, sp100_path, "S&P 100", config)
-    
-    # Save SP500 output (all results)
+        outputs.append(("sp100growth.json", "S&P 100",
+                        publishable_results(results, sp100_tickers, "S&P 100"), len(sp100_tickers)))
     if output_sp500:
-        sp500_path = config.output_dir / "sp500growth.json"
-        save_growth_output(results, None, sp500_path, "S&P 500", config)
+        outputs.append(("sp500growth.json", "S&P 500",
+                        publishable_results(results, None, "S&P 500"), len(tickers)))
+
+    # Check every universe before writing any file: if one has zero publishable
+    # companies the run exits 1 and writes neither, so the workflow copies
+    # nothing and both last-good files in deanfi-data stay.
+    for file_name, universe_name, published, universe_size in outputs:
+        assert_enough_succeeded(
+            len(published),
+            universe_size,
+            label=f"spgrowth {file_name}",
+        )
+
+    config.output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"\n[info] Saving output files...")
+    for file_name, universe_name, published, _ in outputs:
+        save_growth_output(published, None, config.output_dir / file_name, universe_name, config)
     
     print(f"\n[ok] Successfully extracted data for {success_count}/{len(tickers)} total tickers")
 

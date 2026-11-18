@@ -68,7 +68,7 @@ yfinance price history is cached as parquet by `shared/cache_manager.py` (`Cache
 
 Yahoo Finance rate-limits runners (HTTP 429) and can return nonempty responses with null closes. Collectors must fail rather than overwrite good data with empty or null payloads. The layers:
 
-- `shared/fetch_guard.py` (`assert_enough_succeeded`): yfinance snapshot scripts in `majorindexes/`, `impliedvol/` and `meanreversion/` exit 1 when zero tickers succeed, so the workflow never stages an empty file.
+- `shared/fetch_guard.py` (`assert_enough_succeeded`): a collector exits 1 without writing when zero tickers succeed, so the workflow never stages an empty file. Callers: the yfinance snapshot scripts in `majorindexes/`, `impliedvol/` and `meanreversion/`; `etffundflows/fetch_etf_fund_flows.py` (a ticker succeeds when its session point has AUM); and `spgrowth/fetch_sp_growth.py`, which counts the companies each universe file would publish and, if either `sp100growth.json` or `sp500growth.json` would have none, writes neither.
 - `shared/yf_retry.py` (`with_429_retry`): retries a yfinance call after a sleep on rate-limit errors (default one retry after 30 seconds), and optionally on empty or all-null frames.
 - `shared/yf_session.py` (`make_session`): a curl_cffi session impersonating Chrome, which Yahoo blocks less often; falls back to yfinance's default transport.
 - Snapshot generation rejects unusable latest or prior closes, sector success counts reflect emitted observations, and daily breadth needs usable current/prior close pairs (`tests/test_daily_breadth_validity.py`).
