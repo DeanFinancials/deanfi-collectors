@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Any
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.spx_universe import get_spx_tickers
+from shared.redact import redact_secrets
 
 
 class EarningsCalendarFetcher:
@@ -114,11 +115,12 @@ class EarningsCalendarFetcher:
             'from': from_date,
             'to': to_date,
             'symbol': symbol,
-            'token': self.api_key
         }
+        # Key in the header, not the URL, so it cannot leak via exception messages.
+        headers = {'X-Finnhub-Token': self.api_key}
         
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, headers=headers, timeout=10)
             self.stats['api_calls'] += 1
             
             if response.status_code == 200:
@@ -138,7 +140,7 @@ class EarningsCalendarFetcher:
                 return None
                 
         except Exception as e:
-            print(f"  ✗ {symbol}: API error - {e}")
+            print(f"  ✗ {symbol}: API error - {redact_secrets(e)}")
             self.stats['failed'] += 1
             return None
     

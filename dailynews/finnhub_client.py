@@ -10,6 +10,10 @@ import time
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from shared.redact import redact_secrets  # noqa: E402
 
 
 class FinnhubClient:
@@ -68,11 +72,12 @@ class FinnhubClient:
         if params is None:
             params = {}
         
-        params['token'] = self.api_key
+        # Key in the header, not the URL, so it cannot leak via exception messages.
+        headers = {'X-Finnhub-Token': self.api_key}
         url = f"{self.base_url}{endpoint}"
         
         try:
-            response = self.session.get(url, params=params, timeout=20)
+            response = self.session.get(url, params=params, headers=headers, timeout=20)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
@@ -81,11 +86,11 @@ class FinnhubClient:
                 time.sleep(1)
                 return self._make_request(endpoint, params)  # Retry
             else:
-                print(f"HTTP Error: {e}", file=sys.stderr)
-                print(f"Response: {response.text}", file=sys.stderr)
+                print(f"HTTP Error: {redact_secrets(e)}", file=sys.stderr)
+                print(f"Response: {redact_secrets(response.text)}", file=sys.stderr)
                 raise
         except requests.exceptions.RequestException as e:
-            print(f"Request Error: {e}", file=sys.stderr)
+            print(f"Request Error: {redact_secrets(e)}", file=sys.stderr)
             raise
     
     def get_market_news(self, category: str = "general", min_id: int = 0) -> List[Dict]:
@@ -159,7 +164,7 @@ class FinnhubClient:
                 print(f"  {symbol}: {len(news)} articles", file=sys.stderr)
             return news
         except Exception as e:
-            print(f"  {symbol}: Error - {e}", file=sys.stderr)
+            print(f"  {symbol}: Error - {redact_secrets(e)}", file=sys.stderr)
             return []
     
     def get_company_news_batch(

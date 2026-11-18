@@ -30,6 +30,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from shared.fetch_guard import assert_enough_succeeded  # noqa: E402
+from shared.redact import redact_secrets  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -250,7 +251,8 @@ def alphavantage_etf_profile(symbol: str, api_key: str, timeout_seconds: int) ->
             return None
         return payload if isinstance(payload, dict) else None
     except Exception as e:
-        print(f"[warn] Alpha Vantage request failed for {symbol}: {e}", file=sys.stderr)
+        # The message can carry the request URL, which includes apikey.
+        print(f"[warn] Alpha Vantage request failed for {symbol}: {redact_secrets(e)}", file=sys.stderr)
         return None
 
 

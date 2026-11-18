@@ -25,6 +25,7 @@ Toolchain and engineering rules beyond the invariants in `AGENTS.md`.
 - yfinance price history goes through `shared/cache_manager.py`. Snapshot scripts call `assert_enough_succeeded` from `shared/fetch_guard.py` before writing.
 - Exit non-zero rather than write an empty or partial payload that would replace good data. Fail-closed contract outputs (`educationfacts/`, `gsctopics/`) write nothing on any source failure.
 - Read settings from the collector's `config.yml` and secrets from environment variables only; never hardcode keys or write them to output.
+- Keep keys out of logs. Send a key in a header when the provider takes one (Finnhub: `X-Finnhub-Token`). When it only takes a query parameter (FRED, Alpha Vantage), never print a request URL, params or a raw exception message: a requests exception's message includes the URL. Pass such text through `redact_secrets` from `shared/redact.py`, or print only the exception type and HTTP status.
 - Write output with UTC ISO 8601 timestamps. Dataset outputs follow the existing shape: a `_README` block (title, description, metric explanations), `metadata` (generation time, source, counts) and the data body. Do not rename or reshape a published field without updating the website consumer in the same change.
 - Add a test under `tests/` for new parsing, guard or publication logic. Network calls in tests must be mocked.
 

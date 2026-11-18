@@ -20,6 +20,7 @@ from collections import OrderedDict
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.spx_universe import get_spx_tickers
+from shared.redact import redact_secrets
 
 
 class RecommendationTrendsFetcher:
@@ -75,13 +76,12 @@ class RecommendationTrendsFetcher:
         self._rate_limit()
         
         url = f"{self.base_url}/stock/recommendation"
-        params = {
-            "symbol": symbol,
-            "token": self.api_key
-        }
+        params = {"symbol": symbol}
+        # Key in the header, not the URL, so it cannot leak via exception messages.
+        headers = {"X-Finnhub-Token": self.api_key}
         
         try:
-            response = self.session.get(url, params=params, timeout=20)
+            response = self.session.get(url, params=params, headers=headers, timeout=20)
             self.request_count += 1
             
             if debug:
@@ -90,7 +90,7 @@ class RecommendationTrendsFetcher:
                 print(f"  Status: {response.status_code}", file=sys.stderr)
                 print(f"  Headers: {dict(response.headers)}", file=sys.stderr)
                 print(f"  Response length: {len(response.text)} chars", file=sys.stderr)
-                print(f"  Response preview: {response.text[:200]}", file=sys.stderr)
+                print(f"  Response preview: {redact_secrets(response.text[:200])}", file=sys.stderr)
             
             # Handle rate limit before raising for status
             if response.status_code == 429:
@@ -115,7 +115,7 @@ class RecommendationTrendsFetcher:
             print(f"⚠️  Timeout for {symbol}", file=sys.stderr)
             return None
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error fetching {symbol}: {e}", file=sys.stderr)
+            print(f"❌ Error fetching {symbol}: {redact_secrets(e)}", file=sys.stderr)
             return None
         except json.JSONDecodeError as e:
             print(f"❌ JSON decode error for {symbol}: {e}", file=sys.stderr)

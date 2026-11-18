@@ -11,8 +11,22 @@ from datetime import datetime, timedelta
 import pandas as pd
 from dotenv import load_dotenv
 
+try:  # imported as shared.fred_client (repo root on sys.path)
+    from shared.redact import redact_secrets
+except ImportError:  # imported as fred_client (shared/ on sys.path), as the collectors do
+    from redact import redact_secrets
+
 # Load environment variables
 load_dotenv()
+
+
+def _redacted_copy(e: requests.RequestException) -> requests.RequestException:
+    """Same exception type, message with any api_key value redacted."""
+    message = redact_secrets(e)
+    try:
+        return type(e)(message, response=getattr(e, "response", None))
+    except Exception:  # an exception type with an unusual constructor
+        return requests.RequestException(message, response=getattr(e, "response", None))
 
 
 class FREDClient:
@@ -72,11 +86,17 @@ class FREDClient:
         params["api_key"] = self.api_key
         params["file_type"] = "json"
         
-        response = self.session.get(url, params=params, timeout=timeout)
+        try:
+            response = self.session.get(url, params=params, timeout=timeout)
+        except requests.RequestException as e:
+            # The message carries the prepared URL, which includes api_key. Re-raise
+            # the same type with a redacted message and no chained original.
+            raise _redacted_copy(e) from None
         if response.status_code >= 400:
-            # Include response text for easier debugging of API errors.
+            # Name the series and status; never the params (they hold api_key).
             raise requests.HTTPError(
-                f"FRED API error {response.status_code} for {endpoint} with params {params}: {response.text}",
+                f"FRED API error {response.status_code} for {endpoint} "
+                f"(series_id={params.get('series_id')}): {redact_secrets(response.text)}",
                 response=response,
             )
 
@@ -220,7 +240,7 @@ class FREDClient:
                 )
                 results[series_id] = df
             except Exception as e:
-                print(f"Warning: Failed to fetch {series_id}: {e}")
+                print(f"Warning: Failed to fetch {series_id}: {redact_secrets(e)}")
                 results[series_id] = pd.DataFrame(columns=["date", "value"])
         
         return results

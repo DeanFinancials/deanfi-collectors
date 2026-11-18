@@ -34,6 +34,7 @@ Collector READMEs with dataset detail: `consumercredit/README.md`, `etffundflows
 | `spx_universe.py` | S&P 500 constituents: Wikipedia first, then `Schwab-Tickers-Combined-Final.csv` (rows whose `Index` contains `S&P 500`), then a GitHub dataset, then a hardcoded list. The single source of truth; no collector-local copies. |
 | `sp100_universe.py` | S&P 100 constituents. |
 | `sector_mapping.py`, `ticker_metadata.py`, `ticker_utils.py` | GICS sector lookup (backed by the Schwab CSV) and ticker normalisation (`BRK-B` ↔ `BRK.B`). |
+| `redact.py` | `redact_secrets`: strips `api_key`/`apikey`/`token` values from text before it is printed or logged. |
 | `fred_client.py`, `economy_indicators.py`, `economy_compute.py`, `economy_io.py` | FRED client, indicator definitions, percentile grading and JSON I/O for the economy collectors. |
 
 `organized_etf_list.csv` at the repo root is the ETF universe for `etffundflows/`.

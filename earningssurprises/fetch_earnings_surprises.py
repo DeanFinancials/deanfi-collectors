@@ -32,6 +32,7 @@ from collections import deque
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.spx_universe import get_spx_tickers
+from shared.redact import redact_secrets
 
 
 class EarningsSurprisesFetcher:
@@ -109,11 +110,12 @@ class EarningsSurprisesFetcher:
         params = {
             'symbol': symbol,
             'limit': self.quarters_limit,
-            'token': self.api_key
         }
+        # Key in the header, not the URL, so it cannot leak via exception messages.
+        headers = {'X-Finnhub-Token': self.api_key}
         
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, headers=headers, timeout=10)
             response.raise_for_status()
             
             data = response.json()
@@ -135,7 +137,7 @@ class EarningsSurprisesFetcher:
             return data
             
         except requests.exceptions.RequestException as e:
-            print(f"  ✗ {symbol}: API error - {str(e)}")
+            print(f"  ✗ {symbol}: API error - {redact_secrets(e)}")
             self.stats['failed'] += 1
             return None
         except json.JSONDecodeError:
