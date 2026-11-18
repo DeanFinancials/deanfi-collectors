@@ -29,7 +29,8 @@ from datetime import datetime
 
 # Add parent directory to path for shared modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from shared.cache_manager import CachedDataFetcher
+from shared.fetch_guard import assert_enough_succeeded
+from shared.yf_frames import cached_ticker_frames
 
 from utils import (
     calculate_sma,
@@ -71,6 +72,9 @@ MA_PAIRS = [
 ]
 
 
+_CACHED_FRAMES: dict = {}
+
+
 def fetch_index_data(symbol: str, period: str = "5y", cache_dir: str = None) -> pd.DataFrame:
     """
     Fetch historical data for an ETF with optional caching.
@@ -85,23 +89,18 @@ def fetch_index_data(symbol: str, period: str = "5y", cache_dir: str = None) -> 
     """
     # Use caching if cache_dir provided
     if cache_dir:
-        cache_dir_path = Path(cache_dir)
-        cache_dir_path.mkdir(parents=True, exist_ok=True)
-        
-        fetcher = CachedDataFetcher(cache_dir=str(cache_dir_path))
-        df = fetcher.fetch_prices(
-            tickers=[symbol],
+        # Both meanreversion scripts request the same ETFs and period, so they
+        # share one cache key and the second reuses the first's download in CI.
+        frames = cached_ticker_frames(
+            [idx['symbol'] for idx in INDICES],
             period=period,
-            cache_name="meanreversion_ma_spreads"
+            cache_dir=cache_dir,
+            prefix="meanreversion",
+            memo=_CACHED_FRAMES,
+            reuse_within_run=True,
         )
-        
-        if symbol in df.columns:
-            result = df[symbol].to_frame()
-            result.columns = pd.MultiIndex.from_product([[symbol], ['Close']])
-            # For ETFs, yfinance returns simple dataframe, flatten it
-            if len(result.columns.levels) > 1:
-                result = result.droplevel(0, axis=1)
-            return result.tail(FETCH_DAYS)
+        if symbol in frames:
+            return frames[symbol].tail(FETCH_DAYS)
     
     # Fallback to direct yfinance
     ticker = yf.Ticker(symbol)
@@ -451,6 +450,17 @@ def main():
     snapshot_file = output_dir / config['output_files']['ma_spreads']['snapshot']
     historical_file = output_dir / config['output_files']['ma_spreads']['historical']
     
+    # Guard both outputs before writing either, so a failed run leaves both files as they were.
+    assert_enough_succeeded(
+        successful=len(snapshot_data['indices']),
+        total=len(INDICES),
+        label="ma_spreads snapshot",
+    )
+    assert_enough_succeeded(
+        successful=len(historical_data['indices']),
+        total=len(INDICES),
+        label="ma_spreads historical",
+    )
     print(f"\nSaving snapshot to {snapshot_file}...", file=sys.stderr)
     save_json(snapshot_data, str(snapshot_file))
     

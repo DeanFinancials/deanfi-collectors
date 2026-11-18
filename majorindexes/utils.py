@@ -678,6 +678,26 @@ def dataframe_to_daily_records(df: pd.DataFrame) -> List[Dict]:
     return records
 
 
+# The direct download asks Yahoo for 1y and retries with 2y when 1y has fewer
+# than historical_days rows, so a 2y cached history always covers that tail.
+INDEX_CACHE_PERIOD = "2y"
+
+
+def cached_index_frame(symbol: str, universe: List[str], cache_dir: str, memo: dict) -> Optional[pd.DataFrame]:
+    """Return `symbol`'s OHLCV rows from the price cache, or None to download it directly.
+
+    The script's whole `universe` is fetched once under one cache key (memoized
+    in `memo`); a symbol outside it is fetched under its own key.
+    """
+    from shared.yf_frames import cached_ticker_frames  # scripts put the repo root on sys.path after importing utils
+
+    symbols = list(universe) if symbol in universe else [symbol]
+    frames = cached_ticker_frames(
+        symbols, period=INDEX_CACHE_PERIOD, cache_dir=cache_dir, prefix="majorindexes", memo=memo
+    )
+    return frames.get(symbol)
+
+
 def drop_rows_without_close(df: pd.DataFrame) -> pd.DataFrame:
     """Remove yfinance placeholder rows (e.g. today's unfinished session) that have no Close."""
     return df.dropna(subset=["Close"])

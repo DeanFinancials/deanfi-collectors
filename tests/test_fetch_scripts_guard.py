@@ -1,5 +1,5 @@
 """Structural tests verifying the assert_enough_succeeded guard is wired
-into the 9 per-ticker fetch_*.py scripts (see docs/architecture.md).
+into the per-ticker fetch_*.py scripts (see docs/architecture.md).
 
 We use a structural test (read source as text, verify call patterns) instead
 of an integration test because the fetch_*.py modules import pandas,
@@ -44,6 +44,11 @@ SCRIPTS = [
     ("impliedvol/fetch_vix_options.py",      r"\bjson\.dump\(", 1),
     ("impliedvol/fetch_major_indices_iv.py", r"\bjson\.dump\(", 1),
     ("meanreversion/fetch_price_vs_ma.py",   r"\bsave_json\(",  2),
+    ("meanreversion/fetch_ma_spreads.py",    r"\bsave_json\(",  2),
+    ("majorindexes/fetch_currency.py",       r"\bsave_json\(",  2),
+    ("majorindexes/fetch_dow_family.py",     r"\bsave_json\(",  2),
+    ("majorindexes/fetch_emerging.py",       r"\bsave_json\(",  2),
+    ("majorindexes/fetch_equal_weight.py",   r"\bsave_json\(",  2),
 ]
 
 # How many source lines before a save_json call we accept as "the guard

@@ -5,14 +5,27 @@ import pandas as pd
 from datetime import datetime, timedelta
 import yaml
 import os
-from utils import *
+# Explicit names: `from utils import *` also imported datetime.time over the
+# time module, so time.sleep raised after every symbol.
+from utils import (
+    calculate_all_technical_indicators,
+    calculate_returns,
+    calculate_52_week_metrics,
+    calculate_statistics,
+    calculate_pivot_points,
+    dataframe_to_daily_records,
+    get_current_snapshot_from_info,
+    create_index_metadata,
+    save_json,
+    format_timestamp,
+)
 import sys
 import argparse
 from pathlib import Path
 
 # Add parent directory to path for shared modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from shared.cache_manager import CachedDataFetcher
+from utils import cached_index_frame
 from shared.fetch_guard import assert_enough_succeeded
 from shared.yf_session import make_session
 from shared.yf_retry import with_429_retry
@@ -27,18 +40,17 @@ COMMODITY_CONFIG = config['commodity_indices']
 INDICES = COMMODITY_CONFIG['indices']
 HISTORICAL_DAYS = config['settings']['historical_days']
 
+# Symbols fetched together through the price cache (one download, one cache key).
+CACHE_SYMBOLS = [idx['symbol'] for idx in INDICES]
+_CACHED_FRAMES: dict = {}
+
+
 def fetch_index_data(symbol: str, period: str = "1y", cache_dir: str = None) -> pd.DataFrame:
     """Fetch index data with optional caching."""
     if cache_dir:
-        cache_dir_path = Path(cache_dir)
-        cache_dir_path.mkdir(parents=True, exist_ok=True)
-        fetcher = CachedDataFetcher(cache_dir=str(cache_dir_path))
-        df = fetcher.fetch_prices([symbol], period=period, cache_name=f"majorindexes_{Path(__file__).stem}")
-        if symbol in df.columns:
-            result = df[symbol].to_frame()
-            if hasattr(result.columns, 'levels') and len(result.columns.levels) > 1:
-                result = result.droplevel(0, axis=1)
-            return result.tail(HISTORICAL_DAYS)
+        cached = cached_index_frame(symbol, CACHE_SYMBOLS, cache_dir, _CACHED_FRAMES)
+        if cached is not None:
+            return cached.tail(HISTORICAL_DAYS)
     
     ticker = yf.Ticker(symbol, session=YF_SESSION)
     df = with_429_retry(ticker.history, period=period)

@@ -30,6 +30,7 @@ Collector READMEs with dataset detail: `consumercredit/README.md`, `etffundflows
 | Module | Purpose |
 |---|---|
 | `cache_manager.py` | `CachedDataFetcher`: parquet price cache with incremental yfinance downloads (see `docs/architecture.md`). |
+| `yf_frames.py` | `ticker_frame` reads one ticker from any yfinance column layout; `cached_ticker_frames` fetches a script's whole symbol set through the price cache under one key per (symbol set, period), used by `majorindexes/` and `meanreversion/`. |
 | `fetch_guard.py`, `yf_retry.py`, `yf_session.py` | yfinance failure guards (see `docs/architecture.md`). |
 | `spx_universe.py` | S&P 500 constituents: Wikipedia first, then `Schwab-Tickers-Combined-Final.csv` (rows whose `Index` contains `S&P 500`), then a GitHub dataset, then a hardcoded list. The single source of truth; no collector-local copies. |
 | `sp100_universe.py` | S&P 100 constituents. |

@@ -20,7 +20,7 @@ from pathlib import Path
 
 # Add parent directory to path for shared modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from shared.cache_manager import CachedDataFetcher
+from utils import cached_index_frame
 from shared.fetch_guard import assert_enough_succeeded
 from shared.yf_session import make_session
 from shared.yf_retry import with_429_retry
@@ -56,18 +56,17 @@ HISTORICAL_DAYS = config['settings']['historical_days']
 BENCHMARK = SECTOR_CONFIG['benchmark']
 
 
+# Symbols fetched together through the price cache (one download, one cache key).
+CACHE_SYMBOLS = [sector['symbol'] for sector in SECTORS]
+_CACHED_FRAMES: dict = {}
+
+
 def fetch_index_data(symbol: str, period: str = "1y", cache_dir: str = None) -> pd.DataFrame:
     """Fetch historical data for an index with optional caching."""
     if cache_dir:
-        cache_dir_path = Path(cache_dir)
-        cache_dir_path.mkdir(parents=True, exist_ok=True)
-        fetcher = CachedDataFetcher(cache_dir=str(cache_dir_path))
-        df = fetcher.fetch_prices([symbol], period=period, cache_name="majorindexes_sectors")
-        if symbol in df.columns:
-            result = df[symbol].to_frame()
-            if hasattr(result.columns, 'levels') and len(result.columns.levels) > 1:
-                result = result.droplevel(0, axis=1)
-            return result.tail(HISTORICAL_DAYS)
+        cached = cached_index_frame(symbol, CACHE_SYMBOLS, cache_dir, _CACHED_FRAMES)
+        if cached is not None:
+            return cached.tail(HISTORICAL_DAYS)
     
     ticker = yf.Ticker(symbol, session=YF_SESSION)
     df = with_429_retry(ticker.history, period=period)
