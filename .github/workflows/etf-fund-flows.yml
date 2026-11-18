@@ -73,27 +73,47 @@ jobs:
           cp data-cache/etf-fund-flows/etf_fund_flows_*.json etffundflows/output/ 2>/dev/null || true
           ls etffundflows/output | tail -8
 
+      # Fails closed: no continue-on-error. The script writes the month files
+      # in place over the seeded copies, so a crash part-way can leave a
+      # partial file; a failed step skips every publish step below, the job
+      # fails, and deanfi-data keeps its last good files. A first run with
+      # nothing to seed, or a ticker without a prior point, is not a failure:
+      # the script records missing_prior_day and exits 0.
       - name: Generate ETF fund flows
-        continue-on-error: true
+        # Inputs arrive as data through env, never interpolated into the script.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MODE: ${{ inputs.mode }}
+          TICKERS: ${{ inputs.tickers }}
         run: |
+          set -euo pipefail
           cd etffundflows
 
-          # Manual runs default to test mode unless set to full
-          MODE="${{ github.event.inputs.mode }}"
-          TICKERS="${{ github.event.inputs.tickers }}"
-
-          if [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "$EVENT_NAME" = "schedule" ]; then
             echo "Scheduled run: full universe"
             python fetch_etf_fund_flows.py --config ./config.yml
-          else
-            if [ "$MODE" = "full" ]; then
+            exit 0
+          fi
+
+          # Manual runs default to test mode unless set to full
+          case "${MODE:-test}" in
+            full)
               echo "Manual full run"
               python fetch_etf_fund_flows.py --config ./config.yml
-            else
+              ;;
+            test)
+              if [ "${#TICKERS}" -gt 500 ] || ! [[ "$TICKERS" =~ ^[A-Za-z0-9.-]+(\ *,\ *[A-Za-z0-9.-]+)*$ ]]; then
+                echo "::error::tickers must be a comma-separated list of symbols (letters, digits, '.' and '-')"
+                exit 1
+              fi
               echo "Manual test run: tickers=$TICKERS"
               python fetch_etf_fund_flows.py --config ./config.yml --tickers "$TICKERS"
-            fi
-          fi
+              ;;
+            *)
+              echo "::error::mode must be test or full"
+              exit 1
+              ;;
+          esac
 
       - name: Upload test-mode outputs as artifact
         if: env.PUBLISH != 'true'
@@ -115,7 +135,7 @@ jobs:
         if: env.PUBLISH == 'true'
         run: |
           python3 << 'EOF'
-          import json, os
+          import json, subprocess
           from datetime import datetime, timezone
           from pathlib import Path
 
@@ -123,13 +143,18 @@ jobs:
           fp = Path('data-cache/data_freshness.json')
           data = json.loads(fp.read_text()) if fp.exists() else {"sections": {}}
 
-          has_output = any(Path('etffundflows/output').glob('*.json')) if Path('etffundflows/output').exists() else False
-          if has_output:
+          # The output dir always holds the seeded month files, so "has files"
+          # says nothing; only a change against deanfi-data counts as new data.
+          changed = subprocess.run(
+              ['git', 'status', '--porcelain', '--', 'etf-fund-flows'],
+              cwd='data-cache', capture_output=True, text=True, check=True,
+          ).stdout.strip()
+          if changed:
               data["sections"]["etf-fund-flows"] = {"last_updated": now}
               print(f"  ✅ etf-fund-flows: {now}")
           else:
               existing = data.get("sections", {}).get("etf-fund-flows", {}).get("last_updated", "never")
-              print(f"  ⏭  etf-fund-flows: no output, keeping {existing}")
+              print(f"  ⏭  etf-fund-flows: no new data, keeping {existing}")
 
           fp.write_text(json.dumps(data, indent=2))
           print("✅ data_freshness.json written")

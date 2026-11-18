@@ -23,7 +23,7 @@ Cron is UTC. ET equivalents drift by an hour with daylight saving time unless no
 | `education-facts.yml` | `0 4 * * 4` | weekly, Wed night | 15 | education/facts.json |
 | `gsc-topics.yml` | `15 4 * * 1,4` | Sun and Wed nights | 10 | education/topics.json |
 
-All workflows also accept `workflow_dispatch`. Notable inputs: `sp-growth.yml` (`universe`: both, sp100-only, sp500-only), `etf-fund-flows.yml` (`mode`: test or full; only scheduled and `full` runs publish), `daily-news.yml` (`weekly_override` forces weekly-wrap mode, 5 catalysts). Pushes that touch the market collectors, their guards or the workflow files also trigger `market-data-intraday.yml` (main only) and `market-data-close.yml` (see each file's `push.paths`).
+All workflows also accept `workflow_dispatch`. Notable inputs: `sp-growth.yml` (`universe`: both, sp100-only, sp500-only), `etf-fund-flows.yml` (`mode`: test or full; only scheduled and `full` runs publish; `tickers` for test mode, comma-separated symbols of letters, digits, `.` and `-`), `options-whales.yml` (`lookback_days`: 1–60 trading days; `test_mode`), `stock-whales.yml` (`test_mode`), `daily-news.yml` (`weekly_override` forces weekly-wrap mode, 5 catalysts). Pushes that touch the market collectors, their guards or the workflow files also trigger `market-data-intraday.yml` (main only) and `market-data-close.yml` (see each file's `push.paths`).
 
 ## Secrets and variables
 
@@ -46,6 +46,7 @@ yfinance needs no key. `GITHUB_TOKEN` is read-only on this repo except for the i
 ## Changing or adding a workflow
 
 - Copy an existing single-collector workflow (for example `support-resistence.yml`) and keep its structure: both checkouts into the same paths, Python 3.11, the `deanfi-data-repo` concurrency block, a `timeout-minutes`, a `data_freshness.json` update and the commit step from `docs/architecture.md`.
+- Pass `workflow_dispatch` inputs to scripts through `env:` and validate them there; never write `${{ inputs.* }}` inside a `run:` script (`tests/test_workflow_inputs.py`).
 - Pin every third-party action to a full commit SHA with a version comment; `tests/test_workflow_action_pinning.py` enforces this and Dependabot (`.github/dependabot.yml`) groups the updates.
 - `git add` only your section's paths and `data_freshness.json`, never `cache/`.
 - Add the collector to `docs/collectors.md` and the workflow and its secrets to this page.

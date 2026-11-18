@@ -57,26 +57,34 @@ jobs:
         run: python -m pytest tests/test_options_publication.py -q
       
       - name: Fetch options whale trades
+        # Inputs arrive as data through env, never interpolated into the script.
+        env:
+          TEST_MODE: ${{ inputs.test_mode }}
+          LOOKBACK_DAYS: ${{ inputs.lookback_days }}
         run: |
+          set -euo pipefail
           cd optionswhales
-          
-          # Build command with optional flags
-          CMD="python fetch_options_whales.py"
-          
-          if [ "${{ inputs.test_mode }}" = "true" ]; then
-            CMD="$CMD --test"
+
+          ARGS=()
+          if [ "${TEST_MODE:-false}" = "true" ]; then
+            ARGS+=(--test)
             echo "🧪 Running in TEST mode (5 sample tickers)"
           fi
-          
-          if [ -n "${{ inputs.lookback_days }}" ] && [ "${{ inputs.lookback_days }}" != "5" ]; then
-            CMD="$CMD --lookback ${{ inputs.lookback_days }}"
-            echo "📅 Using custom lookback: ${{ inputs.lookback_days }} trading days"
+
+          # Scheduled runs leave LOOKBACK_DAYS empty; the config default (5) applies.
+          if [ -n "${LOOKBACK_DAYS:-}" ] && [ "$LOOKBACK_DAYS" != "5" ]; then
+            if ! [[ "$LOOKBACK_DAYS" =~ ^[0-9]{1,2}$ ]] || [ "$((10#$LOOKBACK_DAYS))" -lt 1 ] || [ "$((10#$LOOKBACK_DAYS))" -gt 60 ]; then
+              echo "::error::lookback_days must be a whole number of trading days from 1 to 60"
+              exit 1
+            fi
+            ARGS+=(--lookback "$((10#$LOOKBACK_DAYS))")
+            echo "📅 Using custom lookback: $((10#$LOOKBACK_DAYS)) trading days"
           fi
-          
+
           echo "🐋 Starting options whale collection..."
-          $CMD
+          python fetch_options_whales.py "${ARGS[@]}"
           echo "✅ Options whale collection complete"
-      
+
       - name: Preserve collected outputs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:

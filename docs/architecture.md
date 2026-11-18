@@ -34,7 +34,8 @@ Exceptions:
 
 - `market-data-intraday.yml` publishes through `scripts/publish_market_data.py` instead of `pull --rebase`. It fetches `origin/main`, re-applies the staged market files on a fresh worktree, re-runs the snapshot validator, and pushes. If another market batch landed during collection it keeps the remote batch and defers its own to the next run. Only non-fast-forward pushes are retried.
 - `options-whales.yml` collects in one job (its own concurrency group, uploads an artifact) and publishes in a short second job that holds the `deanfi-data-repo` lock.
-- `education-facts.yml` and `gsc-topics.yml` are fail-closed (no `continue-on-error`): a failed source fails the job and leaves the last good file in place.
+- `education-facts.yml`, `gsc-topics.yml` and `etf-fund-flows.yml` are fail-closed (no `continue-on-error`): a failed source fails the job, every publish step is skipped, and the last good file stays in place.
+- `etf-fund-flows.yml` seeds `etffundflows/output/` with the published month files before generating, because each day's flow needs the prior session's AUM and NAV. A first run with nothing to seed is not a failure (tickers get `missing_prior_day`). Since the seeded files are always present, it refreshes `last_updated` only when the copy actually changed `etf-fund-flows/` in deanfi-data.
 
 Failure isolation differs by workflow. Economy, analyst trends and similar multi-script workflows mark collector steps `continue-on-error: true` and copy with `2>/dev/null || true`, so one failed source still publishes the rest. The market-data workflows run breadth, index and mean-reversion steps with `set -euo pipefail` (any failure aborts the publish); only implied volatility is best-effort.
 

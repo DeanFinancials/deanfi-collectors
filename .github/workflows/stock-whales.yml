@@ -56,19 +56,20 @@ jobs:
       
       - name: Fetch stock whale trades
         continue-on-error: true
+        # Inputs arrive as data through env, never interpolated into the script.
+        env:
+          TEST_MODE: ${{ inputs.test_mode }}
         run: |
           cd stockwhales
-          
-          # Build command with optional flags
-          CMD="python fetch_stock_whales.py"
-          
-          if [ "${{ inputs.test_mode }}" = "true" ]; then
-            CMD="$CMD --test"
+
+          ARGS=()
+          if [ "${TEST_MODE:-false}" = "true" ]; then
+            ARGS+=(--test)
             echo "🧪 Running in TEST mode (5 sample tickers)"
           fi
-          
+
           echo "🐋 Starting stock whale collection..."
-          $CMD
+          python fetch_stock_whales.py "${ARGS[@]}"
           echo "✅ Stock whale collection complete"
       
       - name: Copy output to data repo

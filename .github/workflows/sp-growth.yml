@@ -63,18 +63,22 @@ jobs:
       
       - name: Fetch S&P growth metrics
         continue-on-error: true
+        # Inputs arrive as data through env, never interpolated into the script.
+        env:
+          UNIVERSE: ${{ inputs.universe }}
         run: |
           cd spgrowth
-          
-          # Determine which universe(s) to process based on workflow input
-          UNIVERSE_FLAG=""
-          if [ "${{ github.event.inputs.universe }}" = "sp100-only" ]; then
-            UNIVERSE_FLAG="--sp100-only"
-          elif [ "${{ github.event.inputs.universe }}" = "sp500-only" ]; then
-            UNIVERSE_FLAG="--sp500-only"
-          fi
-          
-          python fetch_sp_growth.py $UNIVERSE_FLAG
+
+          # Scheduled runs leave UNIVERSE empty and process both universes.
+          ARGS=()
+          case "${UNIVERSE:-both}" in
+            both) ;;
+            sp100-only) ARGS+=(--sp100-only) ;;
+            sp500-only) ARGS+=(--sp500-only) ;;
+            *) echo "::error::universe must be both, sp100-only or sp500-only"; exit 1 ;;
+          esac
+
+          python fetch_sp_growth.py "${ARGS[@]}"
           echo "✅ S&P growth metrics fetched"
       
       - name: Copy to data repo
