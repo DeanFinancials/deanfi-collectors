@@ -34,6 +34,7 @@ from utils import (
     calculate_52_week_metrics,
     calculate_statistics,
     dataframe_to_daily_records,
+    drop_rows_without_close,
     get_current_snapshot,
     get_current_snapshot_from_info,
     create_index_metadata,
@@ -274,6 +275,8 @@ def create_snapshot_json():
 
         try:
             df = per_ticker_data.get(symbol)
+            if df is not None:
+                df = drop_rows_without_close(df)
 
             if df is None or getattr(df, "empty", False) or len(df) < 2:
                 print(f"    ⚠️  Insufficient data for {symbol}")
@@ -365,10 +368,6 @@ def create_historical_json():
     # Single batched yf.download for all 11 sector ETFs (was 11 separate calls).
     symbols = [sector['symbol'] for sector in SECTORS]
     per_ticker_data = _batch_download_sectors(symbols, period="1y")
-    successful_downloads = sum(
-        1 for df in per_ticker_data.values()
-        if df is not None and not getattr(df, "empty", False) and len(df) > 0
-    )
 
     for sector in SECTORS:
         symbol = sector['symbol']
@@ -376,6 +375,8 @@ def create_historical_json():
 
         try:
             df = per_ticker_data.get(symbol)
+            if df is not None:
+                df = drop_rows_without_close(df)
 
             if df is None or getattr(df, "empty", False) or len(df) < 10:
                 print(f"    ⚠️  Insufficient data for {symbol}")
@@ -410,7 +411,7 @@ def create_historical_json():
 
     output_path = os.path.join(SCRIPT_DIR, SECTOR_CONFIG['output_files']['historical'])
     assert_enough_succeeded(
-        successful=successful_downloads,
+        successful=len(historical_data['sectors']),
         total=len(SECTORS),
         label="us_sector_indices historical",
     )

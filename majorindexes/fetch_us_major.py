@@ -39,6 +39,7 @@ from utils import (
     calculate_statistics,
     calculate_pivot_points,
     dataframe_to_daily_records,
+    drop_rows_without_close,
     get_current_snapshot,
     create_index_metadata,
     save_json,
@@ -234,11 +235,6 @@ def _batch_download_indices(symbols: List[str], period: str = "1y") -> Dict[str,
     return results
 
 
-def _drop_rows_without_close(df: pd.DataFrame) -> pd.DataFrame:
-    """Remove yfinance placeholder rows that do not have a Close value."""
-    return df.dropna(subset=["Close"])
-
-
 def create_snapshot_json():
     """
     Create daily snapshot JSON with current market data.
@@ -302,10 +298,6 @@ def create_snapshot_json():
     # Single batched yf.download for all 6 core indices (was 6 separate calls).
     symbols = [idx['symbol'] for idx in INDICES]
     per_ticker_data = _batch_download_indices(symbols, period="1y")
-    successful_downloads = sum(
-        1 for df in per_ticker_data.values()
-        if df is not None and not getattr(df, "empty", False) and len(df) > 0
-    )
 
     for idx_config in INDICES:
         symbol = idx_config['symbol']
@@ -318,7 +310,7 @@ def create_snapshot_json():
                 print(f"    ⚠️  Insufficient data for {symbol}")
                 continue
 
-            df = _drop_rows_without_close(df)
+            df = drop_rows_without_close(df)
             if df is None or getattr(df, "empty", False) or len(df) < 2:
                 print(f"    ⚠️  Insufficient valid close data for {symbol}")
                 continue
@@ -399,7 +391,7 @@ def create_snapshot_json():
     # Save
     output_path = os.path.join(SCRIPT_DIR, US_MAJOR_CONFIG['output_files']['snapshot'])
     assert_enough_succeeded(
-        successful=successful_downloads,
+        successful=len(snapshot_data['indices']),
         total=len(INDICES),
         label="us_major_indices snapshot",
     )
@@ -456,10 +448,6 @@ def create_historical_json():
     # Single batched yf.download for all 6 core indices (was 6 separate calls).
     symbols = [idx['symbol'] for idx in INDICES]
     per_ticker_data = _batch_download_indices(symbols, period="1y")
-    successful_downloads = sum(
-        1 for df in per_ticker_data.values()
-        if df is not None and not getattr(df, "empty", False) and len(df) > 0
-    )
 
     for idx_config in INDICES:
         symbol = idx_config['symbol']
@@ -472,7 +460,7 @@ def create_historical_json():
                 print(f"    ⚠️  Insufficient data for {symbol}")
                 continue
 
-            df = _drop_rows_without_close(df)
+            df = drop_rows_without_close(df)
             if df is None or getattr(df, "empty", False) or len(df) < 10:
                 print(f"    ⚠️  Insufficient valid close data for {symbol}")
                 continue
@@ -514,7 +502,7 @@ def create_historical_json():
     # Save
     output_path = os.path.join(SCRIPT_DIR, US_MAJOR_CONFIG['output_files']['historical'])
     assert_enough_succeeded(
-        successful=successful_downloads,
+        successful=len(historical_data['indices']),
         total=len(INDICES),
         label="us_major_indices historical",
     )

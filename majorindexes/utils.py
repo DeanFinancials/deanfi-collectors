@@ -679,6 +679,11 @@ def dataframe_to_daily_records(df: pd.DataFrame) -> List[Dict]:
     return records
 
 
+def drop_rows_without_close(df: pd.DataFrame) -> pd.DataFrame:
+    """Remove yfinance placeholder rows (e.g. today's unfinished session) that have no Close."""
+    return df.dropna(subset=["Close"])
+
+
 def get_current_snapshot(df: pd.DataFrame) -> Dict:
     """
     Extract current day snapshot from DataFrame.

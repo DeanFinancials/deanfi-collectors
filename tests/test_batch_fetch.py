@@ -53,10 +53,6 @@ def load(monkeypatch, tmp_path):
     """Load a collector with Yahoo replaced by a canned batch response."""
     utils = _exec("utils", MAJORINDEXES / "utils.py")
     monkeypatch.setitem(sys.modules, "utils", utils)
-    # Debian's system pytz lacks the legacy US/Eastern link that pip's pytz bundles.
-    real_timezone = utils.pytz.timezone
-    monkeypatch.setattr(utils.pytz, "timezone",
-                        lambda name: real_timezone("America/New_York" if name == "US/Eastern" else name))
     monkeypatch.setattr(retry_module.time, "sleep", lambda _s: None)
 
     def _load(module_name, response=None):
@@ -131,27 +127,53 @@ def test_nothing_downloaded_publishes_nothing(load, tmp_path, module_name, _spli
     assert list(tmp_path.iterdir()) == []
 
 
-def test_us_major_snapshot_ignores_trailing_row_without_close(load, tmp_path):
-    module, download, symbols = load("fetch_us_major")
-    download.return_value = batch({s: ohlcv([100, 101, np.nan]) for s in symbols})
-
-    module.create_snapshot_json()
-
-    indices = published(tmp_path)["indices"]
-    assert sorted(indices) == sorted(symbols)
-    assert {row["current_price"] for row in indices.values()} == {101}
-
-
-@pytest.mark.parametrize("module_name,_splitter,_attr,_key", [
-    pytest.param(*MODULES[0], marks=pytest.mark.xfail(
-        strict=True,
-        reason="fetch_us_major guards on downloaded frames, not usable rows, so it "
-               "publishes an empty `indices` object (caught later only by validate_snapshots)")),
-    MODULES[1],
-])
+@pytest.mark.parametrize("module_name,_splitter,_attr,_key", MODULES)
 def test_snapshot_with_only_unusable_closes_publishes_nothing(load, tmp_path, module_name, _splitter, _attr, _key):
     module, download, symbols = load(module_name)
     download.return_value = batch({s: ohlcv([100, 0]) for s in symbols})
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as exc:
         module.create_snapshot_json()
+    assert exc.value.code == 1
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module_name,_splitter,_attr,_key", MODULES)
+def test_historical_with_no_usable_rows_publishes_nothing(load, tmp_path, module_name, _splitter, _attr, _key):
+    # Every frame downloads, but none has the 10 closes the historical builder needs.
+    module, download, symbols = load(module_name)
+    download.return_value = batch({s: ohlcv([100.0] * 3 + [np.nan] * 9) for s in symbols})
+    with pytest.raises(SystemExit) as exc:
+        module.create_historical_json()
+    assert exc.value.code == 1
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("builder", ["create_snapshot_json", "create_historical_json"])
+def test_unusable_run_leaves_previous_good_file_in_place(load, tmp_path, builder):
+    module, download, symbols = load("fetch_us_major")
+    good = tmp_path / module.US_MAJOR_CONFIG["output_files"][builder.split("_")[1]]
+    good.write_text('{"indices": {"^GSPC": {"current_price": 6000.0}}}')
+    download.return_value = batch({s: ohlcv([100, 0]) if builder == "create_snapshot_json"
+                                   else ohlcv([100.0] * 3 + [np.nan] * 9) for s in symbols})
+    with pytest.raises(SystemExit):
+        getattr(module, builder)()
+    assert json.loads(good.read_text()) == {"indices": {"^GSPC": {"current_price": 6000.0}}}
+
+
+@pytest.mark.parametrize("module_name,_splitter,_attr,key", MODULES)
+@pytest.mark.parametrize("builder", ["create_snapshot_json", "create_historical_json"])
+def test_trailing_row_without_close_is_ignored(load, tmp_path, module_name, _splitter, _attr, key, builder):
+    # Yahoo often appends a placeholder row for the current session with no Close.
+    module, download, symbols = load(module_name)
+    download.return_value = batch({s: ohlcv(list(np.linspace(100, 130, 29)) + [np.nan]) for s in symbols})
+
+    getattr(module, builder)()
+
+    body = published(tmp_path)[key]
+    assert sorted(body) == sorted(symbols)
+    for row in body.values():
+        if builder == "create_snapshot_json":
+            assert row["current_price"] == 130
+        else:
+            assert len(row["data"]) == 29
+            assert all(isinstance(point["close"], float) for point in row["data"])
