@@ -7,6 +7,11 @@ on:
         description: "Force weekly-wrap mode (5 catalysts required)"
         required: false
         default: "false"
+      dispatch_combine:
+        description: "Also dispatch deanfi-data combine-daily-snapshots (only after the close)"
+        type: boolean
+        required: false
+        default: false
   schedule:
     # Safely after the US market close in both EDT and EST.
     - cron: '30 22 * * 1-5'
@@ -118,12 +123,13 @@ jobs:
           fi
 
       # Combine's own cron is late by hours and has started only 9-13 minutes after
-      # this job, so start it as soon as the catalysts are pushed. Scheduled runs only:
-      # a manual mid-day run must not produce a Market Pulse input for a session that
-      # has not closed. Combine's cron stays as a fallback. DATA_REPO_TOKEN needs
-      # Actions: Read and write on deanfi-data for this.
+      # this job, so start it as soon as the catalysts are pushed. Scheduled runs, plus
+      # manual runs that opt in with dispatch_combine: a manual mid-day run must not
+      # produce a Market Pulse input for a session that has not closed. Combine's cron
+      # stays as a fallback. DATA_REPO_TOKEN needs Actions: Read and write on
+      # deanfi-data for this.
       - name: Trigger combine-daily-snapshots
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || inputs.dispatch_combine
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}

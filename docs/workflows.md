@@ -12,7 +12,7 @@ Cron is UTC. ET equivalents drift by an hour with daylight saving time unless no
 | `market-data-close.yml` | `20 21 * * 1-5` | 4:20pm EST / 5:20pm EDT | 15 | same four sections, after the close |
 | `economy-indicators.yml` | `0 14 * * 1-5`, `0 17 * * 1-5` | 9am & 12pm EST / 10am & 1pm EDT | 10 | economy-breadth, consumer-credit, housing-affordability |
 | `etf-fund-flows.yml` | `45 21 * * 1-5` | after the close | 15 | etf-fund-flows |
-| `daily-news.yml` | `30 22 * * 1-5` | after the close (often starts hours late) | 15 | daily-news, then dispatches deanfi-data combine-daily-snapshots.yml |
+| `daily-news.yml` | `30 22 * * 1-5` | after the close (often starts hours late) | 15 | daily-news, then dispatches deanfi-data combine-daily-snapshots.yml (manual runs only with `dispatch_combine`) |
 | `analyst-trends.yml` | `0 2 * * 2-6`, `0 3 * * 2-6` | weeknights 10pm ET (DST-gated) | 5 gate + 10 | analyst-trends |
 | `earnings-calendar.yml` | `45 3 * * 2-6` | weeknights | 20 | earnings-calendar |
 | `earnings-surprises.yml` | `5 4 * * 2-6` | weeknights | 20 | earnings-surprises |

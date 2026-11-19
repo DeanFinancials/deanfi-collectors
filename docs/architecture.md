@@ -18,7 +18,7 @@ deanfi-collectors (this repo)
 - The R2 sync is a second failure point. If the website shows stale data but collectors succeeded, check the sync-to-r2.yml run history in `deanfi-data`.
 - The website reads `https://r2.deanfi.com/data_freshness.json`, which the workflows here update (see Freshness below).
 - Worst-case latency from collection to a user seeing data is roughly 20 minutes: the 15-minute intraday cadence, about a minute of R2 sync, and the website's 5-minute client cache.
-- `daily-news.yml` dispatches the deanfi-data workflow combine-daily-snapshots.yml after scheduled runs, which builds the Market Pulse input (see `docs/context.md`). That workflow's own cron is the fallback.
+- `daily-news.yml` dispatches the deanfi-data workflow combine-daily-snapshots.yml after scheduled runs and manual runs with `dispatch_combine` set, which builds the Market Pulse input (see `docs/context.md`). That workflow's own cron is the fallback.
 
 ## Workflow anatomy
 
