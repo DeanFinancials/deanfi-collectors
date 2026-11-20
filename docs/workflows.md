@@ -8,7 +8,7 @@ Cron is UTC. ET equivalents drift by an hour with daylight saving time unless no
 
 | Workflow | Cron (UTC) | Roughly (ET) | Timeout (min) | Publishes |
 |---|---|---|---|---|
-| `market-data-intraday.yml` | `7,22,37,52 8-21 * * 1-5` plus self-dispatched handoffs | every 15 min, weekdays 08:00–17:00 ET (DST-safe) | 12 (+15 timer job) | advance-decline, major-indexes, meanreversion, implied-volatility |
+| `market-data-intraday.yml` | `7,22,37,52 8-21 * * 1-5` plus self-dispatched handoffs | every 15 min, weekdays 08:00–17:00 ET (DST-safe) | 12 (+15 timer job, +10 rescue job) | advance-decline, major-indexes, meanreversion, implied-volatility |
 | `market-data-close.yml` | `20 21 * * 1-5` | 4:20pm EST / 5:20pm EDT | 15 | same four sections, after the close |
 | `economy-indicators.yml` | `0 14 * * 1-5`, `0 17 * * 1-5` | 9am & 12pm EST / 10am & 1pm EDT | 10 | economy-breadth, consumer-credit, housing-affordability |
 | `etf-fund-flows.yml` | `45 21 * * 1-5` | after the close | 15 | etf-fund-flows |

@@ -26,9 +26,19 @@ cron event. No external scheduler or additional secret is required.
   does not stop the next attempt. The timer also runs when collection is skipped.
   Cancellation or the disable variable stops the handoff; newer runs take over
   from older attempts.
-- Only the timer job receives `actions: write`; it dispatches the fixed main
-  branch workflow using its short-lived `GITHUB_TOKEN`. No data-repository token
-  is exposed to the scheduler.
+- If the timer job fails (for example a runner DNS failure during checkout, an
+  API outage past its retries, or the job timeout), a `rescue-handoff` job runs
+  on a fresh ubuntu-latest runner. It retries for about five minutes with
+  growing backoff. Each attempt first applies the same newer-run check as the
+  timer and exits if any newer run exists, including one created by a dispatch
+  that failed ambiguously. Otherwise it dispatches a handoff immediately with
+  `collect_data` set from the same hours rule. That run may start before the
+  usual 15 minutes; the recent-publication guard skips its collection if data
+  was published within ten minutes. The rescue job does not run when the timer
+  succeeds, is cancelled or skipped, or the disable variable is set.
+- Only the timer and rescue jobs receive `actions: write`; they dispatch the
+  fixed main branch workflow using the short-lived `GITHUB_TOKEN`. No
+  data-repository token is exposed to the scheduler.
 
 Set the repository variable `MARKET_INTRADAY_CHAIN_DISABLED=true` to stop
 handoffs. Cron and manual collection remain available. Remove the variable or
@@ -39,9 +49,10 @@ to restart immediately. The next cron run also restarts it.
 
 GitHub still controls runner availability. The continuous timer removes normal
 daily cron dependence, but cannot guarantee execution during a GitHub outage.
-An API failure ends that handoff with a visible
-failed job; the next cron or manual run recovers the chain. Dispatches are not
-blindly retried after ambiguous network failures.
+A timer failure leaves a visible
+failed job, and the rescue job continues the chain. Only if both fail does the
+chain wait for the next cron or manual run. Neither job blindly retries a
+dispatch after an ambiguous network failure: each checks for a newer run first.
 
 The timer uses the standard ubuntu-slim runner. This repository is public, so
 standard GitHub-hosted runner minutes are free under GitHub's current billing

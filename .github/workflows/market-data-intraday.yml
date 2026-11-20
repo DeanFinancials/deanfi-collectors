@@ -251,3 +251,52 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MARKET_INTRADAY_CHAIN_DISABLED: ${{ vars.MARKET_INTRADAY_CHAIN_DISABLED }}
         run: node scheduler/next-run.mjs
+
+  # A failed timer (runner network error, API outage, timeout) would otherwise
+  # end the chain until the next cron event. Dispatch the next run from a fresh
+  # runner instead, unless a newer run (including one a failed dispatch still
+  # created) already owns the chain.
+  rescue-handoff:
+    name: Rescue failed intraday handoff
+    needs: schedule-next
+    if: ${{ always() && !cancelled() && needs.schedule-next.result == 'failure' && github.ref == 'refs/heads/main' && vars.MARKET_INTRADAY_CHAIN_DISABLED != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Dispatch next run unless a newer run owns the chain
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          workflow=market-data-intraday.yml
+          created=''
+          for delay in 0 20 40 60 90 120; do
+            sleep "$delay"
+            if [[ -z "$created" ]]; then
+              created=$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID" --jq .created_at) || { created=''; continue; }
+            fi
+            # Same rule as handoffPlan in scheduler/next-run.mjs.
+            newer=$(gh api "repos/$GH_REPO/actions/workflows/$workflow/runs?branch=main&per_page=30" \
+              --jq "[.workflow_runs[] | select(.id != $RUN_ID and (.created_at > \"$created\" or (.created_at == \"$created\" and .id > $RUN_ID)))] | length") || continue
+            if (( newer > 0 )); then
+              echo "A newer run owns the chain; nothing to rescue."
+              exit 0
+            fi
+            dow=$(TZ=America/New_York date +%u)
+            hour=$(TZ=America/New_York date +%H)
+            collect=false
+            if (( dow <= 5 && 10#$hour >= 8 && 10#$hour < 17 )); then collect=true; fi
+            scheduled_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            if gh workflow run "$workflow" --ref main -f source=handoff \
+              -f scheduled_at="$scheduled_at" -f collect_data="$collect"; then
+              echo "Rescue dispatched next run at $scheduled_at (collect_data=$collect)."
+              exit 0
+            fi
+          done
+          echo "::error::Rescue handoff failed; the next cron or manual run restarts the chain."
+          exit 1
