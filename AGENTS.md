@@ -8,6 +8,7 @@ Single entry point for coding agents in `deanfi-collectors`. This file is the ta
 - Each GitHub Actions workflow in `.github/workflows/` runs collectors and commits their JSON to the sibling repo deanfi-data, the source of truth for website dashboard data.
 - Sources: Yahoo Finance (yfinance), FRED, Finnhub, Alpaca, SEC EDGAR, RSS, Google Search Console.
 - Intraday market data runs every 15 minutes in market hours through a self-dispatching chain (`scheduler/`); everything else is cron.
+- The deanfi-workers `deanfi-actions-backstop` Cloudflare Worker restarts a broken chain. Its GitHub token expires **2027-11-21**; if that date is within 30 days or past, tell the user (rotation steps are in that Worker's README in the deanfi-workers repo).
 - Tests: pytest under `tests/` (plus `dailynews/tests/`) and a Node test for the scheduler.
 
 ## Commands
